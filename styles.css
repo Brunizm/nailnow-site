@@ -4,6 +4,8 @@
   --light-pink: #ffc8dd;
   --pink: #ffafcc;
   --hot-pink: #ff5ab7;
+  --lavender: #cdb4db;
+  --light-blue: #bde0fe;
 }
 
 body {
@@ -38,6 +40,11 @@ header {
 
 .logo-img {
   height: 40px;
+}
+
+.logo a {
+  color: #fff;
+  text-decoration: none;
 }
 
 .nav-links {
