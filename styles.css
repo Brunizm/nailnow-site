@@ -1,10 +1,103 @@
+:root {
+  --pink: #ffafcc;
+  --light-pink: #ffc8dd;
+  --lavender: #cdb4db;
+  --light-blue: #bde0fe;
+}
+
 body {
-  font-family: Arial, sans-serif;
+  font-family: "Poppins", sans-serif;
   text-align: center;
-  background: #fff0f6;
+  background: linear-gradient(
+    135deg,
+    var(--pink),
+    var(--light-pink),
+    var(--light-blue),
+    var(--lavender)
+  );
   color: #333;
   margin: 0;
-  padding: 45px;
+  padding: 0;
+  min-height: 100vh;
+}
+
+header {
+  background: var(--pink);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+}
+
+.logo {
+  font-size: 1.5rem;
+  color: #fff;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.logo a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.nav-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+
+.nav-links li {
+  margin-left: 20px;
+}
+
+.nav-links a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 1rem;
+  transition: opacity 0.3s;
+}
+
+.nav-links a:hover {
+  opacity: 0.8;
+}
+
+.hero {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.hero-img {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 16px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.page-content {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.page-img {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  border-radius: 16px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin: 0 auto 30px;
+  display: block;
 }
 
 h1 {
@@ -19,19 +112,28 @@ h1 {
   font-size: 1.2rem;
   border-radius: 12px;
   text-decoration: none;
-  background: #ff69b4;
+  background: var(--lavender);
   color: white;
-  transition: 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .btn:hover {
-  background: #ff85c1;
+  background: var(--light-pink);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
 
 form {
   margin: 20px auto;
   max-width: 300px;
   text-align: left;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 label {

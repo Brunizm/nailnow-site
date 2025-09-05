@@ -1,30 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cadastro Profissional - NailNow</title>
-  <link rel="stylesheet" href="../styles.css">
-  <script>
-    function handleSignup(event) {
-      event.preventDefault();
-      alert('Cadastro de profissional - integração com Firebase em breve.');
-    }
-  </script>
-</head>
-<body>
-  <h1>Cadastro de Profissional</h1>
-  <form onsubmit="handleSignup(event)">
-    <label for="nome">Nome</label>
-    <input type="text" id="nome" required>
-    <label for="email">Email</label>
-    <input type="email" id="email" required>
-    <label for="cidade">Cidade</label>
-    <input type="text" id="cidade" required>
-    <label for="senha">Senha</label>
-    <input type="password" id="senha" required>
-    <button type="submit" class="btn">Salvar</button>
-  </form>
-  <a href="index.html" class="btn">Voltar</a>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadastro Profissional - NailNow</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+    <script>
+      function handleSignup(event) {
+        event.preventDefault();
+        alert("Cadastro de profissional - integração com Firebase em breve.");
+      }
+    </script>
+  </head>
+  <body>
+    <header>
+      <nav class="navbar">
+        <div class="logo"><a href="../">NailNow 💅</a></div>
+        <ul class="nav-links">
+          <li><a href="../">Início</a></li>
+          <li><a href="../cliente/">Cliente</a></li>
+          <li><a href="../profissional/">Profissional</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main class="page-content">
+      <img
+        src="https://images.unsplash.com/photo-1603808033192-1c0d1ba47188?auto=format&fit=crop&w=800&q=80"
+        alt="Ferramentas de manicure"
+        class="page-img"
+      />
+      <h1>Cadastro de Profissional</h1>
+      <form onsubmit="handleSignup(event)">
+        <label for="nome">Nome</label>
+        <input type="text" id="nome" required />
+        <label for="email">Email</label>
+        <input type="email" id="email" required />
+        <label for="cidade">Cidade</label>
+        <input type="text" id="cidade" required />
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" required />
+        <button type="submit" class="btn">Salvar</button>
+      </form>
+      <a href="index.html" class="btn">Voltar</a>
+    </main>
+  </body>
 </html>
