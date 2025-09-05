@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g id="petals" transform="translate(50,55)">
+    <ellipse cx="0" cy="-20" rx="18" ry="28" fill="#ff5ab7"/>
+    <ellipse cx="18" cy="-6" rx="18" ry="28" transform="rotate(30)" fill="#ff7bc4"/>
+    <ellipse cx="-18" cy="-6" rx="18" ry="28" transform="rotate(-30)" fill="#ff8fd0"/>
+    <ellipse cx="18" cy="20" rx="18" ry="28" transform="rotate(90)" fill="#ffa3db"/>
+    <ellipse cx="-18" cy="20" rx="18" ry="28" transform="rotate(-90)" fill="#ffb7e5"/>
+  </g>
+  <g id="brush" fill="#ff5ab7">
+    <rect x="47" y="10" width="6" height="40"/>
+    <polygon points="47,10 53,10 65,0 35,0"/>
+  </g>
+</svg>
