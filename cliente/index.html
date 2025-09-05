@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cliente - NailNow</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script>
+    function handleLogin(event) {
+      event.preventDefault();
+      alert('Login de cliente - integração com Firebase em breve.');
+    }
+  </script>
+</head>
+<body>
+  <h1>Área da Cliente</h1>
+  <form onsubmit="handleLogin(event)">
+    <label for="email">Email</label>
+    <input type="email" id="email" required>
+    <label for="password">Senha</label>
+    <input type="password" id="password" required>
+    <button type="submit" class="btn">Entrar</button>
+  </form>
+  <p>Ainda não tem conta?</p>
+  <a href="cadastro.html" class="btn">Cadastrar</a>
+  <br>
+  <a href="../" class="btn">Início</a>
+</body>
+</html>
