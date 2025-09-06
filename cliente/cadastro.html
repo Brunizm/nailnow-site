@@ -10,12 +10,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../styles.css" />
-    <script>
-      function handleSignup(event) {
-        event.preventDefault();
-        alert("Cadastro de cliente - integração com Firebase em breve.");
-      }
-    </script>
+    <script src="../scripts/register.js" defer></script>
   </head>
   <body>
     <header>
@@ -40,7 +35,7 @@
         class="page-img"
       />
       <h1>Cadastro de Cliente</h1>
-      <form onsubmit="handleSignup(event)">
+      <form data-role="cliente">
         <label for="nome">Nome</label>
         <input type="text" id="nome" required />
         <label for="email">Email</label>
