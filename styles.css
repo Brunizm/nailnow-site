@@ -1,32 +1,23 @@
 :root {
-  --beige: #f8ede3;
-  --baby-pink: #ffe5ec;
-  --light-pink: #ffc8dd;
-  --pink: #ffafcc;
-  --hot-pink: #ff5ab7;
-  --lavender: #cdb4db;
-  --light-blue: #bde0fe;
+  --buff-pink: #f8d7df;
+  --buff-light: #fde4ea;
+  --buff-text: #c04a7d;
+  --buff-accent: #d16f95;
 }
 
 body {
   font-family: "Poppins", sans-serif;
   text-align: center;
-  background: linear-gradient(
-    135deg,
-    var(--beige),
-    var(--baby-pink),
-    var(--light-pink),
-    var(--pink)
-  );
-  color: #333;
+  background-color: var(--buff-pink);
+  color: var(--buff-text);
   margin: 0;
   padding: 0;
   min-height: 100vh;
 }
 
 header {
-  background: var(--baby-pink);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--buff-pink);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .navbar {
@@ -59,9 +50,12 @@ header {
 }
 
 .nav-links a {
-  color: var(--hot-pink);
+  color: var(--buff-text);
   text-decoration: none;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-family: "Playfair Display", serif;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   transition: opacity 0.3s;
 }
 
@@ -101,7 +95,22 @@ header {
 }
 
 h1 {
-  font-size: 2.5rem;
+  font-family: "Playfair Display", serif;
+  font-size: 4rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+h2 {
+  font-family: "Playfair Display", serif;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  font-family: "Playfair Display", serif;
+  letter-spacing: 0.1em;
   margin-bottom: 20px;
 }
 
@@ -112,8 +121,9 @@ h1 {
   font-size: 1.2rem;
   border-radius: 12px;
   text-decoration: none;
-  background: var(--pink);
+  background: var(--buff-text);
   color: #fff;
+  text-transform: uppercase;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition:
     transform 0.2s,
@@ -121,7 +131,7 @@ h1 {
 }
 
 .btn:hover {
-  background: var(--baby-pink);
+  background: var(--buff-accent);
   transform: translateY(-2px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
@@ -130,7 +140,7 @@ form {
   margin: 20px auto;
   max-width: 300px;
   text-align: left;
-  background: var(--beige);
+  background: var(--buff-light);
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
