@@ -1,7 +1,4 @@
-:root {
-  --brand-bg: #f7c6d8;
-  --brand-text: #d3578c;
-}
+
 
 body {
   font-family: "Playfair Display", serif;
@@ -26,19 +23,7 @@ header {
   padding: 10px 20px;
 }
 
-.logo {
-codex/update-background-and-text-color-4h2unw
-  font-size: 3rem;
-  color: var(--brand-text);
-  font-weight: 700;
-  font-family: "Playfair Display", serif;
-  text-transform: uppercase;
-=======
-  font-size: 1.5rem;
-  color: var(--brand-text);
-  font-weight: 500;
-  text-decoration: none;
-}
+
 
 .logo a {
   color: var(--brand-text);
