@@ -1,29 +1,20 @@
 :root {
-  --pink: #ffafcc;
-  --light-pink: #ffc8dd;
-  --lavender: #cdb4db;
-  --light-blue: #bde0fe;
+  --brand-bg: #f7c6d8;
+  --brand-text: #d3578c;
 }
 
 body {
-  font-family: "Poppins", sans-serif;
+  font-family: "Playfair Display", serif;
   text-align: center;
-  background: linear-gradient(
-    135deg,
-    var(--pink),
-    var(--light-pink),
-    var(--light-blue),
-    var(--lavender)
-  );
-  color: #333;
+  background: var(--brand-bg);
+  color: var(--brand-text);
   margin: 0;
   padding: 0;
   min-height: 100vh;
 }
 
 header {
-  background: var(--pink);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--brand-bg);
 }
 
 .navbar {
@@ -37,13 +28,13 @@ header {
 
 .logo {
   font-size: 1.5rem;
-  color: #fff;
+  color: var(--brand-text);
   font-weight: 500;
   text-decoration: none;
 }
 
 .logo a {
-  color: #fff;
+  color: var(--brand-text);
   text-decoration: none;
 }
 
@@ -59,7 +50,7 @@ header {
 }
 
 .nav-links a {
-  color: #fff;
+  color: var(--brand-text);
   text-decoration: none;
   font-size: 1rem;
   transition: opacity 0.3s;
@@ -103,6 +94,7 @@ header {
 h1 {
   font-size: 2.5rem;
   margin-bottom: 20px;
+  text-transform: uppercase;
 }
 
 .btn {
@@ -112,8 +104,8 @@ h1 {
   font-size: 1.2rem;
   border-radius: 12px;
   text-decoration: none;
-  background: var(--lavender);
-  color: white;
+  background: var(--brand-text);
+  color: var(--brand-bg);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition:
     transform 0.2s,
@@ -121,7 +113,7 @@ h1 {
 }
 
 .btn:hover {
-  background: var(--light-pink);
+  opacity: 0.9;
   transform: translateY(-2px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
