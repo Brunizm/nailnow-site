@@ -95,6 +95,13 @@ h1 {
   text-transform: uppercase;
 }
 
+h2 {
+  font-family: "Playfair Display", serif;
+  font-size: 2rem;
+  margin: 40px 0 20px;
+  text-transform: uppercase;
+}
+
 .btn {
   display: inline-block;
   margin: 15px;
@@ -124,6 +131,29 @@ form {
   background: rgba(255, 255, 255, 0.9);
   padding: 20px;
   border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.services,
+.about {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.services-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+.services-list li {
+  background: #fff;
+  border-radius: 12px;
+  padding: 15px 25px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
