@@ -1,9 +1,9 @@
 /* Brand theme inspired by modern beauty labels */
 :root {
-  --brand-bg: #ffffff;
-  --brand-text: #1a1a1a;
-  --brand-accent: #ff4f8b;
-  --brand-accent-hover: #e03b74;
+  --brand-bg: #fdfcfb;
+  --brand-text: #111111;
+  --brand-accent: #e26d9b;
+  --brand-accent-hover: #c95b86;
   --brand-surface: #fff1f6;
 }
 
@@ -19,7 +19,7 @@ body {
 
 .top-bar {
   background: var(--brand-accent);
-  color: #fff;
+  color: var(--brand-bg);
   font-size: 0.9rem;
   padding: 5px 10px;
   text-align: center;
@@ -137,7 +137,7 @@ h2 {
   border-radius: 30px;
   text-decoration: none;
   background: var(--brand-accent);
-  color: #fff;
+  color: var(--brand-bg);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   border: 2px solid var(--brand-accent);
   transition:
@@ -160,7 +160,7 @@ h2 {
 
 .btn-outline:hover {
   background: var(--brand-accent);
-  color: #fff;
+  color: var(--brand-bg);
 }
 
 form {
