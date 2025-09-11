@@ -6,17 +6,20 @@
     <title>NailNow 💅</title>
     <link rel="preconnect" href="https://fonts.gstatic.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&family=Playfair+Display:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div class="top-bar">Agende seu serviço de unhas sem sair de casa</div>
     <header>
       <nav class="navbar">
         <div class="logo"><a href="./">NAILNOW 💅</a></div>
         <ul class="nav-links">
           <li><a href="./">Início</a></li>
+          <li><a href="#servicos">Serviços</a></li>
+          <li><a href="#como-funciona">Como Funciona</a></li>
           <li><a href="cliente/">Cliente</a></li>
           <li><a href="profissional/">Profissional</a></li>
         </ul>
@@ -25,17 +28,52 @@
 
     <main>
       <section class="hero">
-        <img
-          src="https://images.unsplash.com/photo-1584447146176-d9a5cd208414?auto=format&fit=crop&w=1200&q=80"
-          alt="Arte de unhas coloridas"
-          class="hero-img"
-        />
-        <h1>Bem-vinda ao NailNow 💅</h1>
-        <p>Encontre manicures perto de você — rápido e fácil.</p>
-        <div class="cta">
-          <a href="cliente/" class="btn">Sou Cliente</a>
-          <a href="profissional/" class="btn">Sou Profissional</a>
+        <div class="hero-image">
+          <img
+            src="https://images.unsplash.com/photo-1584447146176-d9a5cd208414?auto=format&fit=crop&w=1200&q=80"
+            alt="Arte de unhas coloridas"
+          />
         </div>
+        <div class="hero-content">
+          <span class="tag">Novo</span>
+          <h1>Coleção de serviços acaba de chegar</h1>
+          <p>
+            Agende manicures e pedicures em casa com profissionais verificados.
+          </p>
+          <div class="cta">
+            <a href="cliente/" class="btn">Sou Cliente</a>
+            <a href="profissional/" class="btn btn-outline">Sou Profissional</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="signup">
+        <h2>Receba novidades e ofertas</h2>
+        <form class="signup-form" onsubmit="event.preventDefault()">
+          <input type="email" placeholder="email" required />
+          <button type="submit" class="btn">Enviar</button>
+        </form>
+      </section>
+
+      <section id="servicos" class="services">
+        <h2>Nossos Serviços</h2>
+        <ul class="services-list">
+          <li>Manicure tradicional</li>
+          <li>Pedicure tradicional</li>
+          <li>Esmaltação gel</li>
+        </ul>
+      </section>
+
+      <section id="como-funciona" class="about">
+        <h2>Como Funciona</h2>
+        <p>
+          1. Resumo Executivo — A NailNow é uma plataforma inovadora que conecta
+          clientes a manicures e pedicures profissionais para serviços em
+          domicílio. Inspirado no modelo "Uber", o aplicativo permite que
+          usuárias encontrem e agendem serviços de unha de forma rápida, segura
+          e conveniente. O pagamento é realizado diretamente pela plataforma,
+          garantindo segurança e comodidade para ambas as partes.
+        </p>
       </section>
     </main>
   </body>

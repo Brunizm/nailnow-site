@@ -1,21 +1,35 @@
-
+/* Brand theme inspired by modern beauty labels */
+:root {
+  --brand-light: #fff5f7;
+  --brand-dark: #f7c3d3;
+  --brand-text: #4a1f2f;
+  --accent: #d87ba9;
+}
 
 body {
-  font-family: "Playfair Display", serif;
+  font-family: "Poppins", sans-serif;
   text-align: center;
-  background: var(--brand-bg);
+  background: linear-gradient(to bottom, var(--brand-light), var(--brand-dark));
   color: var(--brand-text);
   margin: 0;
   padding: 0;
   min-height: 100vh;
 }
 
+.top-bar {
+  background: var(--brand-dark);
+  color: var(--brand-text);
+  font-size: 0.9rem;
+  padding: 5px 10px;
+  text-align: center;
+}
+
 header {
-  background: var(--brand-bg);
+  background: transparent;
 }
 
 .navbar {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -23,11 +37,11 @@ header {
   padding: 10px 20px;
 }
 
-
-
 .logo a {
   color: var(--brand-text);
   text-decoration: none;
+  font-family: "Playfair Display", serif;
+  font-weight: 700;
 }
 
 .nav-links {
@@ -45,26 +59,43 @@ header {
   color: var(--brand-text);
   text-decoration: none;
   font-size: 1rem;
-  transition: opacity 0.3s;
+  transition: color 0.3s;
 }
 
 .nav-links a:hover {
-  opacity: 0.8;
+  color: var(--accent);
 }
 
 .hero {
-  max-width: 900px;
-  margin: 40px auto;
+  max-width: 1200px;
+  margin: 60px auto;
   padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
 }
 
-.hero-img {
+.hero-image {
+  flex: 1;
+}
+
+.hero-image img {
   width: 100%;
-  max-height: 400px;
+  border-radius: 50% 50% 0 0;
   object-fit: cover;
-  border-radius: 16px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 30px;
+}
+
+.hero-content {
+  flex: 1;
+  text-align: left;
+}
+
+.tag {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+  color: var(--brand-text);
 }
 
 .page-content {
@@ -84,9 +115,15 @@ header {
 }
 
 h1 {
+  font-family: "Playfair Display", serif;
   font-size: 2.5rem;
   margin-bottom: 20px;
-  text-transform: uppercase;
+}
+
+h2 {
+  font-family: "Playfair Display", serif;
+  font-size: 2rem;
+  margin: 40px 0 20px;
 }
 
 .btn {
@@ -94,20 +131,33 @@ h1 {
   margin: 15px;
   padding: 15px 30px;
   font-size: 1.2rem;
-  border-radius: 12px;
+  border-radius: 30px;
   text-decoration: none;
-  background: var(--brand-text);
-  color: var(--brand-bg);
+  background: var(--accent);
+  color: #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 2px solid var(--accent);
   transition:
+    background 0.3s,
+    color 0.3s,
     transform 0.2s,
     box-shadow 0.2s;
 }
 
 .btn:hover {
-  opacity: 0.9;
+  background: var(--brand-text);
   transform: translateY(-2px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--accent);
+}
+
+.btn-outline:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 form {
@@ -118,6 +168,54 @@ form {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.services,
+.about {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.services-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+.services-list li {
+  background: #fff;
+  border-radius: 12px;
+  padding: 15px 25px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.signup {
+  background: rgba(255, 255, 255, 0.8);
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.signup-form {
+  display: flex;
+  justify-content: center;
+  max-width: 400px;
+  margin: 20px auto 0;
+}
+
+.signup-form input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px 0 0 4px;
+}
+
+.signup-form .btn {
+  margin: 0;
+  border-radius: 0 4px 4px 0;
 }
 
 label {
