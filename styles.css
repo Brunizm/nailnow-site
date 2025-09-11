@@ -1,24 +1,25 @@
 /* Brand theme inspired by modern beauty labels */
 :root {
-  --brand-light: #fff5f7;
-  --brand-dark: #f7c3d3;
-  --brand-text: #4a1f2f;
-  --accent: #d87ba9;
+  --bg: #ffffff;
+  --text: #1a1a1a;
+  --accent: #ff4f8b;
+  --accent-hover: #e03b74;
+  --surface: #fff1f6;
 }
 
 body {
-  font-family: "Poppins", sans-serif;
+  font-family: "Inter", sans-serif;
   text-align: center;
-  background: linear-gradient(to bottom, var(--brand-light), var(--brand-dark));
-  color: var(--brand-text);
+  background: var(--bg);
+  color: var(--text);
   margin: 0;
   padding: 0;
   min-height: 100vh;
 }
 
 .top-bar {
-  background: var(--brand-dark);
-  color: var(--brand-text);
+  background: var(--accent);
+  color: #fff;
   font-size: 0.9rem;
   padding: 5px 10px;
   text-align: center;
@@ -38,7 +39,7 @@ header {
 }
 
 .logo a {
-  color: var(--brand-text);
+  color: var(--text);
   text-decoration: none;
   font-family: "Playfair Display", serif;
   font-weight: 700;
@@ -56,7 +57,7 @@ header {
 }
 
 .nav-links a {
-  color: var(--brand-text);
+  color: var(--text);
   text-decoration: none;
   font-size: 1rem;
   transition: color 0.3s;
@@ -95,7 +96,7 @@ header {
   text-transform: uppercase;
   letter-spacing: 2px;
   font-size: 0.9rem;
-  color: var(--brand-text);
+  color: var(--text);
 }
 
 .page-content {
@@ -145,7 +146,7 @@ h2 {
 }
 
 .btn:hover {
-  background: var(--brand-text);
+  background: var(--accent-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
@@ -164,7 +165,7 @@ form {
   margin: 20px auto;
   max-width: 300px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface);
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -187,14 +188,14 @@ form {
 }
 
 .services-list li {
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
   padding: 15px 25px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .signup {
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--surface);
   padding: 40px 20px;
   text-align: center;
 }
