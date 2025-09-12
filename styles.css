@@ -2,7 +2,7 @@
 :root {
   --brand-bg: #fdfcfb;
   --brand-text: #111111;
-  --accent: #e26d9b;
+  --brand-accent: #e26d9b;
 }
 
 body {
@@ -54,7 +54,7 @@ header {
 }
 
 .nav-links a:hover {
-  color: var(--accent);
+  color: var(--brand-accent);
 }
 
 .hero {
@@ -109,7 +109,7 @@ h2 {
   font-size: 1.2rem;
   border-radius: 12px;
   text-decoration: none;
-  background: var(--accent);
+  background: var(--brand-accent);
   color: var(--brand-bg);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition:
