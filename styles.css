@@ -11,7 +11,7 @@ body {
   margin: 0;
   font-family: "Inter", sans-serif;
   color: var(--text);
-  background: var(--white);
+  background: linear-gradient(var(--pink-light), var(--pink-dark));
 }
 
 .top-bar {
@@ -83,6 +83,31 @@ body {
   overflow: hidden;
 }
 
+.hero::before,
+.hero::after {
+  content: "";
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(
+    circle at center,
+    rgba(215, 164, 118, 0.6),
+    rgba(215, 164, 118, 0) 70%
+  );
+  filter: blur(40px);
+  z-index: 0;
+}
+
+.hero::before {
+  top: -60px;
+  left: -60px;
+}
+
+.hero::after {
+  bottom: -60px;
+  right: -80px;
+}
+
 .hero-inner {
   max-width: 1100px;
   margin: 0 auto;
@@ -90,6 +115,8 @@ body {
   align-items: center;
   gap: 60px;
   justify-content: center;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-image-wrapper {
@@ -133,12 +160,19 @@ body {
   border-radius: 4px;
   font-size: 0.875rem;
   letter-spacing: 0.1em;
+  display: inline-block;
+  transition: background 0.3s;
+}
+
+.btn:hover {
+  background: #b8865c;
 }
 
 .newsletter {
   background: var(--pink-light);
   text-align: center;
   padding: 40px 20px;
+  position: relative;
 }
 
 .newsletter h2 {
@@ -174,6 +208,19 @@ body {
   cursor: pointer;
   font-size: 0.875rem;
   letter-spacing: 0.1em;
+}
+
+.newsletter::after {
+  content: "dream\A shack";
+  position: absolute;
+  right: 20px;
+  bottom: 10px;
+  font-family: "Playfair Display", serif;
+  font-size: 2.5rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: lowercase;
+  white-space: pre;
+  transform: rotate(-10deg);
 }
 
 /* Generic content styles for secondary pages */
