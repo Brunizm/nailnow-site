@@ -1,64 +1,70 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Rose Gold boutique beauty store." />
-    <title>Rose Gold</title>
+    <meta
+      name="description"
+      content="NailNow conecta clientes a manicures e pedicures para agendamentos rápidos e práticos."
+    />
+    <title>NailNow 💅</title>
     <link rel="preconnect" href="https://fonts.gstatic.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Playfair+Display:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Playfair+Display:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="top-bar">Free shipping on orders over $50</div>
-    <header class="site-header">
-      <div class="header-row">
-        <span class="icon">🔍</span>
-        <div class="logo">
-          <span class="logo-main">Rose</span>
-          <span class="logo-sub">Gold</span>
-        </div>
-        <div class="icons">
-          <span>👤</span>
-          <span>👜</span>
-        </div>
-      </div>
-      <nav class="main-nav">
-        <a href="#">Home</a>
-        <a href="#">About</a>
-        <a href="#">Shop</a>
-        <a href="#">Blog</a>
-        <a href="#">Contact</a>
+    <header>
+      <nav class="navbar">
+        <div class="logo"><a href="./">NAILNOW 💅</a></div>
+        <ul class="nav-links">
+          <li><a href="./">Início</a></li>
+          <li><a href="#servicos">Serviços</a></li>
+          <li><a href="#como-funciona">Como Funciona</a></li>
+          <li><a href="cliente/">Cliente</a></li>
+          <li><a href="profissional/">Profissional</a></li>
+        </ul>
       </nav>
     </header>
+
     <main>
       <section class="hero">
-        <div class="hero-inner">
-          <div class="hero-image-wrapper">
-            <img
-              src="https://images.unsplash.com/photo-1524253482453-3fed8d2fe12b?auto=format&fit=crop&w=600&q=80"
-              alt="Model in pink fashion"
-              width="360"
-              height="480"
-            />
-          </div>
-          <div class="hero-content">
-            <p class="eyebrow">New</p>
-            <h1>Collection just landed</h1>
-            <a href="#" class="btn">Shop Now</a>
-          </div>
+        <img
+          src="https://images.unsplash.com/photo-1584447146176-d9a5cd208414?auto=format&fit=crop&w=1200&q=80"
+          alt="Arte de unhas coloridas"
+          class="hero-img"
+          width="900"
+          height="400"
+        />
+        <h1>Bem-vinda ao NailNow 💅</h1>
+        <p>Encontre manicures perto de você — rápido e fácil.</p>
+        <div class="cta">
+          <a href="cliente/" class="btn">Sou Cliente</a>
+          <a href="profissional/" class="btn">Sou Profissional</a>
         </div>
       </section>
-      <section class="newsletter">
-        <h2>Sign Up</h2>
-        <p>Be the first to find out about new products and exclusive offers</p>
-        <form class="newsletter-form">
-          <input type="email" placeholder="email" />
-          <button class="btn" type="submit">Subscribe</button>
-        </form>
+
+      <section id="servicos" class="services">
+        <h2>Nossos Serviços</h2>
+        <ul class="services-list">
+          <li>Manicure tradicional</li>
+          <li>Pedicure tradicional</li>
+          <li>Esmaltação gel</li>
+        </ul>
+      </section>
+
+      <section id="como-funciona" class="about">
+        <h2>Como Funciona</h2>
+        <p>
+          1. Resumo Executivo — A NailNow é uma plataforma inovadora que conecta
+          clientes a manicures e pedicures profissionais para serviços em
+          domicílio. Inspirado no modelo "Uber", o aplicativo permite que
+          usuárias encontrem e agendem serviços de unha de forma rápida, segura
+          e conveniente. O pagamento é realizado diretamente pela plataforma,
+          garantindo segurança e comodidade para ambas as partes.
+        </p>
       </section>
     </main>
   </body>
