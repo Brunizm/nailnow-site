@@ -5,98 +5,249 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="NailNow conecta clientes a manicures e pedicures profissionais para agendamentos rápidos, seguros e em domicílio."
+      content="NailNow é a plataforma on-demand que conecta clientes a manicures profissionais com geolocalização, pagamento digital e perfis verificados."
     />
-    <title>NailNow 💅 | Manicure e pedicure on-demand</title>
+    <title>NailNow | Beleza on-demand para clientes e profissionais</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="promo-banner">
-      Atendimento em domicílio nas principais capitais
+      Atendimento em domicílio com profissionais verificados NailNow
     </div>
-    <header class="site-header">
-      <div class="header-row header-row--top">
-        <button type="button" class="icon-button" aria-label="Buscar no site">
+    <header class="site-header" id="topo">
+      <div class="header-container">
+        <a class="brand" href="#cliente" aria-label="Início NailNow">
+          <span class="brand-icon" aria-hidden="true">💅</span>
+          NailNow
+        </a>
+        <nav class="main-nav" aria-label="Menu principal">
+          <a class="nav-link is-active" href="#cliente">Sou cliente</a>
+          <a class="nav-link" href="#profissional">Sou profissional</a>
+        </nav>
+        <a class="cta-link" href="profissional/">Sou profissional</a>
+        <button
+          class="menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="mobile-nav"
+        >
+          <span class="sr-only">Abrir menu</span>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path
-              d="M10.5 3a7.5 7.5 0 0 1 5.934 12.123l3.222 3.221a1 1 0 0 1-1.414 1.415l-3.222-3.222A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11a5.5 5.5 0 0 0 0-11z"
+              d="M4 6h16a1 1 0 1 0 0-2H4a1 1 0 0 0 0 2zm16 5H4a1 1 0 0 0 0 2h16a1 1 0 0 0 0-2zm0 7H4a1 1 0 0 0 0 2h16a1 1 0 0 0 0-2z"
               fill="currentColor"
             />
           </svg>
         </button>
-        <a href="./" class="brand-mark" aria-label="Página inicial do NailNow"
-          >NailNow 💅</a
-        >
-        <div class="header-actions">
-          <a href="cliente/" class="icon-button" aria-label="Área do cliente">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 3a5 5 0 1 1 0 10a5 5 0 0 1 0-10zm0 12c4.418 0 8 2.239 8 5v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1c0-2.761 3.582-5 8-5z"
-                fill="currentColor"
-              />
-            </svg>
-          </a>
-          <a
-            href="profissional/"
-            class="icon-button"
-            aria-label="Área do profissional"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M7 4a1 1 0 0 1 .98.804L8.382 7H20a1 1 0 0 1 .986 1.164l-1.5 9A1 1 0 0 1 18.5 18H8a1 1 0 0 1-.98-.804L5.618 6H4a1 1 0 1 1 0-2h3zm2.486 5l.933 7h7.217l1.167-7H9.486zM9 20.5A1.5 1.5 0 1 1 6 20.5A1.5 1.5 0 0 1 9 20.5zm10 0A1.5 1.5 0 1 1 16 20.5A1.5 1.5 0 0 1 19 20.5z"
-                fill="currentColor"
-              />
-            </svg>
-          </a>
-        </div>
       </div>
-      <nav class="header-row header-row--nav" aria-label="Principal">
-        <a href="#inicio" class="nav-link">Início</a>
-        <a href="#servicos" class="nav-link">Serviços</a>
-        <a href="#como-funciona" class="nav-link">Como Funciona</a>
-        <a href="cliente/" class="nav-link">Cliente</a>
-        <a href="profissional/" class="nav-link">Profissional</a>
+      <nav id="mobile-nav" class="mobile-nav" aria-label="Menu móvel">
+        <a class="mobile-link" href="#cliente">Sou cliente</a>
+        <a class="mobile-link" href="#profissional">Sou profissional</a>
+        <a class="mobile-link" href="profissional/"
+          >Quero atender com a NailNow</a
+        >
       </nav>
     </header>
 
     <main>
-      <section id="inicio" class="hero">
-        <div class="hero-media">
-          <div class="hero-image-wrapper">
+      <section id="cliente" class="hero">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <div class="hero-tag">Uber das manicures</div>
+            <h1>Reserve sua manicure favorita em minutos</h1>
+            <p>
+              Descubra manicures próximas usando nossa busca por localização.
+              Perfis conectados ao Firebase exibem portfólio, avaliações e
+              agenda em tempo real. Você escolhe, confirma e paga no app.
+            </p>
+            <form class="location-form">
+              <label class="sr-only" for="buscar-local"
+                >Buscar manicure por localização</label
+              >
+              <input
+                id="buscar-local"
+                type="text"
+                placeholder="Digite seu bairro"
+              />
+              <button type="submit">Encontrar agora</button>
+            </form>
+            <ul class="hero-highlights">
+              <li>Pagamento seguro e suporte 24/7</li>
+              <li>Profissionais com perfis verificados e avaliações reais</li>
+              <li>Atendimento em domicílio ou no estúdio da profissional</li>
+            </ul>
+            <div class="hero-cta">
+              <a class="btn btn-primary" href="cliente/">Sou cliente</a>
+              <a class="btn btn-ghost" href="#profissional">Sou profissional</a>
+            </div>
+          </div>
+          <div class="hero-media">
+            <div class="device-card">
+              <img
+                src="https://images.unsplash.com/photo-1500840216050-6ffa99d75160?auto=format&fit=crop&w=900&q=80"
+                alt="Cliente escolhendo manicure pelo aplicativo"
+              />
+            </div>
+            <div class="floating-card">
+              <h3>Pronta em 25 min</h3>
+              <p>Manicure Ana Souza a 1,2 km de você</p>
+              <div class="rating">
+                <span aria-hidden="true">★★★★★</span>
+                <span class="sr-only">Avaliação cinco estrelas</span>
+              </div>
+            </div>
             <img
-              src="https://images.unsplash.com/photo-1584447146176-d9a5cd208414?auto=format&fit=crop&w=1200&q=80"
-              alt="Profissional NailNow atendendo cliente com esmaltação"
+              class="gold-splash"
+              src="https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=400&q=60"
+              alt="Textura dourada decorativa"
             />
           </div>
         </div>
-        <div class="hero-copy">
-          <span class="hero-label">NOVO</span>
-          <h1>Beleza on-demand na palma da sua mão</h1>
+      </section>
+
+      <section class="metrics">
+        <div class="metric-card">
+          <strong>+5k</strong>
+          <span>atendimentos concluídos</span>
+        </div>
+        <div class="metric-card">
+          <strong>98%</strong>
+          <span>clientes 5 estrelas</span>
+        </div>
+        <div class="metric-card">
+          <strong>12</strong>
+          <span>capitais atendidas</span>
+        </div>
+        <div class="metric-card">
+          <strong>Firebase</strong>
+          <span>dados em tempo real</span>
+        </div>
+      </section>
+
+      <section class="flow" id="como-funciona">
+        <div class="section-heading">
+          <h2>Como funciona para clientes</h2>
           <p>
-            Agende manicures e pedicures verificados para atender onde você
-            estiver, com pagamento seguro pela plataforma e suporte dedicado da
-            NailNow.
+            Em quatro passos você garante uma experiência premium de manicure
+            onde estiver.
           </p>
-          <div class="hero-actions">
-            <a href="cliente/" class="btn">Sou Cliente</a>
-            <a href="profissional/" class="btn btn--outline"
-              >Sou Profissional</a
-            >
+        </div>
+        <div class="flow-grid">
+          <article class="flow-step">
+            <span class="step-number">1</span>
+            <h3>Busque por localização</h3>
+            <p>
+              Use nosso mapa inteligente para encontrar manicures próximas e ver
+              o tempo estimado de chegada.
+            </p>
+          </article>
+          <article class="flow-step">
+            <span class="step-number">2</span>
+            <h3>Escolha o perfil ideal</h3>
+            <p>
+              Cada profissional tem portfólio, certificados e avaliações reais
+              conectados ao Firebase.
+            </p>
+          </article>
+          <article class="flow-step">
+            <span class="step-number">3</span>
+            <h3>Confirme o horário</h3>
+            <p>
+              Defina endereço, data e serviço. A agenda sincronizada mostra
+              slots livres em segundos.
+            </p>
+          </article>
+          <article class="flow-step">
+            <span class="step-number">4</span>
+            <h3>Pague sem fricção</h3>
+            <p>
+              Finalize com cartão ou wallet e acompanhe o atendimento com status
+              em tempo real.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="experiences" aria-labelledby="experiencias-title">
+        <div class="section-heading">
+          <h2 id="experiencias-title">Experiências que encantam</h2>
+          <p>
+            Inspirado na fluidez do app da Uber, com uma paleta rosé e dourada
+            que deixa tudo mais sofisticado.
+          </p>
+        </div>
+        <div class="experience-grid">
+          <article class="experience-card">
+            <h3>Timeline do atendimento</h3>
+            <p>
+              Receba notificações a cada etapa: a profissional saiu, chegou, e o
+              serviço foi concluído com sucesso.
+            </p>
+          </article>
+          <article class="experience-card">
+            <h3>Segurança para todos</h3>
+            <p>
+              Documentos validados, check-in facial e avaliações contínuas
+              garantem a melhor rede de manicures.
+            </p>
+          </article>
+          <article class="experience-card">
+            <h3>Favoritos e clubes</h3>
+            <p>
+              Salve profissionais preferidas e participe de clubes de assinatura
+              com descontos progressivos.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="profissional" class="pro-section">
+        <div class="section-heading">
+          <h2>Sou profissional NailNow</h2>
+          <p>
+            Construa sua base de clientes, tenha agenda organizada e receba com
+            rapidez.
+          </p>
+        </div>
+        <div class="pro-grid">
+          <div class="pro-card">
+            <h3>Dashboard inteligente</h3>
+            <p>
+              Acompanhe seus ganhos, aceite solicitações e atualize o portfólio
+              de onde estiver.
+            </p>
+          </div>
+          <div class="pro-card">
+            <h3>Algoritmo justo</h3>
+            <p>
+              Receba corridas ideais com base em avaliação, proximidade e
+              disponibilidade.
+            </p>
+          </div>
+          <div class="pro-card">
+            <h3>Comunidade premium</h3>
+            <p>
+              Workshops, benefícios e suporte especializado para elevar seu
+              negócio.
+            </p>
           </div>
         </div>
+        <a class="btn btn-primary" href="profissional/"
+          >Quero atender pela NailNow</a
+        >
       </section>
 
       <section class="newsletter" id="newsletter">
         <h2>ASSINE</h2>
         <p>
-          Receba novidades sobre profissionais, promoções e vagas exclusivas da
-          comunidade NailNow.
+          Seja a primeira a saber sobre novas funcionalidades, cidades atendidas
+          e convites para beta fechado.
         </p>
         <form>
           <input
@@ -113,40 +264,42 @@
           alt="marca d'água dourada"
         />
       </section>
-
-      <section id="servicos" class="content-section services">
-        <h2>Nossos Serviços</h2>
-        <p>
-          Conectamos você a especialistas em beleza das principais capitais, com
-          horários flexíveis e atendimento em domicílio.
-        </p>
-        <ul class="services-list">
-          <li>Manicure tradicional</li>
-          <li>Pedicure tradicional</li>
-          <li>Esmaltação em gel</li>
-          <li>Alongamento e nail art</li>
-        </ul>
-      </section>
-
-      <section id="como-funciona" class="content-section about">
-        <h2>Como Funciona</h2>
-        <p>
-          A NailNow é uma plataforma inovadora que conecta clientes a manicures
-          e pedicures profissionais para serviços em domicílio. Inspirado no
-          modelo "Uber", o aplicativo permite agendamentos rápidos, seguros e
-          convenientes. O pagamento acontece diretamente pela plataforma,
-          garantindo tranquilidade para clientes e profissionais.
-        </p>
-      </section>
-
-      <section id="contato" class="content-section">
-        <h2>Contato</h2>
-        <p>
-          Quer saber mais ou participar da comunidade NailNow? Fale com a gente
-          em
-          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>.
-        </p>
-      </section>
     </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div>
+          <a class="brand" href="#topo">NailNow</a>
+          <p>
+            A melhor experiência digital para conectar manicures e clientes com
+            tecnologia de geolocalização e Firebase.
+          </p>
+        </div>
+        <div>
+          <h3>Explore</h3>
+          <ul>
+            <li><a href="#cliente">Sou cliente</a></li>
+            <li><a href="#profissional">Sou profissional</a></li>
+            <li><a href="#como-funciona">Como funciona</a></li>
+            <li><a href="#newsletter">Novidades</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Contato</h3>
+          <ul>
+            <li>
+              <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+            </li>
+            <li>
+              <a href="https://instagram.com" rel="noreferrer">@nailnow.app</a>
+            </li>
+            <li><a href="cliente/">Baixar aplicativo</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="footer-note">
+        © NailNow - Beleza on-demand com o toque mais moderno.
+      </p>
+    </footer>
   </body>
 </html>
