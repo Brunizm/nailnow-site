@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Rose Gold is the destination for luminous beauty essentials and elevated self-care rituals."
+      content="NailNow conecta clientes e manicures profissionais com agendamentos rápidos, avaliações reais e atendimento onde você estiver."
     />
-    <title>Rose Gold | Modern Beauty Boutique</title>
+    <title>NailNow | Beleza nas suas mãos</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,116 +17,181 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="promo-banner">Free shipping on orders over $50</div>
+    <div class="promo-banner">Agende suas unhas com profissionais verificadas em minutos.</div>
     <header class="site-header">
-      <div class="header-row header-row--top">
-        <button type="button" class="icon-button" aria-label="Search">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M10.5 3a7.5 7.5 0 0 1 5.934 12.123l3.222 3.221a1 1 0 0 1-1.414 1.415l-3.222-3.222A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11a5.5 5.5 0 0 0 0-11z"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
-        <a href="./" class="brand-mark" aria-label="Rose Gold home"
-          >Rose Gold</a
-        >
-        <div class="header-actions">
-          <button type="button" class="icon-button" aria-label="Account">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 3a5 5 0 1 1 0 10a5 5 0 0 1 0-10zm0 12c4.418 0 8 2.239 8 5v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1c0-2.761 3.582-5 8-5z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
-          <button type="button" class="icon-button" aria-label="Shopping cart">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M7 4a1 1 0 0 1 .98.804L8.382 7H20a1 1 0 0 1 .986 1.164l-1.5 9A1 1 0 0 1 18.5 18H8a1 1 0 0 1-.98-.804L5.618 6H4a1 1 0 1 1 0-2h3zm2.486 5l.933 7h7.217l1.167-7H9.486zM9 20.5A1.5 1.5 0 1 1 6 20.5A1.5 1.5 0 0 1 9 20.5zm10 0A1.5 1.5 0 1 1 16 20.5A1.5 1.5 0 0 1 19 20.5z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
-        </div>
+      <div class="header-inner">
+        <a href="./" class="brand-mark" aria-label="Início da NailNow">NailNow 💅</a>
+        <nav class="primary-nav" aria-label="Principal">
+          <a href="#clientes" class="nav-link">Sou cliente</a>
+          <a href="profissional/" class="nav-link">Sou profissional</a>
+          <a href="#como-funciona" class="nav-link">Como funciona</a>
+          <a href="#experiencias" class="nav-link">Experiências</a>
+        </nav>
+        <a href="profissional/" class="btn btn--outline">Quero atender pela NailNow</a>
       </div>
-      <nav class="header-row header-row--nav" aria-label="Primary">
-        <a href="./" class="nav-link">Home</a>
-        <a href="#about" class="nav-link">About</a>
-        <a href="#shop" class="nav-link">Shop</a>
-        <a href="#blog" class="nav-link">Blog</a>
-        <a href="#contact" class="nav-link">Contact</a>
-      </nav>
     </header>
 
     <main>
-      <section class="hero">
+      <section id="clientes" class="hero">
+        <div class="hero-copy">
+          <span class="hero-label">Para clientes</span>
+          <h1>Unhas impecáveis sem sair de casa</h1>
+          <p>
+            Encontre manicures avaliadas pela comunidade, escolha o melhor horário e receba o atendimento com segurança e praticidade.
+          </p>
+          <div class="hero-actions">
+            <a href="cliente/" class="btn">Agendar agora</a>
+            <a href="#como-funciona" class="link-underlined">Ver como funciona</a>
+          </div>
+          <div class="hero-highlights">
+            <div class="highlight-card">
+              <strong>Agenda inteligente</strong>
+              <span>Confirme em segundos sem mensagens infinitas.</span>
+            </div>
+            <div class="highlight-card">
+              <strong>Pagamento seguro</strong>
+              <span>Transações protegidas e recibo instantâneo.</span>
+            </div>
+            <div class="highlight-card">
+              <strong>Avaliações reais</strong>
+              <span>Feedback de clientes verificados em cada serviço.</span>
+            </div>
+          </div>
+        </div>
         <div class="hero-media">
           <div class="hero-image-wrapper">
             <img
-              src="https://images.unsplash.com/photo-1612531386530-972ee8be467f?auto=format&fit=crop&w=900&q=80"
-              alt="Model showcasing the Rose Gold collection"
+              src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=900&q=80"
+              alt="Cliente sorrindo enquanto faz as unhas com uma manicure"
             />
           </div>
         </div>
-        <div class="hero-copy">
-          <span class="hero-label">NEW</span>
-          <h1>Collection just landed</h1>
-          <p>
-            Discover rose-infused finishes and satin touches designed to glow on
-            every skin tone.
-          </p>
-          <a href="#shop" class="btn">Shop Now</a>
+      </section>
+
+      <section class="metrics" aria-label="Indicadores da plataforma">
+        <div class="metric">
+          <span class="metric-number">+25 mil</span>
+          <span class="metric-label">agendamentos concluídos</span>
+        </div>
+        <div class="metric">
+          <span class="metric-number">98%</span>
+          <span class="metric-label">de satisfação das clientes</span>
+        </div>
+        <div class="metric">
+          <span class="metric-number">+200</span>
+          <span class="metric-label">profissionais verificadas</span>
+        </div>
+        <div class="metric">
+          <span class="metric-number">10 cidades</span>
+          <span class="metric-label">com cobertura NailNow</span>
         </div>
       </section>
 
+      <section id="como-funciona" class="flow">
+        <div class="section-heading">
+          <span class="eyebrow">Passo a passo</span>
+          <h2>Como funciona a NailNow</h2>
+          <p>
+            Do agendamento ao pagamento, cuidamos de tudo para você relaxar e aproveitar o momento.
+          </p>
+        </div>
+        <ol class="flow-steps">
+          <li>
+            <h3>Escolha o serviço perfeito</h3>
+            <p>Selecione manicure, pedicure, spa dos pés e outras combinações criadas por especialistas.</p>
+          </li>
+          <li>
+            <h3>Defina horário e local</h3>
+            <p>Informe onde quer ser atendida e encontre horários flexíveis com profissionais próximas.</p>
+          </li>
+          <li>
+            <h3>Confirme e acompanhe</h3>
+            <p>Receba notificações, acompanhe o deslocamento e avalie sua experiência direto pelo app.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="experiencias" class="experiences">
+        <div class="section-heading">
+          <span class="eyebrow">Experiências reais</span>
+          <h2>Histórias de quem já é NailNow</h2>
+          <p>Veja como a beleza em casa transformou a rotina de clientes em várias cidades.</p>
+        </div>
+        <div class="experience-grid">
+          <article class="experience-card">
+            <p>
+              “Consigo agendar manicure e pedicure para mim e minha mãe sem conflitos de horário. Atendimento impecável!”
+            </p>
+            <span class="experience-author">Ana, São Paulo</span>
+          </article>
+          <article class="experience-card">
+            <p>
+              “As profissionais são super pontuais e trazem todos os materiais higienizados. Minha casa vira um spa.”
+            </p>
+            <span class="experience-author">Patrícia, Recife</span>
+          </article>
+          <article class="experience-card">
+            <p>
+              “Perfeito para quem trabalha em home office. Faço as unhas no intervalo do almoço e pago pelo app.”
+            </p>
+            <span class="experience-author">Luiza, Belo Horizonte</span>
+          </article>
+          <article class="experience-card">
+            <p>
+              “Já experimentei várias profissionais e todas têm avaliações transparentes. Me sinto segura em cada visita.”
+            </p>
+            <span class="experience-author">Camila, Curitiba</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="cta-profissional" id="profissionais">
+        <div class="cta-content">
+          <span class="eyebrow">Para manicures</span>
+          <h2>Atenda novas clientes com a NailNow</h2>
+          <p>
+            Cadastre-se gratuitamente, defina sua agenda, receba pagamentos com rapidez e tenha suporte em cada atendimento.
+          </p>
+        </div>
+        <a href="profissional/" class="btn btn--light">Quero fazer parte</a>
+      </section>
+
       <section class="newsletter">
-        <h2>SIGN UP</h2>
-        <p>Be the first to find out about new products and exclusive offers</p>
+        <h2>Receba novidades da NailNow</h2>
+        <p>
+          Fique por dentro do lançamento do aplicativo, benefícios exclusivos e dicas de autocuidado.
+        </p>
         <form>
           <input
             type="email"
-            placeholder="email"
-            aria-label="Email address"
+            placeholder="Seu melhor e-mail"
+            aria-label="Endereço de e-mail"
             required
           />
-          <button type="submit">submit</button>
+          <button type="submit">Quero receber</button>
         </form>
         <img src="gold-watermark.png" class="watermark" alt="" aria-hidden="true" />
       </section>
-
-      <section id="about" class="content-section">
-        <h2>About</h2>
-        <p>
-          Rose Gold celebrates self-expression through curated beauty rituals.
-          Our artisans obsess over the perfect pigment, the gentlest textures,
-          and the experience of luxe self-care at home.
-        </p>
-      </section>
-
-      <section id="shop" class="content-section">
-        <h2>Shop</h2>
-        <p>
-          Explore polishes, treatments, and signature accessories crafted to
-          inspire your next ritual.
-        </p>
-      </section>
-
-      <section id="blog" class="content-section">
-        <h2>Blog</h2>
-        <p>
-          Get inspired with tutorials, artist spotlights, and behind-the-scenes
-          stories from the studio.
-        </p>
-      </section>
-
-      <section id="contact" class="content-section">
-        <h2>Contact</h2>
-        <p>
-          We're here to help. Reach us at hello@rosegold.studio for bespoke
-          recommendations.
-        </p>
-      </section>
     </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <h2 class="footer-logo">NailNow 💅</h2>
+          <p>Beleza na sua agenda, com profissionais selecionadas e atendimento onde você estiver.</p>
+        </div>
+        <div class="footer-links">
+          <a href="cliente/">Área da cliente</a>
+          <a href="profissional/">Área da profissional</a>
+          <a href="#como-funciona">Como funciona</a>
+          <a href="#experiencias">Experiências</a>
+        </div>
+        <div class="footer-contact">
+          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+          <span>Atendimento de segunda a sábado, 8h às 20h.</span>
+        </div>
+      </div>
+      <p class="footer-copy">© NailNow 2024. Todos os direitos reservados.</p>
+    </footer>
   </body>
 </html>
