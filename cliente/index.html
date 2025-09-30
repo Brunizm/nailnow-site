@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Área da cliente da NailNow para login e acesso rápido aos serviços de manicure e pedicure."
+      content="Área da cliente NailNow para acessar agendamentos, assinatura de planos e suporte premium."
     />
     <title>Cliente - NailNow</title>
-    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Playfair+Display:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Playfair+Display:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../styles.css" />
@@ -22,38 +22,46 @@
     </script>
   </head>
   <body>
-    <header>
-      <nav class="navbar">
-        <div class="logo"><a href="../">NAILNOW 💅</a></div>
-        <ul class="nav-links">
-          <li><a href="../">Início</a></li>
-          <li><a href="../#servicos">Serviços</a></li>
-          <li><a href="../#como-funciona">Como Funciona</a></li>
-          <li><a href="../cliente/">Cliente</a></li>
-          <li><a href="../profissional/">Profissional</a></li>
-        </ul>
-      </nav>
+    <header class="site-header">
+      <div class="container site-header__inner">
+        <a href="../" class="brand" aria-label="Página inicial NailNow">NailNow</a>
+        <details class="site-nav-wrapper" open>
+          <summary class="site-header__menu" aria-label="Abrir menu">Menu</summary>
+          <nav class="site-nav" aria-label="Navegação principal">
+            <a href="../#servicos">Serviços</a>
+            <a href="../#como-funciona">Como funciona</a>
+            <a href="../#experiencias">Experiências</a>
+            <a href="../#profissionais">Profissionais</a>
+            <a href="../#novidades">Novidades</a>
+          </nav>
+        </details>
+        <div class="site-header__ctas">
+          <a class="btn btn--ghost" href="../cliente/">Área da cliente</a>
+          <a class="btn" href="../profissional/">Sou profissional</a>
+        </div>
+      </div>
     </header>
 
     <main class="page-content">
       <img
         src="https://images.unsplash.com/photo-1608339404861-7e16176f7591?auto=format&fit=crop&w=800&q=80"
-        alt="Clientes felizes com unhas feitas"
+        alt="Clientes NailNow aproveitando serviços em casa"
         class="page-img"
         loading="lazy"
         width="500"
         height="333"
       />
-      <h1>Área da Cliente</h1>
+      <h1>Área da cliente</h1>
+      <p>Consulte agendamentos, renove planos NailPass e acompanhe seus pontos.</p>
       <form onsubmit="handleLogin(event)">
-        <label for="email">Email</label>
+        <label for="email">E-mail</label>
         <input type="email" id="email" required />
         <label for="password">Senha</label>
         <input type="password" id="password" required />
         <button type="submit" class="btn">Entrar</button>
       </form>
       <p>Ainda não tem conta?</p>
-      <a href="cadastro.html" class="btn">Cadastrar</a>
+      <a href="cadastro.html" class="btn btn--ghost">Criar conta</a>
     </main>
   </body>
 </html>
