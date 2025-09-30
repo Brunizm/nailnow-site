@@ -387,16 +387,6 @@ main {
   color: var(--text-muted);
 }
 
-.eyebrow {
-  display: inline-block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: 1rem;
-}
-
 .flow-steps {
   list-style: none;
   padding: 0;
@@ -456,6 +446,16 @@ main {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1rem;
 }
 
 .cta-profissional {
@@ -599,6 +599,32 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.footer-about {
+  grid-column: 1 / -1;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 24px;
+  padding: clamp(1.75rem, 5vw, 2.5rem);
+  display: grid;
+  gap: 1rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: min(100%, 72ch);
+  justify-self: center;
+  text-align: left;
+}
+
+.footer-about h3 {
+  font-family: "Playfair Display", serif;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.footer-about p {
+  margin: 0;
 }
 
 .footer-links a,
