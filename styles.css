@@ -79,6 +79,7 @@ main {
   gap: clamp(1rem, 4vw, 2.5rem);
   max-width: var(--max-width);
   margin: 0 auto;
+  flex-wrap: wrap;
 }
 
 .brand-mark {
@@ -107,6 +108,35 @@ main {
   gap: clamp(1rem, 3vw, 2rem);
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  color: #fff;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 10px 18px rgba(78, 43, 52, 0.15);
+}
+
+.social-link svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  display: block;
+  fill: currentColor;
+}
+
+.social-link--instagram {
+  background: linear-gradient(135deg, #feda75, #fa7e1e 35%, #d62976 68%, #962fbf 83%, #4f5bd5);
+}
+
+.social-link:focus-visible,
+.social-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 24px rgba(78, 43, 52, 0.2);
 }
 
 .nav-link {
