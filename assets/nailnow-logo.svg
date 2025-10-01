@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="petalLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff8ad6" />
+      <stop offset="100%" stop-color="#ff5fbf" />
+    </linearGradient>
+    <linearGradient id="petalDeep" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff53b5" />
+      <stop offset="100%" stop-color="#ff2ea5" />
+    </linearGradient>
+    <linearGradient id="handle" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff8ad6" />
+      <stop offset="100%" stop-color="#ff4fc1" />
+    </linearGradient>
+  </defs>
+  <g fill="url(#petalLight)" transform="translate(12 18)">
+    <ellipse cx="38" cy="52" rx="22" ry="14" transform="rotate(-32 38 52)" />
+    <ellipse cx="54" cy="51" rx="24" ry="15" transform="rotate(12 54 51)" />
+    <ellipse cx="42" cy="66" rx="26" ry="17" transform="rotate(-8 42 66)" />
+    <ellipse cx="60" cy="66" rx="22" ry="15" transform="rotate(24 60 66)" />
+  </g>
+  <ellipse cx="60" cy="72" rx="26" ry="17" fill="url(#petalDeep)" transform="rotate(-8 60 72)" />
+  <path d="M88 24c2.4-2.4 6.2-2.4 8.6 0s2.4 6.2 0 8.6l-25.3 25.3-8.6-8.6L88 24z" fill="url(#handle)" />
+  <path d="M68.3 54.8l-5.5 5.5-8.6-8.6 5.5-5.5 8.6 8.6z" fill="#ffe0f5" />
+  <path d="M52.3 70.8l-4.9-4.9 13.6-13.6 4.9 4.9z" fill="#fff0fb" opacity="0.65" />
+</svg>

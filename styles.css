@@ -7,6 +7,8 @@
   --text-muted: #78656a;
   --surface: #ffffff;
   --max-width: 1100px;
+  /* Embed PNG logo as data URI to avoid binary asset diffs */
+  --brand-logo-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAN1JREFUeNrslrENwjAQhT/XgASwgAwkYEAFJ+ACVqABlACUQNcJGPhKT6VI4mt3EzvtyX9bt1KMpv/6+fX6P0JAgkUqgU6gUCoVCoVAoFAqFQqFQKBSqQQHoF+7DTv40gNNu8nNfezVBK8r6yqa5DR7A2ejM5sbsneZCdgE2liXNTUAyjvRXtx3YAbgf7ZYLZ1NzVYO4H7rMDT9k78k4h/G22NAAsE+CXNf7rl4glU7BNn+SgF1g8g9ZjB1C4g6X+Q2lqAVWb4AcoZ0LYOnjUAlPs+QTpPb0BcjzRA8e59PTeA1/51gFv/KUBa/8tAcn8soGn/18Bu/4nAZn8bwG7/hcDm/x+g1T9WgN0/V4DdP1eAHT+PgO0/L4Dbf8+At39HgA2/T4BFv5S8F5FagVCoVCoVAoFAqFQqFQKBQKhUKhUBwHYAuGkPHLO3G7QAAAABJRU5ErkJggg==");
 }
 
 *,
@@ -82,12 +84,23 @@ main {
 }
 
 .brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
   font-family: "Playfair Display", serif;
   text-transform: uppercase;
   letter-spacing: 0.22em;
   font-size: clamp(1.4rem, 3vw, 2.2rem);
   color: var(--deep-rose);
   white-space: nowrap;
+}
+
+.brand-mark::before {
+  content: "";
+  display: inline-block;
+  width: clamp(2.25rem, 5vw, 2.85rem);
+  height: clamp(2.25rem, 5vw, 2.85rem);
+  background: var(--brand-logo-image) no-repeat center / contain;
 }
 
 .primary-nav {
@@ -413,41 +426,6 @@ main {
   margin: 0;
 }
 
-.experiences {
-  max-width: var(--max-width);
-  margin: clamp(3rem, 10vw, 6rem) auto;
-  padding: 0 clamp(1.5rem, 6vw, 3rem);
-}
-
-.experience-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: clamp(1.5rem, 4vw, 2.75rem);
-}
-
-.experience-card {
-  background: var(--surface);
-  border-radius: 24px;
-  padding: clamp(1.75rem, 4vw, 2.4rem);
-  box-shadow: 0 20px 40px rgba(79, 39, 49, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.experience-card p {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--text-main);
-}
-
-.experience-author {
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
 .eyebrow {
   display: inline-block;
   font-size: 0.75rem;
@@ -573,6 +551,45 @@ main {
   pointer-events: none;
 }
 
+.about {
+  max-width: var(--max-width);
+  margin: clamp(4rem, 8vw, 6.5rem) auto;
+  padding: clamp(2.75rem, 6vw, 4.5rem) clamp(2rem, 6vw, 4rem);
+  background: var(--surface);
+  border-radius: 32px;
+  box-shadow: 0 30px 60px rgba(79, 39, 49, 0.12);
+}
+
+.about h2 {
+  margin: 0 0 1.75rem;
+  font-family: "Playfair Display", serif;
+  font-size: clamp(2.1rem, 4vw, 3rem);
+  color: var(--deep-rose);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.about p {
+  margin: 0;
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  color: var(--text-main);
+}
+
+.about p + p {
+  margin-top: 1.1rem;
+}
+
+.about-signature {
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.about-highlight {
+  font-family: "Playfair Display", serif;
+  font-size: clamp(1.3rem, 3vw, 1.8rem);
+  color: var(--gold);
+}
+
 .site-footer {
   background: rgba(78, 43, 52, 0.95);
   color: #fff;
@@ -588,10 +605,21 @@ main {
 }
 
 .footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   font-family: "Playfair Display", serif;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   margin-bottom: 1rem;
+}
+
+.footer-logo::before {
+  content: "";
+  display: inline-block;
+  width: clamp(2.25rem, 5vw, 2.85rem);
+  height: clamp(2.25rem, 5vw, 2.85rem);
+  background: var(--brand-logo-image) no-repeat center / contain;
 }
 
 .footer-links,
