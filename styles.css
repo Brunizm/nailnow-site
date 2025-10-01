@@ -82,12 +82,23 @@ main {
 }
 
 .brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
   font-family: "Playfair Display", serif;
   text-transform: uppercase;
   letter-spacing: 0.22em;
   font-size: clamp(1.4rem, 3vw, 2.2rem);
   color: var(--deep-rose);
   white-space: nowrap;
+}
+
+.brand-mark::before {
+  content: "";
+  display: inline-block;
+  width: clamp(2.25rem, 5vw, 2.85rem);
+  height: clamp(2.25rem, 5vw, 2.85rem);
+  background: url("assets/nailnow-logo.svg") no-repeat center / contain;
 }
 
 .primary-nav {
@@ -592,10 +603,21 @@ main {
 }
 
 .footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   font-family: "Playfair Display", serif;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   margin-bottom: 1rem;
+}
+
+.footer-logo::before {
+  content: "";
+  display: inline-block;
+  width: clamp(2.25rem, 5vw, 2.85rem);
+  height: clamp(2.25rem, 5vw, 2.85rem);
+  background: url("assets/nailnow-logo.svg") no-repeat center / contain;
 }
 
 .footer-links,
