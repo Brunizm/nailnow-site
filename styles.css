@@ -100,7 +100,6 @@ main {
   display: inline-block;
   width: clamp(2.25rem, 5vw, 2.85rem);
   height: clamp(2.25rem, 5vw, 2.85rem);
-  background: var(--brand-logo-image) no-repeat center / contain;
 }
 
 .primary-nav {
@@ -619,7 +618,6 @@ main {
   display: inline-block;
   width: clamp(2.25rem, 5vw, 2.85rem);
   height: clamp(2.25rem, 5vw, 2.85rem);
-  background: var(--brand-logo-image) no-repeat center / contain;
 }
 
 .footer-links,
