@@ -7,8 +7,8 @@
   --text-muted: #78656a;
   --surface: #ffffff;
   --max-width: 1100px;
-  /* Embed PNG logo as data URI to avoid binary asset diffs */
-  --brand-logo-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAN1JREFUeNrslrENwjAQhT/XgASwgAwkYEAFJ+ACVqABlACUQNcJGPhKT6VI4mt3EzvtyX9bt1KMpv/6+fX6P0JAgkUqgU6gUCoVCoVAoFAqFQqFQKBSqQQHoF+7DTv40gNNu8nNfezVBK8r6yqa5DR7A2ejM5sbsneZCdgE2liXNTUAyjvRXtx3YAbgf7ZYLZ1NzVYO4H7rMDT9k78k4h/G22NAAsE+CXNf7rl4glU7BNn+SgF1g8g9ZjB1C4g6X+Q2lqAVWb4AcoZ0LYOnjUAlPs+QTpPb0BcjzRA8e59PTeA1/51gFv/KUBa/8tAcn8soGn/18Bu/4nAZn8bwG7/hcDm/x+g1T9WgN0/V4DdP1eAHT+PgO0/L4Dbf8+At39HgA2/T4BFv5S8F5FagVCoVCoVAoFAqFQqFQKBQKhUKhUBwHYAuGkPHLO3G7QAAAABJRU5ErkJggg==");
+  /* Shared brand logo asset */
+  --brand-logo-image: url("assets/logo.png");
 }
 
 *,
@@ -81,6 +81,7 @@ main {
   gap: clamp(1rem, 4vw, 2.5rem);
   max-width: var(--max-width);
   margin: 0 auto;
+  flex-wrap: wrap;
 }
 
 .brand-mark {
@@ -95,11 +96,12 @@ main {
   white-space: nowrap;
 }
 
-.brand-mark::before {
-  content: "";
-  display: inline-block;
+.brand-mark__logo {
   width: clamp(2.25rem, 5vw, 2.85rem);
   height: clamp(2.25rem, 5vw, 2.85rem);
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
 }
 
 .primary-nav {
@@ -108,6 +110,35 @@ main {
   gap: clamp(1rem, 3vw, 2rem);
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  color: #fff;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 10px 18px rgba(78, 43, 52, 0.15);
+}
+
+.social-link svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  display: block;
+  fill: currentColor;
+}
+
+.social-link--instagram {
+  background: linear-gradient(135deg, #feda75, #fa7e1e 35%, #d62976 68%, #962fbf 83%, #4f5bd5);
+}
+
+.social-link:focus-visible,
+.social-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 24px rgba(78, 43, 52, 0.2);
 }
 
 .nav-link {
@@ -618,6 +649,7 @@ main {
   display: inline-block;
   width: clamp(2.25rem, 5vw, 2.85rem);
   height: clamp(2.25rem, 5vw, 2.85rem);
+  background: var(--brand-logo-image) center/contain no-repeat;
 }
 
 .footer-links,
