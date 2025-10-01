@@ -20,11 +20,31 @@
     <div class="promo-banner">Agende suas unhas com profissionais verificadas em minutos.</div>
     <header class="site-header">
       <div class="header-inner">
-        <a href="./" class="brand-mark" aria-label="Início da NailNow">NailNow</a>
+        <a href="./" class="brand-mark" aria-label="Início da NailNow">
+          <img
+            src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAN1JREFUeNrslrENwjAQhT/XgASwgAwkYEAFJ+ACVqABlACUQNcJGPhKT6VI4mt3EzvtyX9bt1KMpv/6+fX6P0JAgkUqgU6gUCoVCoVAoFAqFQqFQKBSqQQHoF+7DTv40gNNu8nNfezVBK8r6yqa5DR7A2ejM5sbsneZCdgE2liXNTUAyjvRXtx3YAbgf7ZYLZ1NzVYO4H7rMDT9k78k4h/G22NAAsE+CXNf7rl4glU7BNn+SgF1g8g9ZjB1C4g6X+Q2lqAVWb4AcoZ0LYOnjUAlPs+QTpPb0BcjzRA8e59PTeA1/51gFv/KUBa/8tAcn8soGn/18Bu/4nAZn8bwG7/hcDm/x+g1T9WgN0/V4DdP1eAHT+PgO0/L4Dbf8+At39HgA2/T4BFv5S8F5FagVCoVCoVAoFAqFQqFQKBQKhUKhUBwHYAuGkPHLO3G7QAAAABJRU5ErkJggg=="
+            alt=""
+            class="brand-mark__logo"
+          />
+          NailNow
+        </a>
         <nav class="primary-nav" aria-label="Principal">
           <a href="#clientes" class="nav-link">Sou cliente</a>
           <a href="profissional/" class="nav-link">Sou profissional</a>
         </nav>
+        <a
+          class="social-link social-link--instagram"
+          href="https://www.instagram.com/nailnowbr/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Instagram da NailNow"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"
+            />
+          </svg>
+        </a>
       </div>
     </header>
 
@@ -36,9 +56,78 @@
           <p>
             Encontre manicures avaliadas pela comunidade, escolha o melhor horário e receba o atendimento com segurança e praticidade.
           </p>
-          <div class="hero-actions">
-            <a href="cliente/" class="btn">Agendar agora</a>
-          </div>
+          <form class="finder-card" action="cliente/" method="get" aria-label="Buscar manicures disponíveis">
+            <div class="finder-grid">
+              <label class="finder-field">
+                <span class="finder-label">Local do atendimento</span>
+                <span class="finder-control">
+                  <span class="finder-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M12 2a7 7 0 0 0-7 7c0 4.48 5.38 11.13 6.2 12.09a1 1 0 0 0 1.6 0C13.62 20.13 19 13.48 19 9a7 7 0 0 0-7-7zm0 3a4 4 0 1 1-4 4 4 4 0 0 1 4-4z"
+                      />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    name="endereco"
+                    placeholder="Informe o endereço, inc."
+                    aria-label="Local do atendimento"
+                    required
+                  />
+                </span>
+              </label>
+              <label class="finder-field">
+                <span class="finder-label">Serviço</span>
+                <span class="finder-control">
+                  <span class="finder-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M4.5 3A1.5 1.5 0 0 0 3 4.5v2.75A1.75 1.75 0 0 0 4.75 9h2.5A1.75 1.75 0 0 0 9 7.25V4.5A1.5 1.5 0 0 0 7.5 3h-3zm0 12A1.5 1.5 0 0 0 3 16.5v3A1.5 1.5 0 0 0 4.5 21h3a1.5 1.5 0 0 0 1.5-1.5v-2.75A1.75 1.75 0 0 0 7.25 15h-2.5zM14 4.5A1.5 1.5 0 0 1 15.5 3h3A1.5 1.5 0 0 1 20 4.5v2.75A1.75 1.75 0 0 1 18.25 9h-2.5A1.75 1.75 0 0 1 14 7.25V4.5zm0 9.75A1.75 1.75 0 0 1 15.75 12h2.5A1.75 1.75 0 0 1 20 13.75v3.75A1.5 1.5 0 0 1 18.5 19h-3a1.5 1.5 0 0 1-1.5-1.5v-3.25z"
+                      />
+                    </svg>
+                  </span>
+                  <select name="servico" aria-label="Tipo de serviço" required>
+                    <option value="" disabled selected>Escolha o serviço</option>
+                    <option value="manicure">Manicure</option>
+                    <option value="pedicure">Pedicure</option>
+                    <option value="completo">Combo completo</option>
+                    <option value="spa">Spa dos pés</option>
+                  </select>
+                </span>
+              </label>
+              <label class="finder-field">
+                <span class="finder-label">Data</span>
+                <span class="finder-control">
+                  <span class="finder-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M7 2a1 1 0 0 0 0 2H8v1H6.75A2.75 2.75 0 0 0 4 7.75v10.5A2.75 2.75 0 0 0 6.75 21h10.5A2.75 2.75 0 0 0 20 18.25V7.75A2.75 2.75 0 0 0 17.25 5H16V4h1a1 1 0 1 0 0-2h-1a1 1 0 0 0-1 1v1H9V3a1 1 0 0 0-1-1H7zm0 7h10a1 1 0 0 1 1 1v8.25c0 .41-.34.75-.75.75H6.75a.75.75 0 0 1-.75-.75V10a1 1 0 0 1 1-1z"
+                      />
+                    </svg>
+                  </span>
+                  <input type="date" name="data" aria-label="Data do atendimento" required />
+                </span>
+              </label>
+              <label class="finder-field">
+                <span class="finder-label">Horário</span>
+                <span class="finder-control">
+                  <span class="finder-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 2a8 8 0 1 1-8 8 8 8 0 0 1 8-8zm-.75 2.5a1 1 0 0 0-1 1V13a1 1 0 0 0 .44.83l3.5 2.25a1 1 0 0 0 1.12-1.66l-3.06-1.96V7.5a1 1 0 0 0-1-1z"
+                      />
+                    </svg>
+                  </span>
+                  <input type="time" name="hora" aria-label="Horário desejado" required />
+                </span>
+              </label>
+            </div>
+            <div class="finder-footer">
+              <button type="submit" class="btn finder-submit">Ver manicures</button>
+              <p class="finder-note">Profissionais verificadas e avaliações reais em cada atendimento.</p>
+            </div>
+          </form>
           <div class="hero-highlights">
             <div class="highlight-card">
               <strong>Agenda inteligente</strong>
