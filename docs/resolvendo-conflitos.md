@@ -20,3 +20,5 @@ A versão final correta mantém **os dois trechos juntos** dentro do link da mar
 ```
 
 Depois de salvar o arquivo, rode `git add index.html` (e qualquer outro arquivo que tenha ficado em conflito) para marcar a resolução e continue o merge.
+
+> 💡 Caso apareça o mesmo conflito em outros arquivos (por exemplo, `styles.css`), apague a linha inteira que contém o nome da branch — não deixe `codex/...` ou `main` isolados, pois isso quebra o CSS.

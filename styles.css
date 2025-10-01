@@ -101,7 +101,10 @@ main {
   height: clamp(2.25rem, 5vw, 2.85rem);
   flex-shrink: 0;
   display: inline-block;
-  background: var(--brand-logo-image) center/contain no-repeat;
+  background-image: var(--brand-logo-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 
 .primary-nav {
