@@ -7,8 +7,6 @@
   --text-muted: #78656a;
   --surface: #ffffff;
   --max-width: 1100px;
-  /* Embed PNG logo as data URI to avoid missing asset references */
-  --brand-logo-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAN1JREFUeNrslrENwjAQhT/XgASwgAwkYEAFJ+ACVqABlACUQNcJGPhKT6VI4mt3EzvtyX9bt1KMpv/6+fX6P0JAgkUqgU6gUCoVCoVAoFAqFQqFQKBSqQQHoF+7DTv40gNNu8nNfezVBK8r6yqa5DR7A2ejM5sbsneZCdgE2liXNTUAyjvRXtx3YAbgf7ZYLZ1NzVYO4H7rMDT9k78k4h/G22NAAsE+CXNf7rl4glU7BNn+SgF1g8g9ZjB1C4g6X+Q2lqAVWb4AcoZ0LYOnjUAlPs+QTpPb0BcjzRA8e59PTeA1/51gFv/KUBa/8tAcn8soGn/18Bu/4nAZn8bwG7/hcDm/x+g1T9WgN0/V4DdP1eAHT+PgO0/L4Dbf8+At39HgA2/T4BFv5S8F5FagVCoVCoVAoFAqFQqFQKBQKhUKhUBwHYAuGkPHLO3G7QAAAABJRU5ErkJggg==");
 }
 
 *,
@@ -116,39 +114,15 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 0.9rem;
-  color: #c93f73;
-  background: #ffffff;
-  border: 1px solid rgba(201, 63, 115, 0.18);
-  box-shadow: 0 8px 18px rgba(201, 63, 115, 0.15);
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    border-color 0.25s ease,
-    color 0.25s ease,
-    background-color 0.25s ease;
-}
-
-.social-link svg {
-  width: 1.05rem;
-  height: 1.05rem;
   display: block;
   fill: currentColor;
 }
 
 .social-link--instagram {
-  background: linear-gradient(135deg, rgba(249, 220, 233, 0.9), rgba(229, 212, 250, 0.9));
 }
 
 .social-link:focus-visible,
 .social-link:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(201, 63, 115, 0.18);
-  border-color: rgba(201, 63, 115, 0.32);
-  color: #ad2f5c;
-  background-color: #fffafc;
 }
 
 .nav-link {
@@ -319,15 +293,10 @@ main {
   transform: scaleX(0.8);
 }
 
-.hero-actions {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-  margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
 }
 
 .hero-highlights {
+  margin-top: clamp(1.5rem, 4vw, 2.5rem);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
@@ -718,6 +687,11 @@ main {
     margin-right: auto;
   }
 
+  .booking-card {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .hero::after {
     right: -120px;
     bottom: -140px;
@@ -752,6 +726,10 @@ main {
   .hero {
     padding: clamp(2.5rem, 10vw, 3.5rem);
     border-radius: 120px 120px 0 0;
+  }
+
+  .booking-card__row {
+    grid-template-columns: 1fr;
   }
 
   .hero-image-wrapper {
