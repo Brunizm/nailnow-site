@@ -99,9 +99,9 @@ main {
 .brand-mark__logo {
   width: clamp(2.25rem, 5vw, 2.85rem);
   height: clamp(2.25rem, 5vw, 2.85rem);
-  object-fit: contain;
   flex-shrink: 0;
-  display: block;
+  display: inline-block;
+  background: var(--brand-logo-image) center/contain no-repeat;
 }
 
 .primary-nav {
