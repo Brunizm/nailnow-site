@@ -7,6 +7,8 @@
   --text-muted: #78656a;
   --surface: #ffffff;
   --max-width: 1100px;
+  /* Embed PNG logo as data URI to avoid binary asset diffs */
+  --brand-logo-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAN1JREFUeNrslrENwjAQhT/XgASwgAwkYEAFJ+ACVqABlACUQNcJGPhKT6VI4mt3EzvtyX9bt1KMpv/6+fX6P0JAgkUqgU6gUCoVCoVAoFAqFQqFQKBSqQQHoF+7DTv40gNNu8nNfezVBK8r6yqa5DR7A2ejM5sbsneZCdgE2liXNTUAyjvRXtx3YAbgf7ZYLZ1NzVYO4H7rMDT9k78k4h/G22NAAsE+CXNf7rl4glU7BNn+SgF1g8g9ZjB1C4g6X+Q2lqAVWb4AcoZ0LYOnjUAlPs+QTpPb0BcjzRA8e59PTeA1/51gFv/KUBa/8tAcn8soGn/18Bu/4nAZn8bwG7/hcDm/x+g1T9WgN0/V4DdP1eAHT+PgO0/L4Dbf8+At39HgA2/T4BFv5S8F5FagVCoVCoVAoFAqFQqFQKBQKhUKhUBwHYAuGkPHLO3G7QAAAABJRU5ErkJggg==");
 }
 
 *,
@@ -98,7 +100,6 @@ main {
   display: inline-block;
   width: clamp(2.25rem, 5vw, 2.85rem);
   height: clamp(2.25rem, 5vw, 2.85rem);
-  background: url("assets/nailnow-logo.svg") no-repeat center / contain;
 }
 
 .primary-nav {
@@ -617,7 +618,6 @@ main {
   display: inline-block;
   width: clamp(2.25rem, 5vw, 2.85rem);
   height: clamp(2.25rem, 5vw, 2.85rem);
-  background: url("assets/nailnow-logo.svg") no-repeat center / contain;
 }
 
 .footer-links,
