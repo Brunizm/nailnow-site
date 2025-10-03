@@ -83,6 +83,15 @@ main {
   flex-wrap: wrap;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 1.5rem);
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .brand-mark {
   display: inline-flex;
   align-items: center;
@@ -115,15 +124,28 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: clamp(1.75rem, 3.5vw, 2rem);
+  height: clamp(1.75rem, 3.5vw, 2rem);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: rgba(78, 43, 52, 0.08);
+  opacity: 0.8;
+  transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.social-link svg {
+  width: 60%;
+  height: 60%;
   display: block;
   fill: currentColor;
 }
 
-.social-link--instagram {
-}
-
 .social-link:focus-visible,
 .social-link:hover {
+  opacity: 1;
+  background: rgba(78, 43, 52, 0.16);
+  color: var(--deep-rose);
+  transform: translateY(-1px);
 }
 
 .nav-link {
