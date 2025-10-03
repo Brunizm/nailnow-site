@@ -269,6 +269,98 @@ main {
   color: var(--text-muted);
 }
 
+.booking-card {
+  width: min(520px, 100%);
+  display: grid;
+  gap: clamp(1rem, 2.5vw, 1.5rem);
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 28px;
+  box-shadow: 0 24px 48px rgba(79, 39, 49, 0.14);
+  backdrop-filter: blur(8px);
+}
+
+.booking-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.booking-card__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.booking-card__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.booking-card__input {
+  width: 100%;
+  border: 1px solid rgba(78, 43, 52, 0.18);
+  border-radius: 999px;
+  padding: clamp(0.85rem, 2vw, 1rem) clamp(1.1rem, 2.5vw, 1.45rem);
+  padding-right: clamp(2.75rem, 5vw, 3.5rem);
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 0.95rem;
+  color: var(--text-main);
+  box-shadow: 0 16px 32px rgba(79, 39, 49, 0.12);
+}
+
+.booking-card__control--compact .booking-card__input {
+  padding-right: clamp(2.5rem, 4.5vw, 3.2rem);
+}
+
+.booking-card__icon {
+  position: absolute;
+  top: 50%;
+  right: clamp(1rem, 2.5vw, 1.45rem);
+  width: clamp(1.1rem, 2.8vw, 1.6rem);
+  height: clamp(1.1rem, 2.8vw, 1.6rem);
+  transform: translateY(-50%);
+  fill: var(--gold);
+  pointer-events: none;
+}
+
+.booking-card__row {
+  display: grid;
+  gap: clamp(0.75rem, 2vw, 1.25rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.booking-card__submit {
+  border: none;
+  border-radius: 999px;
+  background: var(--deep-rose);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: clamp(0.9rem, 2vw, 1.1rem) clamp(1.5rem, 4vw, 2.5rem);
+  cursor: pointer;
+  transition:
+    transform 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.booking-card__submit:hover,
+.booking-card__submit:focus-visible {
+  transform: translateY(-2px);
+  background: var(--gold);
+}
+
+.booking-card__note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
 .link-underlined {
   font-weight: 600;
   letter-spacing: 0.1em;
