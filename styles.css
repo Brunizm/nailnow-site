@@ -388,31 +388,6 @@ main {
 
 }
 
-.hero-highlights {
-  margin-top: clamp(1.5rem, 4vw, 2.5rem);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-}
-
-.highlight-card {
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 20px;
-  padding: 1.1rem 1.3rem;
-  box-shadow: 0 12px 24px rgba(79, 39, 49, 0.08);
-}
-
-.highlight-card strong {
-  display: block;
-  font-size: 1.05rem;
-  margin-bottom: 0.35rem;
-}
-
-.highlight-card span {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
 .btn {
   display: inline-flex;
   align-items: center;
