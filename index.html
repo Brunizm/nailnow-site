@@ -17,15 +17,17 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="promo-banner">Agende suas unhas com profissionais verificadas em minutos.</div>
+    <div class="promo-banner">Manicure sob medida: agende com profissionais verificadas onde você estiver.</div>
     <header class="site-header">
       <div class="header-inner">
-        <a href="./" class="brand-mark" aria-label="Início da NailNow">
+        <a href="index.html" class="brand-mark" aria-label="Início da NailNow">
           NailNow
         </a>
         <nav class="primary-nav" aria-label="Principal">
-          <a href="#clientes" class="nav-link">Sou cliente</a>
-          <a href="profissional/" class="nav-link">Sou profissional</a>
+          <a href="index.html" class="nav-link" aria-current="page">Home</a>
+          <a href="como-funciona.html" class="nav-link">Como funciona</a>
+          <a href="servicos.html" class="nav-link">Serviços</a>
+          <a href="conteudo.html" class="nav-link">Conteúdo</a>
         </nav>
         <div class="header-actions">
           <a
@@ -41,18 +43,19 @@
               />
             </svg>
           </a>
-          <a href="cliente/" class="header-cta">Entrar</a>
+          <a href="cliente/index.html" class="header-cta">Sou Cliente</a>
+          <a href="profissional/index.html" class="header-cta">Sou Manicure</a>
         </div>
       </div>
     </header>
 
     <main>
-      <section id="clientes" class="hero">
+      <section class="hero">
         <div class="hero-copy">
           <span class="hero-label">Para clientes</span>
-          <h1>Beleza on-demand com experiência premium</h1>
+          <h1>Beleza na sua agenda</h1>
           <p>
-            Encontre manicures avaliadas pela comunidade, acompanhe cada etapa do atendimento em tempo real e gerencie seus agendamentos como nas grandes plataformas.
+            Manicure de qualidade, onde você estiver. Agende em 3 cliques, acompanhe o deslocamento da profissional e receba atendimento premium na sua casa ou no trabalho.
           </p>
           <form class="booking-card" aria-label="Buscar manicures disponíveis" onsubmit="event.preventDefault();">
             <div class="booking-card__field">
@@ -103,25 +106,25 @@
                   </svg>
                 </div>
               </div>
-              <div class="booking-card__field">
-                <label class="booking-card__label" for="booking-time">Horário</label>
-                <div class="booking-card__control booking-card__control--compact">
-                  <input type="time" id="booking-time" name="time" class="booking-card__input" />
-                  <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
+            <div class="booking-card__field">
+              <label class="booking-card__label" for="booking-time">Horário</label>
+              <div class="booking-card__control booking-card__control--compact">
+                <input type="time" id="booking-time" name="time" class="booking-card__input" />
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
                     <path
                       d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
                     />
-                  </svg>
-                </div>
+                </svg>
               </div>
             </div>
-            <button type="button" class="booking-card__submit">Ver manicures</button>
-            <p class="booking-card__note">Descubra manicures avaliadas perto de você com suporte dedicado 7 dias por semana.</p>
-          </form>
-        </div>
-        <div class="hero-media">
-          <div class="hero-image-wrapper">
-            <img
+          </div>
+          <button type="button" class="booking-card__submit">Agende agora</button>
+          <p class="booking-card__note">Suporte dedicado e avaliações reais para você escolher a manicure ideal com tranquilidade.</p>
+        </form>
+      </div>
+      <div class="hero-media">
+        <div class="hero-image-wrapper">
+          <img
               src="assets/nail1.png"
               alt="Cliente sorrindo enquanto faz as unhas com uma manicure"
             />
@@ -141,90 +144,67 @@
         </div>
       </section>
 
-      <section id="como-funciona" class="flow">
+      <section class="landing-overview" aria-label="Principais conteúdos">
         <div class="section-heading">
-          <span class="eyebrow">Passo a passo</span>
-          <h2>Como funciona a NailNow</h2>
+          <span class="eyebrow">Explore a NailNow</span>
+          <h2>Encontre o conteúdo certo em poucos cliques</h2>
           <p>
-            Do agendamento ao pagamento, cuidamos de tudo para você relaxar e aproveitar o momento.
+            Reunimos tudo em páginas dedicadas para você acessar rapidamente informações sobre serviços, profissionais,
+            depoimentos e suporte.
           </p>
         </div>
-        <ol class="flow-steps">
-          <li>
-            <span class="flow-step__number">1</span>
-            <h3>Escolha o serviço perfeito</h3>
-            <p>Selecione manicure, pedicure, spa dos pés e outras combinações criadas por especialistas.</p>
-          </li>
-          <li>
-            <span class="flow-step__number">2</span>
-            <h3>Defina horário e local</h3>
-            <p>Informe onde quer ser atendida e encontre horários flexíveis com profissionais próximas.</p>
-          </li>
-          <li>
-            <span class="flow-step__number">3</span>
-            <h3>Confirme e acompanhe</h3>
-            <p>Receba notificações, acompanhe o deslocamento e avalie sua experiência direto pelo app.</p>
-          </li>
-        </ol>
-      </section>
-
-      <section class="feature-grid">
-        <div class="section-heading">
-          <span class="eyebrow">Por que escolher a NailNow</span>
-          <h2>Detalhes dignos de grandes marcas</h2>
-          <p>
-            Segurança, tecnologia e atendimento humano combinados para entregar um padrão premium em cada visita.
-          </p>
-        </div>
-        <div class="feature-grid__items">
-          <article class="feature-card">
-            <div class="feature-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" role="presentation">
-                <path
-                  d="M12 2 2 7l10 5 10-5-10-5Zm0 9-7.53-3.77L12 3.44l7.53 3.79L12 11ZM4 12.64l8 4 8-4V17l-8 4-8-4v-4.36Z"
-                />
-              </svg>
-            </div>
-            <h3>Infraestrutura confiável</h3>
-            <p>Backups automáticos, pagamentos protegidos e monitoramento em tempo real asseguram suas reservas.</p>
-          </article>
-          <article class="feature-card">
-            <div class="feature-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" role="presentation">
-                <path
-                  d="M12 2a7 7 0 0 0-7 7v3.53a3 3 0 0 1-.88 2.12l-.94.94A1 1 0 0 0 4 17h16a1 1 0 0 0 .71-1.71l-.94-.94A3 3 0 0 1 18 12.53V9a7 7 0 0 0-6-6.93V2Zm0 20a3 3 0 0 0 3-3H9a3 3 0 0 0 3 3Z"
-                />
-              </svg>
-            </div>
-            <h3>Suporte proativo</h3>
-            <p>Equipe dedicada acompanha cada atendimento com SLA de respostas rápidas e comunicação omnichannel.</p>
-          </article>
-          <article class="feature-card">
-            <div class="feature-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" role="presentation">
-                <path
-                  d="M4 4h16v2H4V4Zm2 4h12v2H6V8Zm-2 4h16v2H4v-2Zm2 4h12v2H6v-2Z"
-                />
-              </svg>
-            </div>
-            <h3>Dashboards inteligentes</h3>
-            <p>Relatórios e insights alimentados por dados para que você acompanhe reputação, recorrência e receita.</p>
-          </article>
+        <div class="landing-overview__grid">
+          <a class="landing-overview__card" href="como-funciona.html">
+            <span class="landing-overview__eyebrow">Passo a passo</span>
+            <h3>Como funciona a NailNow</h3>
+            <p>Veja cada etapa do agendamento, pagamentos e suporte direto na página dedicada.</p>
+            <span class="landing-overview__cta">Saiba como agendar</span>
+          </a>
+          <a class="landing-overview__card" href="servicos.html">
+            <span class="landing-overview__eyebrow">Serviços</span>
+            <h3>Catálogo completo de cuidados</h3>
+            <p>Conheça os pacotes de manicure, pedicure, spa e experiências especiais por perfil.</p>
+            <span class="landing-overview__cta">Ver opções</span>
+          </a>
+          <a class="landing-overview__card" href="manicures.html">
+            <span class="landing-overview__eyebrow">Profissionais</span>
+            <h3>Manicures parceiras verificadas</h3>
+            <p>Descubra quem está na rede NailNow e como selecionamos cada especialista.</p>
+            <span class="landing-overview__cta">Conhecer rede</span>
+          </a>
+          <a class="landing-overview__card" href="depoimentos.html">
+            <span class="landing-overview__eyebrow">Depoimentos</span>
+            <h3>Histórias reais das clientes</h3>
+            <p>Leia avaliações completas e experiências marcantes com atendimentos NailNow.</p>
+            <span class="landing-overview__cta">Ler relatos</span>
+          </a>
+          <a class="landing-overview__card" href="faq.html">
+            <span class="landing-overview__eyebrow">FAQ</span>
+            <h3>Dúvidas frequentes respondidas</h3>
+            <p>Encontre respostas sobre deslocamento, pagamento, cancelamentos e seleção de profissionais.</p>
+            <span class="landing-overview__cta">Consultar FAQ</span>
+          </a>
+          <a class="landing-overview__card" href="conteudo.html">
+            <span class="landing-overview__eyebrow">Blog & dicas</span>
+            <h3>Conteúdo NailNow atualizado</h3>
+            <p>Guias de cores, tutoriais e bastidores para continuar se inspirando entre um atendimento e outro.</p>
+            <span class="landing-overview__cta">Explorar artigos</span>
+          </a>
         </div>
       </section>
 
       <section class="cta-profissional" id="profissionais">
         <div class="cta-content">
           <span class="eyebrow">Para manicures</span>
-          <h2>Atenda novas clientes com a NailNow</h2>
+          <h2>Seja uma manicure parceira NailNow</h2>
           <p>
-            Cadastre-se gratuitamente, defina sua agenda, receba pagamentos com rapidez e tenha suporte em cada atendimento.
+            Cadastre-se gratuitamente, receba pedidos recorrentes e tenha suporte financeiro, logístico e de marketing a cada atendimento.
           </p>
         </div>
-        <a href="profissional/" class="btn btn--light">Quero fazer parte</a>
+        <a href="profissional/" class="btn btn--light">Cadastrar-se</a>
       </section>
 
-      <section class="newsletter">
+      <section class="newsletter" id="newsletter">
         <h2>Receba novidades da NailNow</h2>
         <p>
           Fique por dentro do lançamento do aplicativo, benefícios exclusivos e dicas de autocuidado.
@@ -238,12 +218,6 @@
           />
           <button type="submit">Quero receber</button>
         </form>
-        <img
-          src="gold-watermark.png"
-          class="watermark"
-          alt=""
-          aria-hidden="true"
-        />
       </section>
 
     </main>
@@ -252,13 +226,37 @@
       <div class="footer-inner">
         <div class="footer-column footer-column--brand">
           <h2 class="footer-logo">NailNow</h2>
-          <p>Beleza na sua agenda, com profissionais selecionadas e atendimento onde você estiver.</p>
+          <p>Beleza na sua agenda com profissionais selecionadas, atendimento onde você estiver e suporte humanizado.</p>
+          <a href="cliente/" class="footer-cta">Entrar ou criar conta</a>
         </div>
-        <nav class="footer-column footer-links" aria-label="Links do rodapé">
-          <a href="quem-somos.html">Quem somos nós</a>
-        </nav>
+        <div class="footer-column footer-links" aria-label="Links úteis">
+          <h3>FAQ</h3>
+          <a href="faq.html">Perguntas frequentes</a>
+          <a href="como-funciona.html">Como funciona</a>
+          <a href="depoimentos.html">Depoimentos</a>
+          <a href="servicos.html">Serviços</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Contato e suporte">
+          <h3>Contato & suporte</h3>
+          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+          <a href="tel:+5511999999999">+55 11 99999-9999</a>
+          <a href="https://www.instagram.com/nailnowbr/" target="_blank" rel="noopener noreferrer">Instagram</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Termos e políticas">
+          <h3>Termos & políticas</h3>
+          <a href="#">Termos de uso</a>
+          <a href="#">Política de privacidade</a>
+          <a href="#">Cookies e preferências</a>
+        </div>
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
+
+    <nav class="bottom-nav" aria-label="Navegação inferior fixa">
+      <a href="index.html" class="bottom-nav__link" aria-label="Ir para o início">Home</a>
+      <a href="servicos.html" class="bottom-nav__link" aria-label="Buscar serviços de manicure">Buscar</a>
+      <a href="cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
+      <a href="cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
+    </nav>
   </body>
 </html>
