@@ -180,21 +180,23 @@ main {
   justify-content: center;
   padding: 0.55rem 1.4rem;
   border-radius: 999px;
-  border: 1px solid rgba(18, 18, 18, 0.08);
+  border: 1px solid var(--pink-primary);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.78rem;
-  color: var(--text-main);
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
+  color: var(--surface);
+  background: var(--pink-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .header-cta:hover,
 .header-cta:focus-visible {
-  background: var(--pink-primary);
-  border-color: transparent;
+  background: var(--pink-accent);
+  border-color: var(--pink-accent);
   color: var(--surface);
   transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(244, 92, 162, 0.25);
 }
 
 .nav-link {
