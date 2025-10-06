@@ -320,7 +320,8 @@ main {
   background: var(--surface-contrast);
   padding: 0.5rem 1.35rem;
   border-radius: 999px;
-  margin: 0 0 0 auto;
+  margin: 0;
+  align-self: center;
   border: 1px solid rgba(244, 92, 162, 0.25);
 }
 
@@ -338,6 +339,8 @@ main {
   text-transform: none;
   margin: 0 0 1.5rem;
   color: var(--text-main);
+  text-align: center;
+  white-space: nowrap;
 }
 
 .hero p {
@@ -1274,20 +1277,6 @@ main {
 
 .footer-links a:hover,
 .footer-links a:focus-visible {
-  color: var(--pink-primary);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 0.78rem;
-  align-self: flex-start;
-}
-
-.footer-cta {
-  display: inline-flex;
-  margin-top: 1.25rem;
-  padding: 0.6rem 1.25rem;
-  border-radius: 999px;
-  background: var(--surface);
   color: var(--pink-primary);
   font-weight: 600;
   letter-spacing: 0.08em;
