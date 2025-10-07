@@ -113,19 +113,18 @@ main {
 
 .header-navigation {
   display: flex;
-  align-items: center;
-  gap: clamp(1rem, 3vw, 2rem);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: clamp(0.65rem, 2vw, 1.25rem);
   margin-left: auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: clamp(0.75rem, 2vw, 1.25rem);
-  flex-wrap: wrap;
   justify-content: flex-end;
+  flex-wrap: nowrap;
 }
 
 .brand-mark {
