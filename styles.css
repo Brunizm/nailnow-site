@@ -75,7 +75,7 @@ main {
   padding: 0 clamp(1.5rem, 6vw, 3.75rem) clamp(6rem, 10vw, 7.5rem);
   display: flex;
   flex-direction: column;
-  gap: clamp(4rem, 10vw, 6.5rem);
+  gap: clamp(2.5rem, 6vw, 4rem);
 }
 
 .promo-banner {
@@ -125,6 +125,10 @@ main {
   gap: clamp(0.75rem, 2vw, 1.25rem);
   justify-content: flex-end;
   flex-wrap: nowrap;
+}
+
+.header-actions .social-link {
+  margin-left: auto;
 }
 
 .brand-mark {
@@ -258,7 +262,7 @@ main {
 
 .hero {
   position: relative;
-  margin: clamp(3rem, 10vw, 6.5rem) auto;
+  margin: clamp(2.5rem, 8vw, 5rem) auto 0;
   padding: clamp(3rem, 6vw, 5.25rem);
   border-radius: var(--radius-large);
   overflow: hidden;
@@ -346,6 +350,17 @@ main {
 .hero p {
   max-width: 36ch;
   margin: 0 0 2.4rem;
+}
+
+@media (max-width: 720px) {
+  .header-navigation {
+    justify-content: center;
+  }
+
+  .hero h1 {
+    text-align: center;
+    white-space: normal;
+  }
 }
 
 .page-hero {
@@ -845,7 +860,7 @@ main {
 
 .cta-profissional {
   max-width: var(--max-width);
-  margin: clamp(3rem, 10vw, 6rem) auto;
+  margin: 0 auto;
   padding: clamp(2.5rem, 6vw, 3.75rem) clamp(1.5rem, 6vw, 3.5rem);
   background: var(--surface-alt);
   border-radius: var(--radius-large);
@@ -1476,6 +1491,10 @@ main {
   .header-actions {
     width: 100%;
     justify-content: center;
+  }
+
+  .header-actions .social-link {
+    margin-left: 0;
   }
 }
 
