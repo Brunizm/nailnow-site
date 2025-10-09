@@ -168,11 +168,12 @@
         const feedback = document.getElementById("signup-feedback");
 
         const nome = form.nome.value.trim();
+        const cpf = form.cpf.value.trim();
         const email = form.email.value.trim();
         const senha = form.senha.value.trim();
         const confirmarSenha = form.confirmarSenha.value.trim();
-        const cidade = form.cidade.value.trim();
         const endereco = form.endereco.value.trim();
+        const cidade = form.cidade.value.trim();
         const telefone = form.telefone.value.trim();
         const bio = form.bio.value.trim();
         const foto = form.foto.files[0];
@@ -194,11 +195,12 @@
         try {
           const docRef = await addDoc(collection(db, "manicures"), {
             nome,
+            cpf,
             email,
             senha,
             telefone,
-            cidade,
             endereco,
+            cidade,
             bio,
             servicos: servicosSelecionados,
             criadoEm: serverTimestamp(),
@@ -274,6 +276,19 @@
           </div>
 
           <div class="signup-field">
+            <label for="cpf">CPF *</label>
+            <input
+              id="cpf"
+              name="cpf"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]{11}"
+              placeholder="Somente números"
+              required
+            />
+          </div>
+
+          <div class="signup-field">
             <label for="email">E-mail *</label>
             <input id="email" name="email" type="email" required />
           </div>
@@ -294,23 +309,29 @@
           </div>
 
           <div class="signup-field">
-            <label for="cidade">Cidade *</label>
-            <input id="cidade" name="cidade" type="text" required />
+            <label for="endereco">Endereço *</label>
+            <input id="endereco" name="endereco" type="text" required />
           </div>
 
           <div class="signup-field">
-            <label for="endereco">Endereço *</label>
-            <input id="endereco" name="endereco" type="text" required />
+            <label for="cidade">Cidade *</label>
+            <input id="cidade" name="cidade" type="text" required />
           </div>
 
           <div class="signup-field">
             <span>Serviços oferecidos</span>
             <div class="services-grid">
               <label><input type="checkbox" name="servicos" value="Manicure clássica" /> Manicure clássica</label>
-              <label><input type="checkbox" name="servicos" value="Pedicure" /> Pedicure</label>
+              <label><input type="checkbox" name="servicos" value="Pedicure clássica" /> Pedicure clássica</label>
               <label><input type="checkbox" name="servicos" value="Alongamento em gel" /> Alongamento em gel</label>
-              <label><input type="checkbox" name="servicos" value="Esmaltação em gel" /> Esmaltação em gel</label>
-              <label><input type="checkbox" name="servicos" value="Nail art" /> Nail art</label>
+              <label>
+                <input type="checkbox" name="servicos" value="Esmaltação em gel (manicure)" />
+                Esmaltação em gel (manicure)
+              </label>
+              <label>
+                <input type="checkbox" name="servicos" value="Esmaltação em gel (pedicure)" />
+                Esmaltação em gel (pedicure)
+              </label>
             </div>
           </div>
 
