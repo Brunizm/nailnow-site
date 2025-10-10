@@ -29,27 +29,22 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
+    // ---------- Utils ----------
+    const $ = (id) => document.getElementById(id);
+    const servicosSelecionados = () =>
+      Array.from(document.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
+
+    // Remove um campo pelo texto do <label> (se existir no HTML)
     function removeFieldByLabelText(form, labelText) {
       if (!form) return;
-
       const labels = Array.from(form.querySelectorAll("label"));
       for (const label of labels) {
         const text = label.textContent?.trim();
-
         if (text && text.startsWith(labelText)) {
           const wrapper = label.closest(".signup-field");
-
-          if (wrapper) {
-            wrapper.remove();
-            break;
-          }
-
+          if (wrapper) { wrapper.remove(); break; }
           const field = label.nextElementSibling;
-
-          if (field && ["INPUT", "TEXTAREA", "SELECT"].includes(field.tagName)) {
-            field.remove();
-          }
-
+          if (field && ["INPUT", "TEXTAREA", "SELECT"].includes(field.tagName)) field.remove();
           label.remove();
           break;
         }
@@ -58,10 +53,13 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       const form = document.getElementById("cadastroForm");
+      // Se existir um campo com esse label, será removido:
       removeFieldByLabelText(form, "Certidão de Antecedentes Criminais");
+      // Conecta o submit
+      if (form) form.addEventListener("submit", enviarCadastro);
     });
 
-    // Função principal de envio
+    // ---------- Envio do formulário ----------
     async function enviarCadastro(event) {
       event.preventDefault();
 
@@ -70,7 +68,7 @@
       botao.innerText = "Enviando...";
 
       try {
-        // Coletar campos (mantive seus IDs originais)
+        // Coletar campos (IDs conforme seu formulário)
         const nome = $("nome").value.trim();
         const email = $("email").value.trim().toLowerCase();
         const cidade = $("cidade").value.trim();
@@ -78,7 +76,7 @@
         const bio = $("bio").value.trim();
         const foto = $("foto").files[0] || null;
 
-        // Novos campos para Auth
+        // Campos para Auth
         const senha = $("senha").value;
         const confirmar = $("confirmarSenha").value;
 
@@ -98,7 +96,7 @@
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
         const uid = cred.user.uid;
 
-        // 2) Upload da foto (opcional)
+        // 2) Upload da foto (opcional) → /profissionais/{uid}/...
         let fotoUrl = "";
         if (foto) {
           const caminho = `profissionais/${uid}/perfil_${Date.now()}_${foto.name}`;
@@ -134,7 +132,7 @@
       }
     }
 
-    // Disponibiliza a função para o onsubmit do form
+    // Disponibiliza a função global (caso precise chamar no onsubmit inline)
     window.enviarCadastro = enviarCadastro;
   </script>
 
@@ -172,14 +170,14 @@
   <div class="container">
     <h1>Cadastro de Profissional 💅</h1>
 
-    <form id="cadastroForm" onsubmit="enviarCadastro(event)">
+    <form id="cadastroForm">
       <label for="nome">Nome completo *</label>
       <input id="nome" type="text" required />
 
       <label for="email">E-mail *</label>
       <input id="email" type="email" required />
 
-      <!-- Novos campos para criar a conta no Firebase Auth -->
+      <!-- Campos para criar a conta no Firebase Auth -->
       <label for="senha">Senha *</label>
       <input id="senha" type="password" required />
 
