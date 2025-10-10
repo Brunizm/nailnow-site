@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cadastro de Manicure | NailNow 💅</title>
 
-  <!-- Firebase + integração do formulário -->
+  <!-- Firebase SDKs -->
   <script type="module">
-    // SDKs Firebase (modular)
+    // Importar SDKs Firebase (v10 modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    // Seu projeto (NailNow-site)
+    // 🔧 Configuração do seu projeto Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
       authDomain: "nailnow-site.firebaseapp.com",
@@ -23,67 +23,58 @@
       appId: "1:726392294571:web:a363a40231f7ac162e7bee",
     };
 
-    // Inicializa serviços
+    // Inicializar Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    // ---------- Utils ----------
+    // 🔹 Função auxiliar
     const $ = (id) => document.getElementById(id);
     const servicosSelecionados = () =>
       Array.from(document.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
 
-    // Remove um campo pelo texto do <label> (se existir no HTML)
-    function removeFieldByLabelText(form, labelText) {
-      if (!form) return;
-      const labels = Array.from(form.querySelectorAll("label"));
-      for (const label of labels) {
-        const text = label.textContent?.trim();
-        if (text && text.startsWith(labelText)) {
-          const wrapper = label.closest(".signup-field");
-          if (wrapper) { wrapper.remove(); break; }
-          const field = label.nextElementSibling;
-          if (field && ["INPUT", "TEXTAREA", "SELECT"].includes(field.tagName)) field.remove();
-          label.remove();
-          break;
-        }
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = document.getElementById("cadastroForm");
-      // Se existir um campo com esse label, será removido:
-      removeFieldByLabelText(form, "Certidão de Antecedentes Criminais");
-      // Conecta o submit
-      if (form) form.addEventListener("submit", enviarCadastro);
-    });
-
-    // ---------- Envio do formulário ----------
+    // 🔹 Função principal de envio
     async function enviarCadastro(event) {
       event.preventDefault();
+      console.log(">> enviarCadastro DISPAROU");
 
       const botao = $("enviar");
       botao.disabled = true;
       botao.innerText = "Enviando...";
 
       try {
-        // Coletar campos (IDs conforme seu formulário)
-        const nome = $("nome").value.trim();
-        const email = $("email").value.trim().toLowerCase();
-        const cidade = $("cidade").value.trim();
-        const telefone = $("telefone").value.trim();
-        const bio = $("bio").value.trim();
-        const foto = $("foto").files[0] || null;
+        // 1️⃣ Verifica campos obrigatórios
+        const fields = {
+          nome: $("nome"),
+          email: $("email"),
+          senha: $("senha"),
+          confirmarSenha: $("confirmarSenha"),
+          telefone: $("telefone"),
+          cidade: $("cidade"),
+          bio: $("bio"),
+          foto: $("foto"),
+        };
 
-        // Campos para Auth
-        const senha = $("senha").value;
-        const confirmar = $("confirmarSenha").value;
+        const missing = Object.entries(fields).filter(([k, el]) => !el).map(([k]) => k);
+        if (missing.length) {
+          alert("Faltando campo(s) no HTML com id: " + missing.join(", "));
+          console.warn("IDs ausentes:", missing);
+          return;
+        }
 
-        const servicos = servicosSelecionados();
+        // 2️⃣ Pegar valores
+        const nome = fields.nome.value.trim();
+        const email = fields.email.value.trim().toLowerCase();
+        const senha = fields.senha.value;
+        const confirmar = fields.confirmarSenha.value;
+        const telefone = fields.telefone.value.trim();
+        const cidade = fields.cidade.value.trim();
+        const bio = fields.bio.value.trim();
+        const foto = fields.foto.files?.[0] || null;
 
-        // Validações básicas
-        if (!nome || !email || !cidade || !senha || !confirmar) {
+        // 3️⃣ Validações básicas
+        if (!nome || !email || !senha || !confirmar || !cidade) {
           alert("Preencha os campos obrigatórios (*)");
           return;
         }
@@ -92,48 +83,58 @@
           return;
         }
 
-        // 1) Criar conta no Authentication
+        console.log(">> Criando usuário no Auth...");
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
         const uid = cred.user.uid;
+        console.log("Auth OK, uid:", uid);
 
-        // 2) Upload da foto (opcional) → /profissionais/{uid}/...
+        // 4️⃣ Upload da foto (opcional)
         let fotoUrl = "";
         if (foto) {
+          console.log(">> Subindo foto...");
           const caminho = `profissionais/${uid}/perfil_${Date.now()}_${foto.name}`;
           const fileRef = ref(storage, caminho);
           await uploadBytes(fileRef, foto);
           fotoUrl = await getDownloadURL(fileRef);
+          console.log("Foto salva:", fotoUrl);
         }
 
-        // 3) Salvar perfil no Firestore (coleção 'profissionais', doc = UID)
+        // 5️⃣ Salvar dados no Firestore
+        console.log(">> Gravando no Firestore...");
         await setDoc(doc(db, "profissionais", uid), {
           nome,
           email,
           telefone,
           cidade,
           bio,
-          servicos,
+          servicos: servicosSelecionados(),
           fotoUrl,
           createdAt: serverTimestamp(),
           status: "pendente",
         });
 
-        // 4) (Opcional) sair do Auth após cadastrar
+        console.log("Firestore OK!");
         await signOut(auth);
 
         alert("✅ Cadastro enviado com sucesso!");
         $("cadastroForm").reset();
       } catch (error) {
-        console.error("Erro:", error);
-        alert("❌ Não foi possível enviar o cadastro. Tente novamente.");
+        console.error("Cadastro falhou:", error);
+        alert(`❌ Erro ao cadastrar:\n${error.code || ""}\n${error.message || ""}`);
       } finally {
         botao.disabled = false;
         botao.innerText = "Cadastrar profissional";
       }
     }
 
-    // Disponibiliza a função global (caso precise chamar no onsubmit inline)
-    window.enviarCadastro = enviarCadastro;
+    // 🔹 Ativa o listener do formulário
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = $("cadastroForm");
+      if (form) {
+        form.addEventListener("submit", enviarCadastro);
+        console.log(">> Listener conectado ao form");
+      }
+    });
   </script>
 
   <style>
@@ -155,11 +156,13 @@
     h1 { text-align: center; color: #e91e63; }
     label { display: block; margin-top: 10px; font-weight: bold; }
     input, textarea {
-      width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-top: 5px;
+      width: 100%; padding: 10px; border: 1px solid #ddd;
+      border-radius: 8px; margin-top: 5px;
     }
     button {
-      background-color: #e91e63; color: white; border: none; padding: 12px 20px;
-      border-radius: 10px; cursor: pointer; font-size: 16px; margin-top: 15px; width: 100%;
+      background-color: #e91e63; color: white; border: none;
+      padding: 12px 20px; border-radius: 10px; cursor: pointer;
+      font-size: 16px; margin-top: 15px; width: 100%;
     }
     button:hover { background-color: #d81b60; }
     .servicos { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
@@ -170,14 +173,13 @@
   <div class="container">
     <h1>Cadastro de Profissional 💅</h1>
 
-    <form id="cadastroForm" onsubmit="enviarCadastro(event)">
+    <form id="cadastroForm">
       <label for="nome">Nome completo *</label>
       <input id="nome" type="text" required />
 
       <label for="email">E-mail *</label>
       <input id="email" type="email" required />
 
-      <!-- Campos para criar a conta no Firebase Auth -->
       <label for="senha">Senha *</label>
       <input id="senha" type="password" required />
 
