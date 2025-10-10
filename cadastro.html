@@ -32,12 +32,22 @@
     // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
 
-    // Garante que o elemento existe e retorna; senão, alerta qual id faltou
-    function must(id) {
-      const el = document.getElementById(id);
+    // Garante que um input exista; se não existir, cria (visível) no fim do form
+    function ensureInput({ id, label, type = "text", required = false, accept = "" }) {
+      let el = document.getElementById(id);
       if (!el) {
-        alert(`Elemento com id="${id}" não encontrado no HTML`);
-        throw new Error(`missing #${id}`);
+        const form = $("cadastroForm");
+        const lbl = document.createElement("label");
+        lbl.htmlFor = id;
+        lbl.textContent = label + (required ? " *" : "");
+        el = document.createElement(type === "textarea" ? "textarea" : "input");
+        el.id = id;
+        if (type !== "textarea") el.type = type;
+        if (accept) el.setAttribute("accept", accept);
+        if (required) el.required = true;
+        form.appendChild(lbl);
+        form.appendChild(el);
+        console.warn(`Criado automaticamente o campo ausente: #${id}`);
       }
       return el;
     }
@@ -50,22 +60,21 @@
       event.preventDefault();
       console.log(">> enviarCadastro DISPAROU");
 
-      const botao = must("enviar");
-      botao.disabled = true;
-      botao.innerText = "Enviando...";
+      const botao = $("enviar");
+      if (botao) { botao.disabled = true; botao.innerText = "Enviando..."; }
 
       try {
-        // 1) Referências (avisam qual id está faltando)
-        const nomeEl = must("nome");
-        const emailEl = must("email");
-        const senhaEl = must("senha");
-        const confirmarEl = must("confirmarSenha");
-        const telefoneEl = must("telefone");
-        const cidadeEl = must("cidade");
-        const bioEl = must("bio");
-        const fotoEl = must("foto");
+        // Garante que os campos existem (se faltarem, cria)
+        const nomeEl = ensureInput({ id: "nome", label: "Nome completo", required: true });
+        const emailEl = ensureInput({ id: "email", label: "E-mail", type: "email", required: true });
+        const senhaEl = ensureInput({ id: "senha", label: "Senha", type: "password", required: true });
+        const confirmarEl = ensureInput({ id: "confirmarSenha", label: "Confirmar senha", type: "password", required: true });
+        const telefoneEl = ensureInput({ id: "telefone", label: "Telefone / WhatsApp" });
+        const cidadeEl = ensureInput({ id: "cidade", label: "Cidade", required: true });
+        const bioEl = ensureInput({ id: "bio", label: "Sobre você", type: "textarea" });
+        const fotoEl = ensureInput({ id: "foto", label: "Foto de perfil", type: "file", accept: "image/*" });
 
-        // 2) Valores
+        // Valores
         const nome = nomeEl.value.trim();
         const email = emailEl.value.trim().toLowerCase();
         const senha = senhaEl.value;
@@ -75,7 +84,6 @@
         const bio = bioEl.value.trim();
         const foto = fotoEl.files?.[0] || null;
 
-        // 3) Validações simples
         if (!nome || !email || !senha || !confirmar || !cidade) {
           alert("Preencha os campos obrigatórios (*)");
           return;
@@ -85,13 +93,13 @@
           return;
         }
 
-        // 4) Criar usuário
+        // 1) Auth
         console.log(">> Criando usuário no Auth…");
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
         const uid = cred.user.uid;
         console.log(">> Auth OK, uid:", uid);
 
-        // 5) Upload da foto (opcional)
+        // 2) Foto (opcional)
         let fotoUrl = "";
         if (foto) {
           console.log(">> Subindo foto…");
@@ -102,7 +110,7 @@
           console.log(">> Foto URL:", fotoUrl);
         }
 
-        // 6) Salvar no Firestore
+        // 3) Firestore
         console.log(">> Gravando no Firestore…");
         await setDoc(doc(db, "profissionais", uid), {
           nome,
@@ -117,7 +125,7 @@
         });
         console.log(">> Firestore OK");
 
-        // 7) Sair (opcional)
+        // 4) Sair (opcional)
         await signOut(auth);
 
         alert("✅ Cadastro enviado com sucesso!");
@@ -126,12 +134,11 @@
         console.error("Cadastro falhou:", error);
         alert(`❌ Erro ao cadastrar:\n${error.code || ""}\n${error.message || ""}`);
       } finally {
-        botao.disabled = false;
-        botao.innerText = "Cadastrar profissional";
+        if (botao) { botao.disabled = false; botao.innerText = "Cadastrar profissional"; }
       }
     }
 
-    // Conectar o listener ao form (sem inline)
+    // Duplo binding do submit: inline no HTML e via listener
     document.addEventListener("DOMContentLoaded", () => {
       const form = $("cadastroForm");
       if (form) {
@@ -144,41 +151,14 @@
   </script>
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #fff;
-      color: #333;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 600px;
-      margin: 40px auto;
-      background: #fff0f6;
-      border-radius: 20px;
-      padding: 30px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
+    body { font-family: Arial, sans-serif; background-color: #fff; color: #333; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff0f6; border-radius: 20px; padding: 30px;
+                 box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
     h1 { text-align: center; color: #e91e63; }
     label { display: block; margin-top: 10px; font-weight: bold; }
-    input, textarea {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      margin-top: 5px;
-    }
-    button {
-      background-color: #e91e63;
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 16px;
-      margin-top: 15px;
-      width: 100%;
-    }
+    input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-top: 5px; }
+    button { background-color: #e91e63; color: white; border: none; padding: 12px 20px; border-radius: 10px;
+             cursor: pointer; font-size: 16px; margin-top: 15px; width: 100%; }
     button:hover { background-color: #d81b60; }
     .servicos { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
     .hint { font-size: 12px; color: #777; margin-top: 4px; }
@@ -188,7 +168,8 @@
   <div class="container">
     <h1>Cadastro de Profissional 💅</h1>
 
-    <form id="cadastroForm">
+    <!-- inline onsubmit para garantir o disparo mesmo se o listener falhar -->
+    <form id="cadastroForm" onsubmit="enviarCadastro(event)">
       <label for="nome">Nome completo *</label>
       <input id="nome" type="text" required />
 
