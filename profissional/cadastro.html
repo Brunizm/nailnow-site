@@ -172,6 +172,7 @@
         const email = form.email.value.trim();
         const senha = form.senha.value.trim();
         const confirmarSenha = form.confirmarSenha.value.trim();
+        const certidao = form.certidao.value.trim();
         const endereco = form.endereco.value.trim();
         const cidade = form.cidade.value.trim();
         const telefone = form.telefone.value.trim();
@@ -198,6 +199,7 @@
             cpf,
             email,
             senha,
+            certidao,
             telefone,
             endereco,
             cidade,
@@ -301,6 +303,23 @@
           <div class="signup-field">
             <label for="confirmarSenha">Confirmar senha *</label>
             <input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required />
+          </div>
+
+          <div class="signup-field">
+            <label for="certidao">Certidão de Antecedentes Criminais *</label>
+            <input
+              id="certidao"
+              name="certidao"
+              type="url"
+              placeholder="Cole o link do comprovante em PDF"
+              required
+            />
+            <small>
+              Solicite gratuitamente em
+              <a href="https://www.gov.br/pf/pt-br/assuntos/antecedentes-criminais" target="_blank" rel="noopener noreferrer"
+                >https://www.gov.br/pf/pt-br/assuntos/antecedentes-criminais</a
+              >.
+            </small>
           </div>
 
           <div class="signup-field">
