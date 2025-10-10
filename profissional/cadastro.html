@@ -7,24 +7,236 @@
       name="description"
       content="Formulário de cadastro de profissional para manicures oferecerem serviços de unha na plataforma NailNow."
     />
-    <title>Cadastro Profissional - NailNow</title>
-    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <title>Cadastro de Manicure | NailNow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Playfair+Display:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../styles.css" />
-    <script>
-      function handleSignup(event) {
-        event.preventDefault();
-        alert("Cadastro de profissional - integração com Firebase em breve.");
+    <style>
+      .signup-container {
+        max-width: 720px;
+        margin: 4rem auto;
+        padding: 0 1.5rem 4rem;
       }
+
+      .signup-card {
+        background: #fff0f6;
+        border-radius: 24px;
+        padding: 2.5rem 2rem;
+        box-shadow: 0 18px 40px -20px rgba(233, 30, 99, 0.35);
+      }
+
+      .signup-card h1 {
+        font-family: "Playfair Display", serif;
+        font-weight: 600;
+        font-size: 2.25rem;
+        text-align: center;
+        color: #e91e63;
+        margin-bottom: 1.5rem;
+      }
+
+      .signup-card p {
+        text-align: center;
+        color: #5a5a5a;
+        margin: 0 0 2rem;
+      }
+
+      .signup-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .signup-field label {
+        font-weight: 600;
+        color: #3d3d3d;
+      }
+
+      .signup-field input,
+      .signup-field textarea,
+      .signup-field select {
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e3e3e3;
+        font-size: 1rem;
+        font-family: "Inter", sans-serif;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background-color: #fff;
+      }
+
+      .signup-field input:focus,
+      .signup-field textarea:focus,
+      .signup-field select:focus {
+        outline: none;
+        border-color: #e91e63;
+        box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.15);
+      }
+
+      .services-grid {
+        display: grid;
+        gap: 0.75rem 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-top: 0.5rem;
+      }
+
+      .services-grid label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+        color: #4a4a4a;
+      }
+
+      .signup-submit {
+        width: 100%;
+        margin-top: 1rem;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #f06292, #e91e63);
+        color: #fff;
+        font-weight: 600;
+        font-size: 1.05rem;
+        padding: 0.95rem 1.25rem;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .signup-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .signup-submit:not(:disabled):hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 30px -20px rgba(233, 30, 99, 0.6);
+      }
+
+      .signup-feedback {
+        margin-top: 1rem;
+        text-align: center;
+        font-weight: 500;
+      }
+
+      @media (max-width: 640px) {
+        .signup-card {
+          padding: 2rem 1.25rem;
+        }
+
+        .signup-card h1 {
+          font-size: 1.75rem;
+        }
+      }
+    </style>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        serverTimestamp,
+        updateDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getStorage,
+        ref,
+        uploadBytes,
+        getDownloadURL,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.firebasestorage.app",
+        messagingSenderId: "726392294571",
+        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const storage = getStorage(app);
+
+      async function enviarCadastro(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const botao = form.querySelector("button[type='submit']");
+        const feedback = document.getElementById("signup-feedback");
+
+        const nome = form.nome.value.trim();
+        const cpf = form.cpf.value.trim();
+        const email = form.email.value.trim();
+        const senha = form.senha.value.trim();
+        const confirmarSenha = form.confirmarSenha.value.trim();
+        const certidao = form.certidao.value.trim();
+        const endereco = form.endereco.value.trim();
+        const cidade = form.cidade.value.trim();
+        const telefone = form.telefone.value.trim();
+        const bio = form.bio.value.trim();
+        const foto = form.foto.files[0];
+        const servicosSelecionados = Array.from(
+          form.querySelectorAll('input[name="servicos"]:checked')
+        ).map((el) => el.value);
+
+        if (senha !== confirmarSenha) {
+          feedback.textContent = "❌ As senhas não coincidem. Verifique e tente novamente.";
+          feedback.style.color = "#c62828";
+          form.confirmarSenha.focus();
+          return;
+        }
+
+        botao.disabled = true;
+        botao.textContent = "Enviando...";
+        feedback.textContent = "";
+
+        try {
+          const docRef = await addDoc(collection(db, "manicures"), {
+            nome,
+            cpf,
+            email,
+            senha,
+            certidao,
+            telefone,
+            endereco,
+            cidade,
+            bio,
+            servicos: servicosSelecionados,
+            criadoEm: serverTimestamp(),
+            fotoUrl: null,
+          });
+
+          if (foto) {
+            const caminho = `manicures/${docRef.id}/${foto.name}`;
+            const arquivoRef = ref(storage, caminho);
+            await uploadBytes(arquivoRef, foto);
+            const url = await getDownloadURL(arquivoRef);
+            await updateDoc(docRef, { fotoUrl: url });
+          }
+
+          feedback.textContent = "✅ Cadastro enviado com sucesso!";
+          feedback.style.color = "#2e7d32";
+          form.reset();
+        } catch (error) {
+          console.error("Erro ao enviar cadastro:", error);
+          feedback.textContent = "❌ Não foi possível enviar o cadastro. Tente novamente.";
+          feedback.style.color = "#c62828";
+        } finally {
+          botao.disabled = false;
+          botao.textContent = "Cadastrar profissional";
+        }
+      }
+
+      window.enviarCadastro = enviarCadastro;
     </script>
   </head>
   <body>
     <header class="site-header">
       <div class="header-inner">
-        <a href="../" class="brand-mark" aria-label="Início da NailNow">
+        <a href="../index.html" class="brand-mark" aria-label="Início da NailNow">
           NailNow
         </a>
         <div class="header-navigation">
@@ -36,7 +248,7 @@
           </nav>
           <div class="header-actions">
             <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="../profissional/index.html" class="header-cta">Sou Manicure</a>
+            <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Manicure</a>
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -55,28 +267,107 @@
       </div>
     </header>
 
-    <main class="page-content">
-      <img
-        src="https://images.unsplash.com/photo-1603808033192-1c0d1ba47188?auto=format&fit=crop&w=800&q=80"
-        alt="Ferramentas de manicure"
-        class="page-img"
-        loading="lazy"
-        width="500"
-        height="333"
-      />
-      <h1>Cadastro de Profissional</h1>
-      <form onsubmit="handleSignup(event)">
-        <label for="nome">Nome</label>
-        <input type="text" id="nome" required />
-        <label for="email">Email</label>
-        <input type="email" id="email" required />
-        <label for="cidade">Cidade</label>
-        <input type="text" id="cidade" required />
-        <label for="senha">Senha</label>
-        <input type="password" id="senha" required />
-        <button type="submit" class="btn">Salvar</button>
-      </form>
-      <a href="index.html" class="btn">Voltar</a>
+    <main class="signup-container">
+      <section class="signup-card" aria-labelledby="cadastro-profissional">
+        <h1 id="cadastro-profissional">Cadastro de Profissional 💅</h1>
+        <p>Preencha seus dados para receber convites de atendimento pela NailNow.</p>
+        <form id="cadastroForm" onsubmit="enviarCadastro(event)">
+          <div class="signup-field">
+            <label for="nome">Nome completo *</label>
+            <input id="nome" name="nome" type="text" required />
+          </div>
+
+          <div class="signup-field">
+            <label for="cpf">CPF *</label>
+            <input
+              id="cpf"
+              name="cpf"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]{11}"
+              placeholder="Somente números"
+              required
+            />
+          </div>
+
+          <div class="signup-field">
+            <label for="email">E-mail *</label>
+            <input id="email" name="email" type="email" required />
+          </div>
+
+          <div class="signup-field">
+            <label for="senha">Senha *</label>
+            <input id="senha" name="senha" type="password" minlength="6" required />
+          </div>
+
+          <div class="signup-field">
+            <label for="confirmarSenha">Confirmar senha *</label>
+            <input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required />
+          </div>
+
+          <div class="signup-field">
+            <label for="certidao">Certidão de Antecedentes Criminais *</label>
+            <input
+              id="certidao"
+              name="certidao"
+              type="url"
+              placeholder="Cole o link do comprovante em PDF"
+              required
+            />
+            <small>
+              Solicite gratuitamente em
+              <a href="https://www.gov.br/pf/pt-br/assuntos/antecedentes-criminais" target="_blank" rel="noopener noreferrer"
+                >https://www.gov.br/pf/pt-br/assuntos/antecedentes-criminais</a
+              >.
+            </small>
+          </div>
+
+          <div class="signup-field">
+            <label for="telefone">Telefone / WhatsApp</label>
+            <input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-0000" />
+          </div>
+
+          <div class="signup-field">
+            <label for="endereco">Endereço *</label>
+            <input id="endereco" name="endereco" type="text" required />
+          </div>
+
+          <div class="signup-field">
+            <label for="cidade">Cidade *</label>
+            <input id="cidade" name="cidade" type="text" required />
+          </div>
+
+          <div class="signup-field">
+            <span>Serviços oferecidos</span>
+            <div class="services-grid">
+              <label><input type="checkbox" name="servicos" value="Manicure clássica" /> Manicure clássica</label>
+              <label><input type="checkbox" name="servicos" value="Pedicure clássica" /> Pedicure clássica</label>
+              <label><input type="checkbox" name="servicos" value="Alongamento em gel" /> Alongamento em gel</label>
+              <label>
+                <input type="checkbox" name="servicos" value="Esmaltação em gel (manicure)" />
+                Esmaltação em gel (manicure)
+              </label>
+              <label>
+                <input type="checkbox" name="servicos" value="Esmaltação em gel (pedicure)" />
+                Esmaltação em gel (pedicure)
+              </label>
+            </div>
+          </div>
+
+          <div class="signup-field">
+            <label for="bio">Sobre você</label>
+            <textarea id="bio" name="bio" rows="3" placeholder="Ex: 5 anos de experiência, especializada em gel..."></textarea>
+          </div>
+
+          <div class="signup-field">
+            <label for="foto">Foto de perfil</label>
+            <input id="foto" name="foto" type="file" accept="image/*" />
+          </div>
+
+          <button id="enviar" class="signup-submit" type="submit">Cadastrar profissional</button>
+          <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
+        </form>
+      </section>
     </main>
   </body>
 </html>
