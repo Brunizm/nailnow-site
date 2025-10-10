@@ -200,7 +200,12 @@
         const feedback = document.getElementById("signup-feedback");
 
         const nome = form.nome.value.trim();
+        const cpf = form.cpf.value.trim();
         const email = form.email.value.trim();
+        const senha = form.senha.value.trim();
+        const confirmarSenha = form.confirmarSenha.value.trim();
+        const certidao = form.certidao.value.trim();
+        const endereco = form.endereco.value.trim();
         const cidade = form.cidade.value.trim();
         const telefone = form.telefone.value.trim();
         const bio = form.bio.value.trim();
@@ -209,6 +214,13 @@
           form.querySelectorAll('input[name="servicos"]:checked')
         ).map((el) => el.value);
 
+        if (senha !== confirmarSenha) {
+          feedback.textContent = "❌ As senhas não coincidem. Verifique e tente novamente.";
+          feedback.style.color = "#c62828";
+          form.confirmarSenha.focus();
+          return;
+        }
+
         botao.disabled = true;
         botao.textContent = "Enviando...";
         feedback.textContent = "";
@@ -216,8 +228,12 @@
         try {
           const docRef = await addDoc(collection(db, "manicures"), {
             nome,
+            cpf,
             email,
+            senha,
+            certidao,
             telefone,
+            endereco,
             cidade,
             bio,
             servicos: servicosSelecionados,
@@ -294,13 +310,58 @@
           </div>
 
           <div class="signup-field">
+            <label for="cpf">CPF *</label>
+            <input
+              id="cpf"
+              name="cpf"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]{11}"
+              placeholder="Somente números"
+              required
+            />
+          </div>
+
+          <div class="signup-field">
             <label for="email">E-mail *</label>
             <input id="email" name="email" type="email" required />
           </div>
 
           <div class="signup-field">
+            <label for="senha">Senha *</label>
+            <input id="senha" name="senha" type="password" minlength="6" required />
+          </div>
+
+          <div class="signup-field">
+            <label for="confirmarSenha">Confirmar senha *</label>
+            <input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required />
+          </div>
+
+          <div class="signup-field">
+            <label for="certidao">Certidão de Antecedentes Criminais *</label>
+            <input
+              id="certidao"
+              name="certidao"
+              type="url"
+              placeholder="Cole o link do comprovante em PDF"
+              required
+            />
+            <small>
+              Solicite gratuitamente em
+              <a href="https://www.gov.br/pf/pt-br/assuntos/antecedentes-criminais" target="_blank" rel="noopener noreferrer"
+                >https://www.gov.br/pf/pt-br/assuntos/antecedentes-criminais</a
+              >.
+            </small>
+          </div>
+
+          <div class="signup-field">
             <label for="telefone">Telefone / WhatsApp</label>
             <input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-0000" />
+          </div>
+
+          <div class="signup-field">
+            <label for="endereco">Endereço *</label>
+            <input id="endereco" name="endereco" type="text" required />
           </div>
 
           <div class="signup-field">
@@ -312,12 +373,16 @@
             <span>Serviços oferecidos</span>
             <div class="services-grid">
               <label><input type="checkbox" name="servicos" value="Manicure clássica" /> Manicure clássica</label>
-              <label><input type="checkbox" name="servicos" value="Pedicure" /> Pedicure</label>
+              <label><input type="checkbox" name="servicos" value="Pedicure clássica" /> Pedicure clássica</label>
               <label><input type="checkbox" name="servicos" value="Alongamento em gel" /> Alongamento em gel</label>
-              <label><input type="checkbox" name="servicos" value="Esmaltação em gel" /> Esmaltação em gel</label>
-              <label><input type="checkbox" name="servicos" value="Spa das mãos" /> Spa das mãos</label>
-              <label><input type="checkbox" name="servicos" value="Spa dos pés" /> Spa dos pés</label>
-              <label><input type="checkbox" name="servicos" value="Nail art" /> Nail art</label>
+              <label>
+                <input type="checkbox" name="servicos" value="Esmaltação em gel (manicure)" />
+                Esmaltação em gel (manicure)
+              </label>
+              <label>
+                <input type="checkbox" name="servicos" value="Esmaltação em gel (pedicure)" />
+                Esmaltação em gel (pedicure)
+              </label>
             </div>
           </div>
 

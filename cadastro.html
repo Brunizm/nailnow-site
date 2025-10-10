@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cadastro de Manicure | NailNow 💅</title>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase + integração do formulário -->
   <script type="module">
-    // Importar SDKs
+    // SDKs Firebase (modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    // Configuração do seu Firebase (NailNow-site)
+    // Seu projeto (NailNow-site)
     const firebaseConfig = {
       apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
       authDomain: "nailnow-site.firebaseapp.com",
@@ -22,8 +23,9 @@
       appId: "1:726392294571:web:a363a40231f7ac162e7bee",
     };
 
-    // Inicializar Firebase
+    // Inicializa serviços
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
 
@@ -63,43 +65,66 @@
     async function enviarCadastro(event) {
       event.preventDefault();
 
-      const nome = document.getElementById("nome").value;
-      const email = document.getElementById("email").value;
-      const cidade = document.getElementById("cidade").value;
-      const telefone = document.getElementById("telefone").value;
-      const bio = document.getElementById("bio").value;
-      const foto = document.getElementById("foto").files[0];
-      const servicosSelecionados = Array.from(document.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
-
-      const botao = document.getElementById("enviar");
+      const botao = $("enviar");
       botao.disabled = true;
       botao.innerText = "Enviando...";
 
       try {
-        // 1️⃣ Salvar no Firestore
-        const docRef = await addDoc(collection(db, "manicures"), {
+        // Coletar campos (mantive seus IDs originais)
+        const nome = $("nome").value.trim();
+        const email = $("email").value.trim().toLowerCase();
+        const cidade = $("cidade").value.trim();
+        const telefone = $("telefone").value.trim();
+        const bio = $("bio").value.trim();
+        const foto = $("foto").files[0] || null;
+
+        // Novos campos para Auth
+        const senha = $("senha").value;
+        const confirmar = $("confirmarSenha").value;
+
+        const servicos = servicosSelecionados();
+
+        // Validações básicas
+        if (!nome || !email || !cidade || !senha || !confirmar) {
+          alert("Preencha os campos obrigatórios (*)");
+          return;
+        }
+        if (senha !== confirmar) {
+          alert("A confirmação de senha não confere.");
+          return;
+        }
+
+        // 1) Criar conta no Authentication
+        const cred = await createUserWithEmailAndPassword(auth, email, senha);
+        const uid = cred.user.uid;
+
+        // 2) Upload da foto (opcional)
+        let fotoUrl = "";
+        if (foto) {
+          const caminho = `profissionais/${uid}/perfil_${Date.now()}_${foto.name}`;
+          const fileRef = ref(storage, caminho);
+          await uploadBytes(fileRef, foto);
+          fotoUrl = await getDownloadURL(fileRef);
+        }
+
+        // 3) Salvar perfil no Firestore (coleção 'profissionais', doc = UID)
+        await setDoc(doc(db, "profissionais", uid), {
           nome,
           email,
           telefone,
           cidade,
           bio,
-          servicos: servicosSelecionados,
-          criadoEm: serverTimestamp(),
-          fotoUrl: null,
+          servicos,
+          fotoUrl,
+          createdAt: serverTimestamp(),
+          status: "pendente",
         });
 
-        // 2️⃣ Upload da foto (se houver)
-        if (foto) {
-          const caminho = `manicures/${docRef.id}/${foto.name}`;
-          const arquivoRef = ref(storage, caminho);
-          await uploadBytes(arquivoRef, foto);
-          const url = await getDownloadURL(arquivoRef);
-
-          console.log("Foto salva em:", url);
-        }
+        // 4) (Opcional) sair do Auth após cadastrar
+        await signOut(auth);
 
         alert("✅ Cadastro enviado com sucesso!");
-        document.getElementById("cadastroForm").reset();
+        $("cadastroForm").reset();
       } catch (error) {
         console.error("Erro:", error);
         alert("❌ Não foi possível enviar o cadastro. Tente novamente.");
@@ -109,6 +134,7 @@
       }
     }
 
+    // Disponibiliza a função para o onsubmit do form
     window.enviarCadastro = enviarCadastro;
   </script>
 
@@ -120,7 +146,6 @@
       margin: 0;
       padding: 0;
     }
-
     .container {
       max-width: 600px;
       margin: 40px auto;
@@ -129,58 +154,37 @@
       padding: 30px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
-
-    h1 {
-      text-align: center;
-      color: #e91e63;
-    }
-
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-
+    h1 { text-align: center; color: #e91e63; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
     input, textarea {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      margin-top: 5px;
+      width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-top: 5px;
     }
-
     button {
-      background-color: #e91e63;
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 16px;
-      margin-top: 15px;
-      width: 100%;
+      background-color: #e91e63; color: white; border: none; padding: 12px 20px;
+      border-radius: 10px; cursor: pointer; font-size: 16px; margin-top: 15px; width: 100%;
     }
-
-    button:hover {
-      background-color: #d81b60;
-    }
-
-    .servicos {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 5px;
-    }
+    button:hover { background-color: #d81b60; }
+    .servicos { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .hint { font-size: 12px; color: #777; margin-top: 4px; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Cadastro de Profissional 💅</h1>
+
     <form id="cadastroForm" onsubmit="enviarCadastro(event)">
-      <label for="nome">Nome *</label>
+      <label for="nome">Nome completo *</label>
       <input id="nome" type="text" required />
 
       <label for="email">E-mail *</label>
       <input id="email" type="email" required />
+
+      <!-- Novos campos para criar a conta no Firebase Auth -->
+      <label for="senha">Senha *</label>
+      <input id="senha" type="password" required />
+
+      <label for="confirmarSenha">Confirmar senha *</label>
+      <input id="confirmarSenha" type="password" required />
 
       <label for="telefone">Telefone / WhatsApp</label>
       <input id="telefone" type="text" />
@@ -204,6 +208,7 @@
 
       <label for="foto">Foto de perfil</label>
       <input id="foto" type="file" accept="image/*" />
+      <div class="hint">Use uma imagem pequena (até 5 MB).</div>
 
       <button id="enviar" type="submit">Cadastrar profissional</button>
     </form>
