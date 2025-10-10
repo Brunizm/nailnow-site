@@ -29,12 +29,39 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    // Utilidades
-    const $ = (id) => document.getElementById(id);
-    const servicosSelecionados = () =>
-      Array.from(document.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
+    function removeFieldByLabelText(form, labelText) {
+      if (!form) return;
 
-    // Envio do formulário
+      const labels = Array.from(form.querySelectorAll("label"));
+      for (const label of labels) {
+        const text = label.textContent?.trim();
+
+        if (text && text.startsWith(labelText)) {
+          const wrapper = label.closest(".signup-field");
+
+          if (wrapper) {
+            wrapper.remove();
+            break;
+          }
+
+          const field = label.nextElementSibling;
+
+          if (field && ["INPUT", "TEXTAREA", "SELECT"].includes(field.tagName)) {
+            field.remove();
+          }
+
+          label.remove();
+          break;
+        }
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("cadastroForm");
+      removeFieldByLabelText(form, "Certidão de Antecedentes Criminais");
+    });
+
+    // Função principal de envio
     async function enviarCadastro(event) {
       event.preventDefault();
 
