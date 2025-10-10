@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cadastro de Manicure | NailNow 💅</title>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase + integração do formulário -->
   <script type="module">
-    // Importar SDKs Firebase (v10 modular)
+    // SDKs Firebase (v10 modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    // 🔧 Configuração do seu projeto Firebase
+    // 🔧 Config do seu projeto
     const firebaseConfig = {
       apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
       authDomain: "nailnow-site.firebaseapp.com",
@@ -23,57 +23,59 @@
       appId: "1:726392294571:web:a363a40231f7ac162e7bee",
     };
 
-    // Inicializar Firebase
+    // Inicializa Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    // 🔹 Função auxiliar
+    // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
+
+    // Garante que o elemento existe e retorna; senão, alerta qual id faltou
+    function must(id) {
+      const el = document.getElementById(id);
+      if (!el) {
+        alert(`Elemento com id="${id}" não encontrado no HTML`);
+        throw new Error(`missing #${id}`);
+      }
+      return el;
+    }
+
     const servicosSelecionados = () =>
       Array.from(document.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
 
-    // 🔹 Função principal de envio
+    // ---------- Submit ----------
     async function enviarCadastro(event) {
       event.preventDefault();
       console.log(">> enviarCadastro DISPAROU");
 
-      const botao = $("enviar");
+      const botao = must("enviar");
       botao.disabled = true;
       botao.innerText = "Enviando...";
 
       try {
-        // 1️⃣ Verifica campos obrigatórios
-        const fields = {
-          nome: $("nome"),
-          email: $("email"),
-          senha: $("senha"),
-          confirmarSenha: $("confirmarSenha"),
-          telefone: $("telefone"),
-          cidade: $("cidade"),
-          bio: $("bio"),
-          foto: $("foto"),
-        };
+        // 1) Referências (avisam qual id está faltando)
+        const nomeEl = must("nome");
+        const emailEl = must("email");
+        const senhaEl = must("senha");
+        const confirmarEl = must("confirmarSenha");
+        const telefoneEl = must("telefone");
+        const cidadeEl = must("cidade");
+        const bioEl = must("bio");
+        const fotoEl = must("foto");
 
-        const missing = Object.entries(fields).filter(([k, el]) => !el).map(([k]) => k);
-        if (missing.length) {
-          alert("Faltando campo(s) no HTML com id: " + missing.join(", "));
-          console.warn("IDs ausentes:", missing);
-          return;
-        }
+        // 2) Valores
+        const nome = nomeEl.value.trim();
+        const email = emailEl.value.trim().toLowerCase();
+        const senha = senhaEl.value;
+        const confirmar = confirmarEl.value;
+        const telefone = telefoneEl.value.trim();
+        const cidade = cidadeEl.value.trim();
+        const bio = bioEl.value.trim();
+        const foto = fotoEl.files?.[0] || null;
 
-        // 2️⃣ Pegar valores
-        const nome = fields.nome.value.trim();
-        const email = fields.email.value.trim().toLowerCase();
-        const senha = fields.senha.value;
-        const confirmar = fields.confirmarSenha.value;
-        const telefone = fields.telefone.value.trim();
-        const cidade = fields.cidade.value.trim();
-        const bio = fields.bio.value.trim();
-        const foto = fields.foto.files?.[0] || null;
-
-        // 3️⃣ Validações básicas
+        // 3) Validações simples
         if (!nome || !email || !senha || !confirmar || !cidade) {
           alert("Preencha os campos obrigatórios (*)");
           return;
@@ -83,24 +85,25 @@
           return;
         }
 
-        console.log(">> Criando usuário no Auth...");
+        // 4) Criar usuário
+        console.log(">> Criando usuário no Auth…");
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
         const uid = cred.user.uid;
-        console.log("Auth OK, uid:", uid);
+        console.log(">> Auth OK, uid:", uid);
 
-        // 4️⃣ Upload da foto (opcional)
+        // 5) Upload da foto (opcional)
         let fotoUrl = "";
         if (foto) {
-          console.log(">> Subindo foto...");
+          console.log(">> Subindo foto…");
           const caminho = `profissionais/${uid}/perfil_${Date.now()}_${foto.name}`;
           const fileRef = ref(storage, caminho);
           await uploadBytes(fileRef, foto);
           fotoUrl = await getDownloadURL(fileRef);
-          console.log("Foto salva:", fotoUrl);
+          console.log(">> Foto URL:", fotoUrl);
         }
 
-        // 5️⃣ Salvar dados no Firestore
-        console.log(">> Gravando no Firestore...");
+        // 6) Salvar no Firestore
+        console.log(">> Gravando no Firestore…");
         await setDoc(doc(db, "profissionais", uid), {
           nome,
           email,
@@ -112,8 +115,9 @@
           createdAt: serverTimestamp(),
           status: "pendente",
         });
+        console.log(">> Firestore OK");
 
-        console.log("Firestore OK!");
+        // 7) Sair (opcional)
         await signOut(auth);
 
         alert("✅ Cadastro enviado com sucesso!");
@@ -127,12 +131,14 @@
       }
     }
 
-    // 🔹 Ativa o listener do formulário
+    // Conectar o listener ao form (sem inline)
     document.addEventListener("DOMContentLoaded", () => {
       const form = $("cadastroForm");
       if (form) {
         form.addEventListener("submit", enviarCadastro);
         console.log(">> Listener conectado ao form");
+      } else {
+        console.warn("Form #cadastroForm não encontrado");
       }
     });
   </script>
@@ -151,18 +157,27 @@
       background: #fff0f6;
       border-radius: 20px;
       padding: 30px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
     h1 { text-align: center; color: #e91e63; }
     label { display: block; margin-top: 10px; font-weight: bold; }
     input, textarea {
-      width: 100%; padding: 10px; border: 1px solid #ddd;
-      border-radius: 8px; margin-top: 5px;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-top: 5px;
     }
     button {
-      background-color: #e91e63; color: white; border: none;
-      padding: 12px 20px; border-radius: 10px; cursor: pointer;
-      font-size: 16px; margin-top: 15px; width: 100%;
+      background-color: #e91e63;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 15px;
+      width: 100%;
     }
     button:hover { background-color: #d81b60; }
     .servicos { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
