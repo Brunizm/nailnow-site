@@ -1,349 +1,254 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Formulário de cadastro de profissional para manicures oferecerem serviços de unha na plataforma NailNow."
-    />
-    <title>Cadastro de Manicure | NailNow</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Formulário de cadastro de profissional para manicures oferecerem serviços de unha na plataforma NailNow." />
+  <title>Cadastro de Manicure | NailNow</title>
 
-    <!-- Fonts & CSS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="../styles.css" />
+  <!-- Fonts & CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css" />
 
-    <style>
-      .signup-container {
-        max-width: 720px;
-        margin: 4rem auto;
-        padding: 0 1.5rem 4rem;
-      }
-      .signup-card {
-        background: #fff0f6;
-        border-radius: 24px;
-        padding: 2.5rem 2rem;
-        box-shadow: 0 18px 40px -20px rgba(233, 30, 99, 0.35);
-      }
-      .signup-card h1 {
-        font-family: "Playfair Display", serif;
-        font-weight: 600;
-        font-size: 2.25rem;
-        text-align: center;
-        color: #e91e63;
-        margin-bottom: 1.5rem;
-      }
-      .signup-card p {
-        text-align: center;
-        color: #5a5a5a;
-        margin: 0 0 2rem;
-      }
-      .signup-field {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-bottom: 1.25rem;
-      }
-      .signup-field label {
-        font-weight: 600;
-        color: #3d3d3d;
-      }
-      .signup-field input,
-      .signup-field textarea {
-        padding: 0.75rem 1rem;
-        border-radius: 0.75rem;
-        border: 1px solid #e3e3e3;
-        font-size: 1rem;
-        font-family: "Inter", sans-serif;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        background-color: #fff;
-      }
-      .signup-field input:focus,
-      .signup-field textarea:focus {
-        outline: none;
-        border-color: #e91e63;
-        box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.15);
-      }
-      .services-grid {
-        display: grid;
-        gap: 0.75rem 1rem;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        margin-top: 0.5rem;
-      }
-      .services-grid label {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 500;
-        color: #4a4a4a;
-      }
-      .signup-submit {
-        width: 100%;
-        margin-top: 1rem;
-        border: 0;
-        border-radius: 999px;
-        background: linear-gradient(135deg, #f06292, #e91e63);
-        color: #fff;
-        font-weight: 600;
-        font-size: 1.05rem;
-        padding: 0.95rem 1.25rem;
-        cursor: pointer;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-      }
-      .signup-submit:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      .signup-submit:not(:disabled):hover {
-        transform: translateY(-2px);
-        box-shadow: 0 16px 30px -20px rgba(233, 30, 99, 0.6);
-      }
-      .signup-feedback {
-        margin-top: 1rem;
-        text-align: center;
-        font-weight: 500;
-      }
-      @media (max-width: 640px) {
-        .signup-card { padding: 2rem 1.25rem; }
-        .signup-card h1 { font-size: 1.75rem; }
-      }
-    </style>
+  <style>
+    .signup-container { max-width: 720px; margin: 4rem auto; padding: 0 1.5rem 4rem; }
+    .signup-card { background: #fff0f6; border-radius: 24px; padding: 2.5rem 2rem; box-shadow: 0 18px 40px -20px rgba(233, 30, 99, 0.35); }
+    .signup-card h1 { font-family: "Playfair Display", serif; font-weight: 600; font-size: 2.25rem; text-align: center; color: #e91e63; margin-bottom: 1.5rem; }
+    .signup-card p { text-align: center; color: #5a5a5a; margin: 0 0 2rem; }
+    .signup-field { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; }
+    .signup-field label { font-weight: 600; color: #3d3d3d; }
+    .signup-field input, .signup-field textarea {
+      padding: 0.75rem 1rem; border-radius: 0.75rem; border: 1px solid #e3e3e3; font-size: 1rem; font-family: "Inter", sans-serif;
+      transition: border-color .2s ease, box-shadow .2s ease; background-color: #fff;
+    }
+    .signup-field input:focus, .signup-field textarea:focus { outline: none; border-color: #e91e63; box-shadow: 0 0 0 4px rgba(233,30,99,.15); }
+    .services-grid { display: grid; gap: .75rem 1rem; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); margin-top: .5rem; }
+    .services-grid label { display: flex; align-items: center; gap: .5rem; font-weight: 500; color: #4a4a4a; }
+    .signup-submit { width: 100%; margin-top: 1rem; border: 0; border-radius: 999px; background: linear-gradient(135deg,#f06292,#e91e63);
+      color: #fff; font-weight: 600; font-size: 1.05rem; padding: .95rem 1.25rem; cursor: pointer; transition: transform .2s, box-shadow .2s; }
+    .signup-submit:disabled { opacity:.6; cursor:not-allowed; }
+    .signup-submit:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 16px 30px -20px rgba(233,30,99,.6); }
+    .signup-feedback { margin-top: 1rem; text-align: center; font-weight: 500; }
+    /* Rodapé simples (usa as mesmas fontes/cores do site) */
+    .site-footer { background:#fff; border-top:1px solid #f1c6d6; margin-top:3rem; }
+    .site-footer .inner { max-width: 1100px; margin:0 auto; padding:1.25rem 1rem; display:flex; flex-wrap:wrap; gap:1rem; justify-content:space-between; align-items:center; }
+    .site-footer .links a { margin-right:1rem; color:#e91e63; text-decoration:none; }
+    .site-footer .links a:hover { text-decoration:underline; }
+  </style>
 
-    <!-- Firebase + integração do formulário -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import {
-        getFirestore,
-        collection,
-        addDoc,
-        serverTimestamp,
-        updateDoc,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-      import {
-        getStorage,
-        ref,
-        uploadBytes,
-        getDownloadURL,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-      // ✅ CONFIG CORRETA
-      const firebaseConfig = {
-        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
-        authDomain: "nailnow-site.firebaseapp.com",
-        projectId: "nailnow-site",
-        storageBucket: "nailnow-site.appspot.com", // correto
-        messagingSenderId: "726392294571",
-        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
-      };
+    // Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+      authDomain: "nailnow-site.firebaseapp.com",
+      projectId: "nailnow-site",
+      storageBucket: "nailnow-site.appspot.com",
+      messagingSenderId: "726392294571",
+      appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+    };
 
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      const storage = getStorage(app);
-      const auth = getAuth(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
 
-      async function enviarCadastro(event) {
-        event.preventDefault();
+    async function enviarCadastro(e) {
+      e.preventDefault();
+      const form = e.target;
+      const btn = form.querySelector("button[type='submit']");
+      const feedback = document.getElementById("signup-feedback");
+      feedback.textContent = "";
+      feedback.style.color = "";
 
-        const form = event.target;
-        const botao = form.querySelector("button[type='submit']");
-        const feedback = document.getElementById("signup-feedback");
+      try {
+        const nome = form.nome.value.trim();
+        const cpf = form.cpf.value.trim();
+        const email = form.email.value.trim().toLowerCase();
+        const senha = form.senha.value;
+        const confirmar = form.confirmarSenha.value;
+        const telefone = form.telefone.value.trim();
+        const endereco = form.endereco.value.trim();
+        const cidade = form.cidade.value.trim();
+        const bio = form.bio.value.trim();
+        const foto = form.foto.files[0] || null;
+        const servicos = Array.from(form.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
 
-        try {
-          // 🔹 Autentica anonimamente (compatível com regras: request.auth != null)
-          await signInAnonymously(auth);
-          console.log("Auth anônimo OK:", auth.currentUser?.uid);
-
-          const nome = form.nome.value.trim();
-          const cpf = form.cpf.value.trim();
-          const email = form.email.value.trim();
-          const senha = form.senha.value.trim();
-          const confirmarSenha = form.confirmarSenha.value.trim();
-          const endereco = form.endereco.value.trim();
-          const cidade = form.cidade.value.trim();
-          const telefone = form.telefone.value.trim();
-          const bio = form.bio.value.trim();
-          const foto = form.foto.files[0];
-          const servicosSelecionados = Array.from(
-            form.querySelectorAll('input[name="servicos"]:checked')
-          ).map((el) => el.value);
-
-          if (senha !== confirmarSenha) {
-            feedback.textContent = "❌ As senhas não coincidem. Verifique e tente novamente.";
-            feedback.style.color = "#c62828";
-            form.confirmarSenha.focus();
-            return;
-          }
-
-          botao.disabled = true;
-          botao.textContent = "Enviando...";
-          feedback.textContent = "";
-
-          // 🔹 Salva o documento no Firestore
-          const docRef = await addDoc(collection(db, "manicures"), {
-            nome,
-            cpf,
-            email,
-            senha,
-            telefone,
-            endereco,
-            cidade,
-            bio,
-            servicos: servicosSelecionados,
-            criadoEm: serverTimestamp(),
-            fotoUrl: null,
-          });
-
-          // 🔹 Upload de foto (opcional)
-          if (foto) {
-            const caminho = `manicures/${docRef.id}/${foto.name}`;
-            const arquivoRef = ref(storage, caminho);
-            await uploadBytes(arquivoRef, foto);
-            const url = await getDownloadURL(arquivoRef);
-            await updateDoc(docRef, { fotoUrl: url });
-          }
-
-          feedback.textContent = "✅ Cadastro enviado com sucesso!";
-          feedback.style.color = "#2e7d32";
-          form.reset();
-        } catch (error) {
-          console.error("Erro ao enviar cadastro:", error);
-          feedback.textContent = `❌ Erro: ${error.code || error.message}`;
+        if (!nome || !cpf || !email || !senha || !confirmar || !cidade) {
+          feedback.textContent = "Preencha os campos obrigatórios (*).";
           feedback.style.color = "#c62828";
-        } finally {
-          botao.disabled = false;
-          botao.textContent = "Cadastrar profissional";
+          return;
         }
+        if (senha !== confirmar) {
+          feedback.textContent = "As senhas não coincidem.";
+          feedback.style.color = "#c62828";
+          form.confirmarSenha.focus();
+          return;
+        }
+
+        btn.disabled = true; btn.textContent = "Criando conta…";
+
+        // 1) Cria a CONTA (Auth)
+        const cred = await createUserWithEmailAndPassword(auth, email, senha);
+        const uid = cred.user.uid;
+
+        // 2) Upload da foto (opcional)
+        let fotoUrl = null;
+        if (foto) {
+          const caminho = `profissionais/${uid}/perfil_${Date.now()}_${foto.name}`;
+          const fileRef = ref(storage, caminho);
+          await uploadBytes(fileRef, foto);
+          fotoUrl = await getDownloadURL(fileRef);
+        }
+
+        // 3) Salva o PERFIL no Firestore (sem senha)
+        await setDoc(doc(db, "profissionais", uid), {
+          uid,
+          nome,
+          cpf,
+          email,
+          telefone,
+          endereco,
+          cidade,
+          bio,
+          servicos,
+          fotoUrl,
+          status: "pendente",
+          criadoEm: serverTimestamp(),
+        });
+
+        feedback.textContent = "✅ Cadastro criado com sucesso!";
+        feedback.style.color = "#2e7d32";
+        form.reset();
+      } catch (err) {
+        console.error(err);
+        const code = err?.code || "erro-desconhecido";
+        const msg  = err?.message || "";
+        feedback.textContent = `❌ Erro: ${code}`;
+        feedback.style.color = "#c62828";
+      } finally {
+        btn.disabled = false; btn.textContent = "Cadastrar profissional";
       }
+    }
 
-      // Mantemos o onsubmit no HTML:
-      window.enviarCadastro = enviarCadastro;
-    </script>
-  </head>
+    // onsubmit (HTML usa window.enviarCadastro)
+    window.enviarCadastro = enviarCadastro;
+  </script>
+</head>
 
-  <body>
-    <!-- 🔹 Mantém sua estrutura de header/navegação -->
-    <header class="site-header">
-      <div class="header-inner">
-        <a href="../index.html" class="brand-mark" aria-label="Início da NailNow">NailNow</a>
-        <div class="header-navigation">
-          <nav class="primary-nav" aria-label="Principal">
-            <a href="../index.html" class="nav-link">Home</a>
-            <a href="../como-funciona.html" class="nav-link">Como funciona</a>
-            <a href="../servicos.html" class="nav-link">Serviços</a>
-            <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
-          </nav>
-          <div class="header-actions">
-            <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Manicure</a>
-            <a
-              class="social-link social-link--instagram"
-              href="https://www.instagram.com/nailnowbr/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Instagram da NailNow"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"
-                />
-              </svg>
-            </a>
-          </div>
+<body>
+  <!-- Header / nav do site -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="../index.html" class="brand-mark" aria-label="Início da NailNow">NailNow</a>
+      <div class="header-navigation">
+        <nav class="primary-nav" aria-label="Principal">
+          <a href="../index.html" class="nav-link">Home</a>
+          <a href="../como-funciona.html" class="nav-link">Como funciona</a>
+          <a href="../servicos.html" class="nav-link">Serviços</a>
+          <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
+        </nav>
+        <div class="header-actions">
+          <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
+          <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Manicure</a>
+          <a class="social-link social-link--instagram" href="https://www.instagram.com/nailnowbr/" target="_blank" rel="noopener noreferrer" aria-label="Instagram da NailNow">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"/></svg>
+          </a>
         </div>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <main class="signup-container">
-      <section class="signup-card" aria-labelledby="cadastro-profissional">
-        <h1 id="cadastro-profissional">Cadastro de Profissional 💅</h1>
-        <p>Preencha seus dados para receber convites de atendimento pela NailNow.</p>
+  <main class="signup-container">
+    <section class="signup-card" aria-labelledby="cadastro-profissional">
+      <h1 id="cadastro-profissional">Cadastro de Profissional 💅</h1>
+      <p>Preencha seus dados para receber convites de atendimento pela NailNow.</p>
 
-        <form id="cadastroForm" onsubmit="enviarCadastro(event)">
-          <div class="signup-field">
-            <label for="nome">Nome completo *</label>
-            <input id="nome" name="nome" type="text" required />
+      <form id="cadastroForm" onsubmit="enviarCadastro(event)">
+        <div class="signup-field">
+          <label for="nome">Nome completo *</label>
+          <input id="nome" name="nome" type="text" required />
+        </div>
+
+        <div class="signup-field">
+          <label for="cpf">CPF *</label>
+          <input id="cpf" name="cpf" type="text" inputmode="numeric" pattern="[0-9]{11}" placeholder="Somente números" required />
+        </div>
+
+        <div class="signup-field">
+          <label for="email">E-mail *</label>
+          <input id="email" name="email" type="email" required />
+        </div>
+
+        <div class="signup-field">
+          <label for="senha">Senha *</label>
+          <input id="senha" name="senha" type="password" minlength="6" required />
+        </div>
+
+        <div class="signup-field">
+          <label for="confirmarSenha">Confirmar senha *</label>
+          <input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required />
+        </div>
+
+        <div class="signup-field">
+          <label for="telefone">Telefone / WhatsApp</label>
+          <input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-0000" />
+        </div>
+
+        <div class="signup-field">
+          <label for="endereco">Endereço *</label>
+          <input id="endereco" name="endereco" type="text" required />
+        </div>
+
+        <div class="signup-field">
+          <label for="cidade">Cidade *</label>
+          <input id="cidade" name="cidade" type="text" required />
+        </div>
+
+        <div class="signup-field">
+          <span>Serviços oferecidos</span>
+          <div class="services-grid">
+            <label><input type="checkbox" name="servicos" value="Manicure clássica" /> Manicure clássica</label>
+            <label><input type="checkbox" name="servicos" value="Pedicure clássica" /> Pedicure clássica</label>
+            <label><input type="checkbox" name="servicos" value="Alongamento em gel" /> Alongamento em gel</label>
+            <label><input type="checkbox" name="servicos" value="Esmaltação em gel (manicure)" /> Esmaltação em gel (manicure)</label>
+            <label><input type="checkbox" name="servicos" value="Esmaltação em gel (pedicure)" /> Esmaltação em gel (pedicure)</label>
           </div>
+        </div>
 
-          <div class="signup-field">
-            <label for="cpf">CPF *</label>
-            <input
-              id="cpf"
-              name="cpf"
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]{11}"
-              placeholder="Somente números"
-              required
-            />
-          </div>
+        <div class="signup-field">
+          <label for="bio">Sobre você</label>
+          <textarea id="bio" name="bio" rows="3" placeholder="Ex: 5 anos de experiência, especializada em gel..."></textarea>
+        </div>
 
-          <div class="signup-field">
-            <label for="email">E-mail *</label>
-            <input id="email" name="email" type="email" required />
-          </div>
+        <div class="signup-field">
+          <label for="foto">Foto de perfil</label>
+          <input id="foto" name="foto" type="file" accept="image/*" />
+        </div>
 
-          <div class="signup-field">
-            <label for="senha">Senha *</label>
-            <input id="senha" name="senha" type="password" minlength="6" required />
-          </div>
+        <button id="enviar" class="signup-submit" type="submit">Cadastrar profissional</button>
+        <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
 
-          <div class="signup-field">
-            <label for="confirmarSenha">Confirmar senha *</label>
-            <input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required />
-          </div>
-
-          <div class="signup-field">
-            <label for="telefone">Telefone / WhatsApp</label>
-            <input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-0000" />
-          </div>
-
-          <div class="signup-field">
-            <label for="endereco">Endereço *</label>
-            <input id="endereco" name="endereco" type="text" required />
-          </div>
-
-          <div class="signup-field">
-            <label for="cidade">Cidade *</label>
-            <input id="cidade" name="cidade" type="text" required />
-          </div>
-
-          <div class="signup-field">
-            <span>Serviços oferecidos</span>
-            <div class="services-grid">
-              <label><input type="checkbox" name="servicos" value="Manicure clássica" /> Manicure clássica</label>
-              <label><input type="checkbox" name="servicos" value="Pedicure clássica" /> Pedicure clássica</label>
-              <label><input type="checkbox" name="servicos" value="Alongamento em gel" /> Alongamento em gel</label>
-              <label>
-                <input type="checkbox" name="servicos" value="Esmaltação em gel (manicure)" />
-                Esmaltação em gel (manicure)
-              </label>
-              <label>
-                <input type="checkbox" name="servicos" value="Esmaltação em gel (pedicure)" />
-                Esmaltação em gel (pedicure)
-              </label>
-            </div>
-          </div>
-
-          <div class="signup-field">
-            <label for="bio">Sobre você</label>
-            <textarea id="bio" name="bio" rows="3" placeholder="Ex: 5 anos de experiência, especializada em gel..."></textarea>
-          </div>
-
-          <div class="signup-field">
-            <label for="foto">Foto de perfil</label>
-            <input id="foto" name="foto" type="file" accept="image/*" />
-          </div>
-
-          <button id="enviar" class="signup-submit" type="submit">Cadastrar profissional</button>
-          <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
-        </form>
-      </section>
-    </main>
-  </body>
+  <!-- Rodapé -->
+  <footer class="site-footer">
+    <div class="inner">
+      <div>© NailNow</div>
+      <div class="links">
+        <a href="../quem-somos.html">Quem somos</a>
+        <a href="../servicos.html">Serviços</a>
+        <a href="https://www.instagram.com/nailnowbr/" target="_blank" rel="noopener">Instagram</a>
+      </div>
+    </div>
+  </footer>
+</body>
 </html>
