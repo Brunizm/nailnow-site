@@ -18,7 +18,7 @@
       apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
       authDomain: "nailnow-site.firebaseapp.com",
       projectId: "nailnow-site",
-      storageBucket: "nailnow-site.firebasestorage.app",
+      storageBucket: "nailnow-site.appspot.com", // ✅ corrigido (era .firebasestorage.app)
       messagingSenderId: "726392294571",
       appId: "1:726392294571:web:a363a40231f7ac162e7bee",
     };
@@ -132,13 +132,15 @@
         $("cadastroForm").reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
-        alert(`❌ Erro ao cadastrar:\n${error.code || ""}\n${error.message || ""}`);
+        alert(`❌ Erro ao cadastrar:
+${error.code || ""}
+${error.message || ""}`);
       } finally {
         if (botao) { botao.disabled = false; botao.innerText = "Cadastrar profissional"; }
       }
     }
 
-    // Duplo binding do submit: inline no HTML e via listener
+    // Conecta o listener no DOMContentLoaded (e removemos o inline onsubmit)
     document.addEventListener("DOMContentLoaded", () => {
       const form = $("cadastroForm");
       if (form) {
@@ -168,8 +170,7 @@
   <div class="container">
     <h1>Cadastro de Profissional 💅</h1>
 
-    <!-- inline onsubmit para garantir o disparo mesmo se o listener falhar -->
-    <form id="cadastroForm" onsubmit="enviarCadastro(event)">
+    <form id="cadastroForm">
       <label for="nome">Nome completo *</label>
       <input id="nome" type="text" required />
 
@@ -204,7 +205,8 @@
 
       <label for="foto">Foto de perfil</label>
       <input id="foto" type="file" accept="image/*" />
-      <div class="hint">Use uma imagem pequena (até 5 MB).</div>
+      <div class="hint">Use uma imagem pequena (até 5 MB).
+      </div>
 
       <button id="enviar" type="submit">Cadastrar profissional</button>
     </form>
