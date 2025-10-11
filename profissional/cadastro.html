@@ -45,7 +45,7 @@
     import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    // Config
+    // Configuração Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
       authDomain: "nailnow-site.firebaseapp.com",
@@ -252,5 +252,37 @@
 
   <!-- PASSO 2: Google Maps (Places) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
+
+  <!-- PASSO 3: Autocomplete -->
+  <script>
+    window.initEnderecoAutocomplete = function () {
+      const input = document.getElementById("endereco");
+      if (!input || !window.google || !google.maps?.places) return;
+
+      const ac = new google.maps.places.Autocomplete(input, {
+        types: ["geocode"],
+        componentRestrictions: { country: "br" },
+        fields: ["formatted_address", "place_id", "geometry"]
+      });
+
+      ac.addListener("place_changed", () => {
+        const place = ac.getPlace();
+        const loc = place.geometry?.location;
+        console.log("Endereço escolhido:",
+          place.formatted_address,
+          "place_id:", place.place_id,
+          "lat:", loc?.lat(), "lng:", loc?.lng()
+        );
+      });
+    };
+
+    window.addEventListener("load", () => {
+      const tryInit = () => {
+        if (window.google && google.maps?.places) window.initEnderecoAutocomplete();
+        else setTimeout(tryInit, 300);
+      };
+      tryInit();
+    });
+  </script>
 </body>
 </html>
