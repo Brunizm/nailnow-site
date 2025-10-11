@@ -130,7 +130,6 @@
       } catch (err) {
         console.error(err);
         const code = err?.code || "erro-desconhecido";
-        const msg  = err?.message || "";
         feedback.textContent = `❌ Erro: ${code}`;
         feedback.style.color = "#c62828";
       } finally {
@@ -250,5 +249,8 @@
       </div>
     </div>
   </footer>
+
+  <!-- PASSO 2: Google Maps (Places) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
 </body>
 </html>
