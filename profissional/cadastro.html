@@ -25,11 +25,11 @@
       .signup-card p { text-align: center; color: #5a5a5a; margin: 0 0 2rem; }
       .signup-field { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; }
       .signup-field label { font-weight: 600; color: #3d3d3d; }
-      .signup-field input, .signup-field textarea, .signup-field select {
+      .signup-field input, .signup-field textarea {
         padding: 0.75rem 1rem; border-radius: 0.75rem; border: 1px solid #e3e3e3; font-size: 1rem; font-family: "Inter", sans-serif;
         transition: border-color 0.2s ease, box-shadow 0.2s ease; background-color: #fff;
       }
-      .signup-field input:focus, .signup-field textarea:focus, .signup-field select:focus {
+      .signup-field input:focus, .signup-field textarea:focus {
         outline: none; border-color: #e91e63; box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.15);
       }
       .services-grid { display: grid; gap: 0.75rem 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 0.5rem; }
@@ -39,7 +39,6 @@
       .signup-submit:disabled { opacity: 0.6; cursor: not-allowed; }
       .signup-submit:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 16px 30px -20px rgba(233, 30, 99, 0.6); }
       .signup-feedback { margin-top: 1rem; text-align: center; font-weight: 500; }
-      @media (max-width: 640px) { .signup-card { padding: 2rem 1.25rem; } .signup-card h1 { font-size: 1.75rem; } }
     </style>
 
     <!-- Firebase + integração do formulário -->
@@ -54,7 +53,7 @@
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
         authDomain: "nailnow-site.firebaseapp.com",
         projectId: "nailnow-site",
-        storageBucket: "nailnow-site.appspot.com", // corrigido
+        storageBucket: "nailnow-site.appspot.com",
         messagingSenderId: "726392294571",
         appId: "1:726392294571:web:a363a40231f7ac162e7bee",
       };
@@ -71,7 +70,7 @@
         const feedback = document.getElementById("signup-feedback");
 
         try {
-          // 🔹 Garante autenticação anônima antes de escrever
+          // 🔹 Autentica anonimamente antes de salvar
           await signInAnonymously(auth);
           console.log("Auth anônimo OK:", auth.currentUser?.uid);
 
@@ -80,7 +79,6 @@
           const email = form.email.value.trim();
           const senha = form.senha.value.trim();
           const confirmarSenha = form.confirmarSenha.value.trim();
-          const certidao = form.certidao.value.trim();
           const endereco = form.endereco.value.trim();
           const cidade = form.cidade.value.trim();
           const telefone = form.telefone.value.trim();
@@ -100,13 +98,11 @@
           botao.textContent = "Enviando...";
           feedback.textContent = "";
 
-          // 🔹 Salva o documento no Firestore
           const docRef = await addDoc(collection(db, "manicures"), {
             nome,
             cpf,
             email,
             senha,
-            certidao,
             telefone,
             endereco,
             cidade,
@@ -116,7 +112,6 @@
             fotoUrl: null,
           });
 
-          // 🔹 Upload de foto (opcional)
           if (foto) {
             const caminho = `manicures/${docRef.id}/${foto.name}`;
             const arquivoRef = ref(storage, caminho);
@@ -172,11 +167,6 @@
           <div class="signup-field">
             <label for="confirmarSenha">Confirmar senha *</label>
             <input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required />
-          </div>
-
-          <div class="signup-field">
-            <label for="certidao">Certidão de Antecedentes Criminais *</label>
-            <input id="certidao" name="certidao" type="url" placeholder="Cole o link do comprovante em PDF" required />
           </div>
 
           <div class="signup-field">
