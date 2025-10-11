@@ -19,41 +19,125 @@
     <link rel="stylesheet" href="../styles.css" />
 
     <style>
-      .signup-container { max-width: 720px; margin: 4rem auto; padding: 0 1.5rem 4rem; }
-      .signup-card { background: #fff0f6; border-radius: 24px; padding: 2.5rem 2rem; box-shadow: 0 18px 40px -20px rgba(233, 30, 99, 0.35); }
-      .signup-card h1 { font-family: "Playfair Display", serif; font-weight: 600; font-size: 2.25rem; text-align: center; color: #e91e63; margin-bottom: 1.5rem; }
-      .signup-card p { text-align: center; color: #5a5a5a; margin: 0 0 2rem; }
-      .signup-field { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; }
-      .signup-field label { font-weight: 600; color: #3d3d3d; }
-      .signup-field input, .signup-field textarea {
-        padding: 0.75rem 1rem; border-radius: 0.75rem; border: 1px solid #e3e3e3; font-size: 1rem; font-family: "Inter", sans-serif;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease; background-color: #fff;
+      .signup-container {
+        max-width: 720px;
+        margin: 4rem auto;
+        padding: 0 1.5rem 4rem;
       }
-      .signup-field input:focus, .signup-field textarea:focus {
-        outline: none; border-color: #e91e63; box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.15);
+      .signup-card {
+        background: #fff0f6;
+        border-radius: 24px;
+        padding: 2.5rem 2rem;
+        box-shadow: 0 18px 40px -20px rgba(233, 30, 99, 0.35);
       }
-      .services-grid { display: grid; gap: 0.75rem 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 0.5rem; }
-      .services-grid label { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; color: #4a4a4a; }
-      .signup-submit { width: 100%; margin-top: 1rem; border: 0; border-radius: 999px; background: linear-gradient(135deg, #f06292, #e91e63);
-        color: #fff; font-weight: 600; font-size: 1.05rem; padding: 0.95rem 1.25rem; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-      .signup-submit:disabled { opacity: 0.6; cursor: not-allowed; }
-      .signup-submit:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 16px 30px -20px rgba(233, 30, 99, 0.6); }
-      .signup-feedback { margin-top: 1rem; text-align: center; font-weight: 500; }
+      .signup-card h1 {
+        font-family: "Playfair Display", serif;
+        font-weight: 600;
+        font-size: 2.25rem;
+        text-align: center;
+        color: #e91e63;
+        margin-bottom: 1.5rem;
+      }
+      .signup-card p {
+        text-align: center;
+        color: #5a5a5a;
+        margin: 0 0 2rem;
+      }
+      .signup-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+      }
+      .signup-field label {
+        font-weight: 600;
+        color: #3d3d3d;
+      }
+      .signup-field input,
+      .signup-field textarea {
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e3e3e3;
+        font-size: 1rem;
+        font-family: "Inter", sans-serif;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background-color: #fff;
+      }
+      .signup-field input:focus,
+      .signup-field textarea:focus {
+        outline: none;
+        border-color: #e91e63;
+        box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.15);
+      }
+      .services-grid {
+        display: grid;
+        gap: 0.75rem 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-top: 0.5rem;
+      }
+      .services-grid label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+        color: #4a4a4a;
+      }
+      .signup-submit {
+        width: 100%;
+        margin-top: 1rem;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #f06292, #e91e63);
+        color: #fff;
+        font-weight: 600;
+        font-size: 1.05rem;
+        padding: 0.95rem 1.25rem;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .signup-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .signup-submit:not(:disabled):hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 30px -20px rgba(233, 30, 99, 0.6);
+      }
+      .signup-feedback {
+        margin-top: 1rem;
+        text-align: center;
+        font-weight: 500;
+      }
+      @media (max-width: 640px) {
+        .signup-card { padding: 2rem 1.25rem; }
+        .signup-card h1 { font-size: 1.75rem; }
+      }
     </style>
 
     <!-- Firebase + integração do formulário -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import { getFirestore, collection, addDoc, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-      import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        serverTimestamp,
+        updateDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getStorage,
+        ref,
+        uploadBytes,
+        getDownloadURL,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
       // ✅ CONFIG CORRETA
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
         authDomain: "nailnow-site.firebaseapp.com",
         projectId: "nailnow-site",
-        storageBucket: "nailnow-site.appspot.com",
+        storageBucket: "nailnow-site.appspot.com", // correto
         messagingSenderId: "726392294571",
         appId: "1:726392294571:web:a363a40231f7ac162e7bee",
       };
@@ -65,12 +149,13 @@
 
       async function enviarCadastro(event) {
         event.preventDefault();
+
         const form = event.target;
         const botao = form.querySelector("button[type='submit']");
         const feedback = document.getElementById("signup-feedback");
 
         try {
-          // 🔹 Autentica anonimamente antes de salvar
+          // 🔹 Autentica anonimamente (compatível com regras: request.auth != null)
           await signInAnonymously(auth);
           console.log("Auth anônimo OK:", auth.currentUser?.uid);
 
@@ -91,6 +176,7 @@
           if (senha !== confirmarSenha) {
             feedback.textContent = "❌ As senhas não coincidem. Verifique e tente novamente.";
             feedback.style.color = "#c62828";
+            form.confirmarSenha.focus();
             return;
           }
 
@@ -98,6 +184,7 @@
           botao.textContent = "Enviando...";
           feedback.textContent = "";
 
+          // 🔹 Salva o documento no Firestore
           const docRef = await addDoc(collection(db, "manicures"), {
             nome,
             cpf,
@@ -112,6 +199,7 @@
             fotoUrl: null,
           });
 
+          // 🔹 Upload de foto (opcional)
           if (foto) {
             const caminho = `manicures/${docRef.id}/${foto.name}`;
             const arquivoRef = ref(storage, caminho);
@@ -133,11 +221,44 @@
         }
       }
 
+      // Mantemos o onsubmit no HTML:
       window.enviarCadastro = enviarCadastro;
     </script>
   </head>
 
   <body>
+    <!-- 🔹 Mantém sua estrutura de header/navegação -->
+    <header class="site-header">
+      <div class="header-inner">
+        <a href="../index.html" class="brand-mark" aria-label="Início da NailNow">NailNow</a>
+        <div class="header-navigation">
+          <nav class="primary-nav" aria-label="Principal">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="../como-funciona.html" class="nav-link">Como funciona</a>
+            <a href="../servicos.html" class="nav-link">Serviços</a>
+            <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
+          </nav>
+          <div class="header-actions">
+            <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
+            <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Manicure</a>
+            <a
+              class="social-link social-link--instagram"
+              href="https://www.instagram.com/nailnowbr/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram da NailNow"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
     <main class="signup-container">
       <section class="signup-card" aria-labelledby="cadastro-profissional">
         <h1 id="cadastro-profissional">Cadastro de Profissional 💅</h1>
@@ -151,7 +272,15 @@
 
           <div class="signup-field">
             <label for="cpf">CPF *</label>
-            <input id="cpf" name="cpf" type="text" inputmode="numeric" pattern="[0-9]{11}" placeholder="Somente números" required />
+            <input
+              id="cpf"
+              name="cpf"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]{11}"
+              placeholder="Somente números"
+              required
+            />
           </div>
 
           <div class="signup-field">
@@ -190,8 +319,14 @@
               <label><input type="checkbox" name="servicos" value="Manicure clássica" /> Manicure clássica</label>
               <label><input type="checkbox" name="servicos" value="Pedicure clássica" /> Pedicure clássica</label>
               <label><input type="checkbox" name="servicos" value="Alongamento em gel" /> Alongamento em gel</label>
-              <label><input type="checkbox" name="servicos" value="Esmaltação em gel (manicure)" /> Esmaltação em gel (manicure)</label>
-              <label><input type="checkbox" name="servicos" value="Esmaltação em gel (pedicure)" /> Esmaltação em gel (pedicure)</label>
+              <label>
+                <input type="checkbox" name="servicos" value="Esmaltação em gel (manicure)" />
+                Esmaltação em gel (manicure)
+              </label>
+              <label>
+                <input type="checkbox" name="servicos" value="Esmaltação em gel (pedicure)" />
+                Esmaltação em gel (pedicure)
+              </label>
             </div>
           </div>
 
