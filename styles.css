@@ -290,6 +290,7 @@ main {
 
 .hero--professional .hero-copy {
   align-items: flex-start;
+  max-width: min(100%, 760px);
 }
 
 .hero--professional .hero-label {
@@ -304,6 +305,7 @@ main {
 
 .hero--professional p {
   margin-right: 0;
+  max-width: 64ch;
 }
 
 .hero-media--signup {
@@ -314,7 +316,7 @@ main {
 }
 
 .pro-signup-card {
-  width: min(100%, 440px);
+  width: min(100%, 540px);
   background: rgba(255, 255, 255, 0.9);
   border-radius: var(--radius-medium);
   border: 1px solid rgba(244, 92, 162, 0.18);
