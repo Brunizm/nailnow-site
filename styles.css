@@ -376,7 +376,7 @@ main {
 }
 
 .client-signup-card {
-  width: min(100%, 520px);
+  width: min(100%, 600px);
   background: rgba(255, 255, 255, 0.98);
   border-radius: var(--radius-medium);
   border: 1px solid rgba(244, 92, 162, 0.12);
@@ -648,13 +648,8 @@ main {
 }
 
 .signup-checkbox__text {
-  display: grid;
-  gap: 0.15rem;
+  display: inline;
   color: inherit;
-}
-
-.signup-checkbox__text > * {
-  display: block;
 }
 
 .signup-feedback {
