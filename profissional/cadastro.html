@@ -45,6 +45,7 @@
     <!-- Firebase + integração do formulário -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
       import { getFirestore, collection, addDoc, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
       import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
@@ -53,7 +54,7 @@
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
         authDomain: "nailnow-site.firebaseapp.com",
         projectId: "nailnow-site",
-        storageBucket: "nailnow-site.appspot.com", // ← corrigido (antes estava .firebasestorage.app)
+        storageBucket: "nailnow-site.appspot.com", // corrigido
         messagingSenderId: "726392294571",
         appId: "1:726392294571:web:a363a40231f7ac162e7bee",
       };
@@ -61,50 +62,45 @@
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const storage = getStorage(app);
-
-      // (Removido) NADA de apagar campo por label aqui — isso causava o undefined
-      // function removeFieldByLabelText(...) { ... }
-      document.addEventListener("DOMContentLoaded", () => {
-        // const form = document.getElementById("cadastroForm");
-        // removeFieldByLabelText(form, "Certidão de Antecedentes Criminais"); // ❌ comentado
-      });
+      const auth = getAuth(app);
 
       async function enviarCadastro(event) {
         event.preventDefault();
-
         const form = event.target;
         const botao = form.querySelector("button[type='submit']");
         const feedback = document.getElementById("signup-feedback");
 
-        // Captura de valores
-        const nome = form.nome.value.trim();
-        const cpf = form.cpf.value.trim();
-        const email = form.email.value.trim();
-        const senha = form.senha.value.trim();
-        const confirmarSenha = form.confirmarSenha.value.trim();
-        const certidao = form.certidao.value.trim(); // campo existe no HTML
-        const endereco = form.endereco.value.trim();
-        const cidade = form.cidade.value.trim();
-        const telefone = form.telefone.value.trim();
-        const bio = form.bio.value.trim();
-        const foto = form.foto.files[0];
-        const servicosSelecionados = Array.from(
-          form.querySelectorAll('input[name="servicos"]:checked')
-        ).map((el) => el.value);
-
-        if (senha !== confirmarSenha) {
-          feedback.textContent = "❌ As senhas não coincidem. Verifique e tente novamente.";
-          feedback.style.color = "#c62828";
-          form.confirmarSenha.focus();
-          return;
-        }
-
-        botao.disabled = true;
-        botao.textContent = "Enviando...";
-        feedback.textContent = "";
-
         try {
-          // Grava doc na coleção "manicures"
+          // 🔹 Garante autenticação anônima antes de escrever
+          await signInAnonymously(auth);
+          console.log("Auth anônimo OK:", auth.currentUser?.uid);
+
+          const nome = form.nome.value.trim();
+          const cpf = form.cpf.value.trim();
+          const email = form.email.value.trim();
+          const senha = form.senha.value.trim();
+          const confirmarSenha = form.confirmarSenha.value.trim();
+          const certidao = form.certidao.value.trim();
+          const endereco = form.endereco.value.trim();
+          const cidade = form.cidade.value.trim();
+          const telefone = form.telefone.value.trim();
+          const bio = form.bio.value.trim();
+          const foto = form.foto.files[0];
+          const servicosSelecionados = Array.from(
+            form.querySelectorAll('input[name="servicos"]:checked')
+          ).map((el) => el.value);
+
+          if (senha !== confirmarSenha) {
+            feedback.textContent = "❌ As senhas não coincidem. Verifique e tente novamente.";
+            feedback.style.color = "#c62828";
+            return;
+          }
+
+          botao.disabled = true;
+          botao.textContent = "Enviando...";
+          feedback.textContent = "";
+
+          // 🔹 Salva o documento no Firestore
           const docRef = await addDoc(collection(db, "manicures"), {
             nome,
             cpf,
@@ -120,7 +116,7 @@
             fotoUrl: null,
           });
 
-          // Upload de foto (opcional)
+          // 🔹 Upload de foto (opcional)
           if (foto) {
             const caminho = `manicures/${docRef.id}/${foto.name}`;
             const arquivoRef = ref(storage, caminho);
@@ -134,7 +130,7 @@
           form.reset();
         } catch (error) {
           console.error("Erro ao enviar cadastro:", error);
-          feedback.textContent = "❌ Não foi possível enviar o cadastro. Tente novamente.";
+          feedback.textContent = `❌ Erro: ${error.code || error.message}`;
           feedback.style.color = "#c62828";
         } finally {
           botao.disabled = false;
@@ -142,41 +138,16 @@
         }
       }
 
-      // Deixamos a função acessível porque o form usa onsubmit="enviarCadastro(event)"
       window.enviarCadastro = enviarCadastro;
     </script>
   </head>
 
   <body>
-    <header class="site-header">
-      <div class="header-inner">
-        <a href="../index.html" class="brand-mark" aria-label="Início da NailNow">NailNow</a>
-        <div class="header-navigation">
-          <nav class="primary-nav" aria-label="Principal">
-            <a href="../index.html" class="nav-link">Home</a>
-            <a href="../como-funciona.html" class="nav-link">Como funciona</a>
-            <a href="../servicos.html" class="nav-link">Serviços</a>
-            <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
-          </nav>
-          <div class="header-actions">
-            <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Manicure</a>
-            <a class="social-link social-link--instagram" href="https://www.instagram.com/nailnowbr/" target="_blank" rel="noopener noreferrer" aria-label="Instagram da NailNow">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"/>
-              </svg>
-            </a>
-          </div>
-        </div>
-      </div>
-    </header>
-
     <main class="signup-container">
       <section class="signup-card" aria-labelledby="cadastro-profissional">
         <h1 id="cadastro-profissional">Cadastro de Profissional 💅</h1>
         <p>Preencha seus dados para receber convites de atendimento pela NailNow.</p>
 
-        <!-- Mantemos onsubmit porque window.enviarCadastro = enviarCadastro -->
         <form id="cadastroForm" onsubmit="enviarCadastro(event)">
           <div class="signup-field">
             <label for="nome">Nome completo *</label>
@@ -206,12 +177,6 @@
           <div class="signup-field">
             <label for="certidao">Certidão de Antecedentes Criminais *</label>
             <input id="certidao" name="certidao" type="url" placeholder="Cole o link do comprovante em PDF" required />
-            <small>
-              Solicite gratuitamente em
-              <a href="https://www.gov.br/pf/pt-br/assuntos/antecedentes-criminais" target="_blank" rel="noopener noreferrer">
-                https://www.gov.br/pf/pt-br/assuntos/antecedentes-criminais
-              </a>.
-            </small>
           </div>
 
           <div class="signup-field">
