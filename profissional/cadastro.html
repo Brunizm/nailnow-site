@@ -31,7 +31,6 @@
     .signup-submit:disabled { opacity:.6; cursor:not-allowed; }
     .signup-submit:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 16px 30px -20px rgba(233,30,99,.6); }
     .signup-feedback { margin-top: 1rem; text-align: center; font-weight: 500; }
-    /* Rodapé simples (usa as mesmas fontes/cores do site) */
     .site-footer { background:#fff; border-top:1px solid #f1c6d6; margin-top:3rem; }
     .site-footer .inner { max-width: 1100px; margin:0 auto; padding:1.25rem 1rem; display:flex; flex-wrap:wrap; gap:1rem; justify-content:space-between; align-items:center; }
     .site-footer .links a { margin-right:1rem; color:#e91e63; text-decoration:none; }
@@ -45,7 +44,6 @@
     import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    // Configuração Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
       authDomain: "nailnow-site.firebaseapp.com",
@@ -66,7 +64,6 @@
       const btn = form.querySelector("button[type='submit']");
       const feedback = document.getElementById("signup-feedback");
       feedback.textContent = "";
-      feedback.style.color = "";
 
       try {
         const nome = form.nome.value.trim();
@@ -75,11 +72,16 @@
         const senha = form.senha.value;
         const confirmar = form.confirmarSenha.value;
         const telefone = form.telefone.value.trim();
-        const endereco = form.endereco.value.trim();
+        const endereco = form.endereco_text.value.trim();
         const cidade = form.cidade.value.trim();
         const bio = form.bio.value.trim();
         const foto = form.foto.files[0] || null;
         const servicos = Array.from(form.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
+
+        const endereco_formatado = form.endereco_formatado.value;
+        const place_id = form.place_id.value;
+        const lat = form.lat.value;
+        const lng = form.lng.value;
 
         if (!nome || !cpf || !email || !senha || !confirmar || !cidade) {
           feedback.textContent = "Preencha os campos obrigatórios (*).";
@@ -95,11 +97,9 @@
 
         btn.disabled = true; btn.textContent = "Criando conta…";
 
-        // 1) Cria a CONTA (Auth)
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
         const uid = cred.user.uid;
 
-        // 2) Upload da foto (opcional)
         let fotoUrl = null;
         if (foto) {
           const caminho = `profissionais/${uid}/perfil_${Date.now()}_${foto.name}`;
@@ -108,7 +108,6 @@
           fotoUrl = await getDownloadURL(fileRef);
         }
 
-        // 3) Salva o PERFIL no Firestore (sem senha)
         await setDoc(doc(db, "profissionais", uid), {
           uid,
           nome,
@@ -116,6 +115,10 @@
           email,
           telefone,
           endereco,
+          endereco_formatado,
+          place_id,
+          lat,
+          lng,
           cidade,
           bio,
           servicos,
@@ -129,88 +132,58 @@
         form.reset();
       } catch (err) {
         console.error(err);
-        const code = err?.code || "erro-desconhecido";
-        feedback.textContent = `❌ Erro: ${code}`;
+        feedback.textContent = `❌ Erro: ${err.code || "erro-desconhecido"}`;
         feedback.style.color = "#c62828";
       } finally {
         btn.disabled = false; btn.textContent = "Cadastrar profissional";
       }
     }
 
-    // onsubmit (HTML usa window.enviarCadastro)
     window.enviarCadastro = enviarCadastro;
   </script>
 </head>
 
 <body>
-  <!-- Header / nav do site -->
   <header class="site-header">
     <div class="header-inner">
-      <a href="../index.html" class="brand-mark" aria-label="Início da NailNow">NailNow</a>
-      <div class="header-navigation">
-        <nav class="primary-nav" aria-label="Principal">
-          <a href="../index.html" class="nav-link">Home</a>
-          <a href="../como-funciona.html" class="nav-link">Como funciona</a>
-          <a href="../servicos.html" class="nav-link">Serviços</a>
-          <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
-        </nav>
-        <div class="header-actions">
-          <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
-          <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Manicure</a>
-          <a class="social-link social-link--instagram" href="https://www.instagram.com/nailnowbr/" target="_blank" rel="noopener noreferrer" aria-label="Instagram da NailNow">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"/></svg>
-          </a>
-        </div>
-      </div>
+      <a href="../index.html" class="brand-mark">NailNow</a>
+      <nav class="primary-nav">
+        <a href="../index.html">Home</a>
+        <a href="../como-funciona.html">Como funciona</a>
+        <a href="../servicos.html">Serviços</a>
+        <a href="../agendamentos.html">Agendamentos</a>
+      </nav>
     </div>
   </header>
 
   <main class="signup-container">
-    <section class="signup-card" aria-labelledby="cadastro-profissional">
-      <h1 id="cadastro-profissional">Cadastro de Profissional 💅</h1>
+    <section class="signup-card">
+      <h1>Cadastro de Profissional 💅</h1>
       <p>Preencha seus dados para receber convites de atendimento pela NailNow.</p>
 
       <form id="cadastroForm" onsubmit="enviarCadastro(event)">
-        <div class="signup-field">
-          <label for="nome">Nome completo *</label>
-          <input id="nome" name="nome" type="text" required />
-        </div>
+        <div class="signup-field"><label for="nome">Nome completo *</label><input id="nome" name="nome" type="text" required /></div>
+        <div class="signup-field"><label for="cpf">CPF *</label><input id="cpf" name="cpf" type="text" inputmode="numeric" pattern="[0-9]{11}" placeholder="Somente números" required /></div>
+        <div class="signup-field"><label for="email">E-mail *</label><input id="email" name="email" type="email" required /></div>
+        <div class="signup-field"><label for="senha">Senha *</label><input id="senha" name="senha" type="password" minlength="6" required /></div>
+        <div class="signup-field"><label for="confirmarSenha">Confirmar senha *</label><input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required /></div>
+        <div class="signup-field"><label for="telefone">Telefone / WhatsApp</label><input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-0000" /></div>
 
-        <div class="signup-field">
-          <label for="cpf">CPF *</label>
-          <input id="cpf" name="cpf" type="text" inputmode="numeric" pattern="[0-9]{11}" placeholder="Somente números" required />
-        </div>
-
-        <div class="signup-field">
-          <label for="email">E-mail *</label>
-          <input id="email" name="email" type="email" required />
-        </div>
-
-        <div class="signup-field">
-          <label for="senha">Senha *</label>
-          <input id="senha" name="senha" type="password" minlength="6" required />
-        </div>
-
-        <div class="signup-field">
-          <label for="confirmarSenha">Confirmar senha *</label>
-          <input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required />
-        </div>
-
-        <div class="signup-field">
-          <label for="telefone">Telefone / WhatsApp</label>
-          <input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-0000" />
-        </div>
+        <!-- Truque para evitar autofill -->
+        <input type="text" name="ignore_autofill" autocomplete="off" style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;" aria-hidden="true" />
 
         <div class="signup-field">
           <label for="endereco">Endereço *</label>
-          <input id="endereco" name="endereco" type="text" required />
+          <input id="endereco" name="endereco_text" type="text" required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="text" />
         </div>
 
-        <div class="signup-field">
-          <label for="cidade">Cidade *</label>
-          <input id="cidade" name="cidade" type="text" required />
-        </div>
+        <!-- Campos ocultos -->
+        <input type="hidden" id="endereco_formatado" name="endereco_formatado" />
+        <input type="hidden" id="place_id" name="place_id" />
+        <input type="hidden" id="lat" name="lat" />
+        <input type="hidden" id="lng" name="lng" />
 
+        <div class="signup-field"><label for="cidade">Cidade *</label><input id="cidade" name="cidade" type="text" required /></div>
         <div class="signup-field">
           <span>Serviços oferecidos</span>
           <div class="services-grid">
@@ -222,15 +195,8 @@
           </div>
         </div>
 
-        <div class="signup-field">
-          <label for="bio">Sobre você</label>
-          <textarea id="bio" name="bio" rows="3" placeholder="Ex: 5 anos de experiência, especializada em gel..."></textarea>
-        </div>
-
-        <div class="signup-field">
-          <label for="foto">Foto de perfil</label>
-          <input id="foto" name="foto" type="file" accept="image/*" />
-        </div>
+        <div class="signup-field"><label for="bio">Sobre você</label><textarea id="bio" name="bio" rows="3" placeholder="Ex: 5 anos de experiência, especializada em gel..."></textarea></div>
+        <div class="signup-field"><label for="foto">Foto de perfil</label><input id="foto" name="foto" type="file" accept="image/*" /></div>
 
         <button id="enviar" class="signup-submit" type="submit">Cadastrar profissional</button>
         <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
@@ -238,7 +204,6 @@
     </section>
   </main>
 
-  <!-- Rodapé -->
   <footer class="site-footer">
     <div class="inner">
       <div>© NailNow</div>
@@ -250,10 +215,8 @@
     </div>
   </footer>
 
-  <!-- PASSO 2: Google Maps (Places) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
 
-  <!-- PASSO 3: Autocomplete -->
   <script>
     window.initEnderecoAutocomplete = function () {
       const input = document.getElementById("endereco");
@@ -268,11 +231,11 @@
       ac.addListener("place_changed", () => {
         const place = ac.getPlace();
         const loc = place.geometry?.location;
-        console.log("Endereço escolhido:",
-          place.formatted_address,
-          "place_id:", place.place_id,
-          "lat:", loc?.lat(), "lng:", loc?.lng()
-        );
+        document.getElementById("endereco_formatado").value = place.formatted_address || "";
+        document.getElementById("place_id").value = place.place_id || "";
+        document.getElementById("lat").value = loc?.lat() || "";
+        document.getElementById("lng").value = loc?.lng() || "";
+        console.log("📍 Endereço salvo:", place.formatted_address);
       });
     };
 
