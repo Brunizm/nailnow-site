@@ -285,6 +285,7 @@ main {
   border: 1px solid rgba(244, 92, 162, 0.22);
   box-shadow: 0 32px 60px rgba(244, 92, 162, 0.15);
   align-items: start;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .hero--professional .hero-copy {
@@ -306,7 +307,10 @@ main {
 }
 
 .hero-media--signup {
-  justify-content: flex-end;
+  justify-content: flex-start;
+  align-self: flex-start;
+  margin-top: clamp(2rem, 4vw, 3rem);
+  width: 100%;
 }
 
 .pro-signup-card {
@@ -1661,6 +1665,7 @@ main {
 
   .hero-media--signup {
     justify-content: center;
+    margin-top: 0;
   }
 
   .pro-signup-card {
