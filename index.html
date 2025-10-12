@@ -645,10 +645,12 @@
         });
 
         if (!catalogServices.size) {
-          allowedServices.forEach((service) => catalogServices.add(service));
+          return allowedServices.slice();
         }
 
-        return Array.from(catalogServices).sort((a, b) => a.localeCompare(b, "pt-BR"));
+        const servicesInCatalog = allowedServices.filter((service) => catalogServices.has(service));
+
+        return servicesInCatalog.length ? servicesInCatalog : allowedServices.slice();
       }
 
       function populateServiceSelect() {
