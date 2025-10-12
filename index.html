@@ -240,7 +240,12 @@
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import {
+        getFirestore,
+        collection,
+        getDocs,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -252,7 +257,9 @@
       };
 
       const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
       const db = getFirestore(app);
+      let authReadyPromise = null;
 
       const accentPalette = ["rose", "sunset", "violet", "ocean", "blush", "lavender"];
 
@@ -282,6 +289,22 @@
       let professionalsReadyPromise = null;
       let professionalsLoadError = null;
       let lastSearchContext = null;
+
+      async function ensureAnonymousAccess() {
+        if (auth.currentUser) {
+          return auth.currentUser;
+        }
+
+        if (!authReadyPromise) {
+          authReadyPromise = signInAnonymously(auth).catch((error) => {
+            authReadyPromise = null;
+            console.error("Erro ao autenticar anonimamente", error);
+            throw error;
+          });
+        }
+
+        return authReadyPromise;
+      }
 
       let selectedServices = new Set();
       let serviceDropdownElement = null;
@@ -832,6 +855,14 @@
 
         professionalsReadyPromise = (async () => {
           professionalsLoadError = null;
+          try {
+            await ensureAnonymousAccess();
+          } catch (error) {
+            professionalCatalog = [];
+            populateServiceSelect();
+            professionalsLoadError = error;
+            throw error;
+          }
           const sources = [
             { path: "profissionais", label: "profissionais" },
             { path: "manicures", label: "manicures" },
@@ -1424,6 +1455,9 @@
 
       document.addEventListener("DOMContentLoaded", () => {
         populateServiceSelect();
+        ensureAnonymousAccess().catch((error) => {
+          console.error("Erro ao preparar autenticação anônima", error);
+        });
         ensureProfessionalsLoaded().catch((error) => {
           console.error("Erro inicial ao carregar profissionais", error);
         });
