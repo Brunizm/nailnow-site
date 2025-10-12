@@ -710,7 +710,7 @@
         return allowedServicesMap.get(normalized) ?? null;
       }
 
-      function normalizeProfessional(doc, index) {
+      function normalizeProfessional(doc) {
         const data = doc.data();
         if (!data) return null;
 
@@ -759,7 +759,6 @@
           services,
           areas: areaCandidates.length ? areaCandidates : services,
           badge,
-          accent: accentPalette[index % accentPalette.length],
           photoUrl: data.fotoUrl || "",
           location,
           city,
@@ -767,19 +766,47 @@
       }
 
       async function loadProfessionalsFromFirestore() {
-        try {
-          const snapshot = await getDocs(collection(db, "profissionais"));
-          const remoteCatalog = snapshot.docs
-            .map((doc, index) => normalizeProfessional(doc, index))
-            .filter(Boolean);
+        const sources = [
+          { path: "profissionais", label: "profissionais" },
+          { path: "manicures", label: "manicures" },
+        ];
 
-          if (remoteCatalog.length) {
-            manicureCatalog = remoteCatalog;
-            populateServiceSelect();
-          }
-        } catch (error) {
-          console.error("Erro ao carregar profissionais cadastradas", error);
+        const seenIds = new Set();
+        const mergedCatalog = [];
+        let accentIndex = 0;
+
+        const loadPromises = sources.map((source) =>
+          getDocs(collection(db, source.path)).catch((error) => {
+            console.error(`Erro ao carregar ${source.label}`, error);
+            return null;
+          })
+        );
+
+        const snapshots = await Promise.all(loadPromises);
+
+        snapshots.forEach((snapshot) => {
+          if (!snapshot) return;
+
+          snapshot.docs.forEach((doc) => {
+            if (!doc) return;
+            if (seenIds.has(doc.id)) return;
+
+            const normalized = normalizeProfessional(doc);
+            if (!normalized) return;
+
+            normalized.accent = accentPalette[accentIndex % accentPalette.length];
+            accentIndex += 1;
+
+            mergedCatalog.push(normalized);
+            seenIds.add(doc.id);
+          });
+        });
+
+        if (mergedCatalog.length) {
+          manicureCatalog = mergedCatalog;
         }
+
+        populateServiceSelect();
       }
 
       function getCatalogServices() {
