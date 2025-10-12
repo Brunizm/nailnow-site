@@ -818,6 +818,26 @@
         return element;
       }
 
+      function sortMatchesByDistance(entries) {
+        return entries.slice().sort((a, b) => {
+          const aDistance = Number.isFinite(a.distanceKm) ? a.distanceKm : Number.POSITIVE_INFINITY;
+          const bDistance = Number.isFinite(b.distanceKm) ? b.distanceKm : Number.POSITIVE_INFINITY;
+
+          if (aDistance !== bDistance) {
+            return aDistance - bDistance;
+          }
+
+          const aRating = typeof a.pro?.rating === "number" ? a.pro.rating : 0;
+          const bRating = typeof b.pro?.rating === "number" ? b.pro.rating : 0;
+
+          if (aRating !== bRating) {
+            return bRating - aRating;
+          }
+
+          return (a.pro?.name || "").localeCompare(b.pro?.name || "");
+        });
+      }
+
       function scoreMatches(serviceQuery, coordinates) {
         const canonicalService = normalizeServiceName(serviceQuery);
         const normalizedService = canonicalService
@@ -825,7 +845,7 @@
           : serviceQuery.toLowerCase();
         const hasCoordinates = Boolean(coordinates);
 
-        return manicureCatalog
+        const matches = manicureCatalog
           .map((pro, index) => {
             const services = Array.isArray(pro.services) ? pro.services : [];
             const serviceMatch = services.some(
@@ -841,28 +861,16 @@
               : null;
 
             const ratingScore = typeof pro.rating === "number" ? pro.rating : 4.5 - index * 0.05;
-            const distanceScore = Number.isFinite(distanceKm)
-              ? Math.max(0, 5 - Math.min(distanceKm, 80) / 12)
-              : 0;
 
             return {
               pro,
               distanceKm,
-              score: 6 + ratingScore + distanceScore,
+              score: ratingScore,
             };
           })
-          .filter(Boolean)
-          .sort((a, b) => {
-            const aHasDistance = Number.isFinite(a.distanceKm);
-            const bHasDistance = Number.isFinite(b.distanceKm);
+          .filter(Boolean);
 
-            if (aHasDistance && bHasDistance && Math.abs(a.distanceKm - b.distanceKm) > 0.25) {
-              return a.distanceKm - b.distanceKm;
-            }
-            if (aHasDistance && !bHasDistance) return -1;
-            if (!aHasDistance && bHasDistance) return 1;
-            return b.score - a.score;
-          });
+        return sortMatchesByDistance(matches);
       }
 
       function updateBookingFeedback(message, type = "info") {
@@ -891,25 +899,15 @@
         let itemsToShow = matches;
 
         if (!itemsToShow.length) {
-          const fallbackItems = manicureCatalog
-            .map((pro, index) => {
+          const fallbackItems = sortMatchesByDistance(
+            manicureCatalog.map((pro, index) => {
               const distanceKm = coordinates && pro.location
                 ? calculateDistance(coordinates, pro.location)
                 : null;
               const ratingScore = typeof pro.rating === "number" ? pro.rating : 4.4 - index * 0.04;
               return { pro, distanceKm, score: ratingScore };
             })
-            .sort((a, b) => {
-              const aHasDistance = Number.isFinite(a.distanceKm);
-              const bHasDistance = Number.isFinite(b.distanceKm);
-
-              if (aHasDistance && bHasDistance && Math.abs(a.distanceKm - b.distanceKm) > 0.25) {
-                return a.distanceKm - b.distanceKm;
-              }
-              if (aHasDistance && !bHasDistance) return -1;
-              if (!aHasDistance && bHasDistance) return 1;
-              return (b.score ?? 0) - (a.score ?? 0);
-            });
+          );
 
           itemsToShow = fallbackItems;
           eyebrow.textContent = "Profissionais em destaque";
