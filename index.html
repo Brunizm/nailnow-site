@@ -59,7 +59,7 @@
           <p>
             Manicure de qualidade, onde você estiver. Agende em 3 cliques, acompanhe o deslocamento da profissional e receba atendimento premium na sua casa ou no trabalho.
           </p>
-          <form class="booking-card" aria-label="Buscar manicures disponíveis" onsubmit="event.preventDefault();">
+          <form class="booking-card" aria-label="Buscar manicures disponíveis" onsubmit="handleBooking(event)">
             <div class="booking-card__field">
               <label class="booking-card__label" for="booking-location">Local do atendimento</label>
               <div class="booking-card__control">
@@ -77,18 +77,29 @@
                   />
                 </svg>
               </div>
+              <input type="hidden" id="booking-location-formatted" name="location_formatted" />
+              <input type="hidden" id="booking-location-place-id" name="location_place_id" />
+              <input type="hidden" id="booking-location-lat" name="location_lat" />
+              <input type="hidden" id="booking-location-lng" name="location_lng" />
+              <div
+                id="booking-map"
+                class="booking-card__map"
+                role="presentation"
+                aria-hidden="true"
+                hidden
+              ></div>
             </div>
             <div class="booking-card__field">
               <label class="booking-card__label" for="booking-service">Serviço desejado</label>
               <div class="booking-card__control">
-                <input
-                  type="text"
+                <select
                   id="booking-service"
                   class="booking-card__input"
                   name="service"
-                  placeholder="Ex.: manicure, pedicure, spa dos pés"
                   required
-                />
+                >
+                  <option value="" disabled selected hidden>Selecione um serviço</option>
+                </select>
                 <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
                   <path
                     d="M5.5 3.5A2.5 2.5 0 0 0 3 6v9.5A3.5 3.5 0 0 0 6.5 19h6.76l2.84 2.84a.75.75 0 0 0 1.28-.53V19H17.5A3.5 3.5 0 0 0 21 15.5v-9a3 3 0 0 0-3-3H6.5a1 1 0 0 0-.18.02Zm.18 1.98H18a1.5 1.5 0 0 1 1.5 1.5v8.52a2 2 0 0 1-2 2h-2.02a.75.75 0 0 0-.75.75v1.3l-1.77-1.77a.75.75 0 0 0-.53-.22H6.5A2 2 0 0 1 4.5 15.5V6a1 1 0 0 1 1-1Z"
@@ -120,7 +131,8 @@
               </div>
             </div>
           </div>
-          <button type="button" class="booking-card__submit">Agende agora</button>
+          <button type="submit" class="booking-card__submit">Agende agora</button>
+          <p class="booking-card__feedback" id="booking-feedback" role="status" aria-live="polite"></p>
           <p class="booking-card__note">Suporte dedicado e avaliações reais para você escolher a manicure ideal com tranquilidade.</p>
         </form>
       </div>
@@ -131,6 +143,19 @@
               alt="Cliente sorrindo enquanto faz as unhas com uma manicure"
             />
           </div>
+        </div>
+      </section>
+
+      <section class="match-results" id="match-results" hidden>
+        <div class="match-results__inner">
+          <header class="match-results__header">
+            <span class="eyebrow" id="match-results-eyebrow">Sugestões personalizadas</span>
+            <h2 id="match-results-title">Manicures ideais para você</h2>
+            <p id="match-results-description">
+              Informe o serviço desejado e veja profissionais verificadas prontas para atender no seu endereço.
+            </p>
+          </header>
+          <ul class="match-results__list" id="match-results-list" role="list"></ul>
         </div>
       </section>
 
@@ -195,5 +220,790 @@
       <a href="cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
       <a href="cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
     </nav>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.appspot.com",
+        messagingSenderId: "726392294571",
+        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const accentPalette = ["rose", "sunset", "violet", "ocean", "blush", "lavender"];
+
+      const allowedServices = [
+        "Manicure clássica",
+        "Pedicure clássica",
+        "Alongamento em gel",
+        "Esmaltação em gel (manicure)",
+        "Esmaltação em gel (pedicure)",
+      ];
+
+      const allowedServicesMap = new Map(
+        allowedServices.map((service) => [service.toLowerCase(), service])
+      );
+
+      const defaultMapCenter = { lat: -14.235004, lng: -51.92528 };
+
+      let bookingMapElement = null;
+      let bookingMapInstance = null;
+      let bookingMapInitialized = false;
+      let clientMarker = null;
+      let professionalMarkers = [];
+      let lastClientCoordinates = null;
+      let lastClientLabel = "";
+
+      let manicureCatalog = [];
+      let professionalsPromise = null;
+
+      const accentClassMap = {
+        rose: "match-results__avatar--rose",
+        sunset: "match-results__avatar--sunset",
+        violet: "match-results__avatar--violet",
+        ocean: "match-results__avatar--ocean",
+        blush: "match-results__avatar--blush",
+        lavender: "match-results__avatar--lavender",
+      };
+
+      function toNumber(value) {
+        if (typeof value === "number") {
+          return Number.isFinite(value) ? value : null;
+        }
+        if (typeof value === "string") {
+          const parsed = parseFloat(value.replace(',', '.'));
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+        return null;
+      }
+
+      function ensureBookingMap() {
+        if (!window.google?.maps) return null;
+
+        if (!bookingMapElement) {
+          bookingMapElement = document.getElementById("booking-map");
+        }
+
+        if (!bookingMapElement) return null;
+
+        if (!bookingMapInstance) {
+          bookingMapInstance = new google.maps.Map(bookingMapElement, {
+            center: defaultMapCenter,
+            zoom: 4,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+            clickableIcons: false,
+            zoomControl: true,
+          });
+        }
+
+        return bookingMapInstance;
+      }
+
+      function showBookingMap() {
+        if (!bookingMapElement) return;
+        bookingMapElement.hidden = false;
+        bookingMapElement.setAttribute("aria-hidden", "false");
+      }
+
+      function hideBookingMap() {
+        if (!bookingMapElement) {
+          bookingMapElement = document.getElementById("booking-map");
+        }
+
+        if (bookingMapElement) {
+          bookingMapElement.hidden = true;
+          bookingMapElement.setAttribute("aria-hidden", "true");
+        }
+
+        if (clientMarker) {
+          clientMarker.setMap(null);
+          clientMarker = null;
+        }
+
+        professionalMarkers.forEach((marker) => marker.setMap(null));
+        professionalMarkers = [];
+      }
+
+      function clearProfessionalMarkers() {
+        professionalMarkers.forEach((marker) => marker.setMap(null));
+        professionalMarkers = [];
+      }
+
+      function updateClientMarkerOnMap(coordinates, label) {
+        const map = ensureBookingMap();
+        if (!map) return;
+
+        if (!coordinates || !Number.isFinite(coordinates.lat) || !Number.isFinite(coordinates.lng)) {
+          hideBookingMap();
+          return;
+        }
+
+        showBookingMap();
+
+        const position = { lat: coordinates.lat, lng: coordinates.lng };
+
+        if (!clientMarker) {
+          clientMarker = new google.maps.Marker({
+            map,
+            position,
+            title: label || "Local do atendimento",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: "#F45CA2",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 3,
+            },
+          });
+        } else {
+          clientMarker.setMap(map);
+          clientMarker.setPosition(position);
+          clientMarker.setTitle(label || "Local do atendimento");
+        }
+
+        map.panTo(position);
+        if (map.getZoom() < 12) {
+          map.setZoom(12);
+        }
+      }
+
+      function updateMapWithMatches(items, clientCoordinates, locationLabel) {
+        lastClientCoordinates = clientCoordinates ?? null;
+        lastClientLabel = locationLabel ?? "";
+
+        if (!clientCoordinates || !Number.isFinite(clientCoordinates.lat) || !Number.isFinite(clientCoordinates.lng)) {
+          hideBookingMap();
+          return;
+        }
+
+        const map = ensureBookingMap();
+        if (!map) return;
+
+        updateClientMarkerOnMap(clientCoordinates, lastClientLabel);
+
+        clearProfessionalMarkers();
+
+        const matchesWithLocation = [];
+        (items || []).forEach((item) => {
+          const lat = toNumber(item?.pro?.location?.lat);
+          const lng = toNumber(item?.pro?.location?.lng);
+
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            matchesWithLocation.push({ item, position: { lat, lng } });
+          }
+        });
+
+        if (!matchesWithLocation.length) {
+          map.panTo({ lat: clientCoordinates.lat, lng: clientCoordinates.lng });
+          if (map.getZoom() < 12) {
+            map.setZoom(12);
+          }
+          return;
+        }
+
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(clientCoordinates);
+
+        matchesWithLocation.slice(0, 6).forEach(({ item, position }, index) => {
+          const marker = new google.maps.Marker({
+            map,
+            position,
+            title: `${item.pro.name} · ${item.pro.badge || "Profissional NailNow"}`,
+            label: {
+              text: String(index + 1),
+              color: "#ffffff",
+              fontSize: "12px",
+              fontWeight: "700",
+            },
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: "#FF6EA9",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 3,
+            },
+          });
+          professionalMarkers.push(marker);
+          bounds.extend(position);
+        });
+
+        map.fitBounds(bounds, 64);
+      }
+
+      function initBookingMap() {
+        if (bookingMapInitialized) return;
+        const map = ensureBookingMap();
+        if (map) {
+          bookingMapInitialized = true;
+        }
+      }
+
+      function getInitials(name) {
+        return name
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part[0]?.toUpperCase() || "")
+          .join("");
+      }
+
+      function normalizeServiceName(value) {
+        if (!value) return null;
+        const normalized = value.toString().trim().toLowerCase();
+        return allowedServicesMap.get(normalized) ?? null;
+      }
+
+      function normalizeProfessional(doc, index) {
+        const data = doc.data();
+        if (!data) return null;
+
+        const rawName = (data.nome ?? "").toString().trim();
+        const name = rawName || "Profissional NailNow";
+        let services = Array.isArray(data.servicos) && data.servicos.length
+          ? data.servicos
+          : [allowedServices[0]];
+
+        services = services
+          .map((service) => normalizeServiceName(service))
+          .filter(Boolean);
+
+        if (!services.length) {
+          services = [allowedServices[0]];
+        } else {
+          services = Array.from(new Set(services));
+        }
+
+        const lat = toNumber(data.lat);
+        const lng = toNumber(data.lng);
+        const location = lat !== null && lng !== null ? { lat, lng } : null;
+
+        const areaCandidates = [data.cidade, data.estado, data.endereco, data.endereco_formatado]
+          .filter(Boolean)
+          .flatMap((value) => value.split(/,|·/).map((part) => part.trim()))
+          .filter(Boolean);
+
+        const city = (data.cidade ?? "").toString().trim();
+        const state = (data.estado ?? "").toString().trim();
+        const badgeParts = [city, state].filter(Boolean);
+        const badge = badgeParts.length
+          ? `${badgeParts.join(' · ')}`
+          : (data.endereco_formatado || data.endereco || "Atendimento móvel");
+
+        const rating = toNumber(data.rating);
+        const reviewsNumber = toNumber(data.reviews);
+
+        return {
+          id: doc.id,
+          name,
+          initials: getInitials(name) || "NN",
+          rating: rating ?? undefined,
+          reviews: reviewsNumber !== null ? Math.max(0, Math.round(reviewsNumber)) : undefined,
+          focus: (data.bio ?? "").toString().trim() || "Atendimento NailNow personalizado no seu endereço.",
+          services,
+          areas: areaCandidates.length ? areaCandidates : services,
+          badge,
+          accent: accentPalette[index % accentPalette.length],
+          photoUrl: data.fotoUrl || "",
+          location,
+          city,
+        };
+      }
+
+      async function loadProfessionalsFromFirestore() {
+        try {
+          const snapshot = await getDocs(collection(db, "profissionais"));
+          const remoteCatalog = snapshot.docs
+            .map((doc, index) => normalizeProfessional(doc, index))
+            .filter(Boolean);
+
+          if (remoteCatalog.length) {
+            manicureCatalog = remoteCatalog;
+            populateServiceSelect();
+          }
+        } catch (error) {
+          console.error("Erro ao carregar profissionais cadastradas", error);
+        }
+      }
+
+      function getCatalogServices() {
+        const catalogServices = new Set();
+        manicureCatalog.forEach((pro) => {
+          (pro.services || []).forEach((service) => {
+            const normalized = normalizeServiceName(service);
+            if (normalized) {
+              catalogServices.add(normalized);
+            }
+          });
+        });
+
+        if (!catalogServices.size) {
+          return allowedServices.slice();
+        }
+
+        const servicesInCatalog = allowedServices.filter((service) => catalogServices.has(service));
+
+        return servicesInCatalog.length ? servicesInCatalog : allowedServices.slice();
+      }
+
+      function populateServiceSelect() {
+        const select = document.getElementById("booking-service");
+        if (!select) return;
+
+        const previousSelection = select.value;
+
+        Array.from(select.querySelectorAll("option[data-generated='true']")).forEach((option) =>
+          option.remove()
+        );
+
+        const services = getCatalogServices();
+
+        services.forEach((service) => {
+          const option = document.createElement("option");
+          option.value = service;
+          option.textContent = service;
+          option.dataset.generated = "true";
+          select.appendChild(option);
+        });
+
+        if (previousSelection && services.includes(previousSelection)) {
+          select.value = previousSelection;
+        } else {
+          select.value = "";
+        }
+      }
+
+      function formatDistance(kilometers) {
+        if (!Number.isFinite(kilometers)) return null;
+        if (kilometers < 1) {
+          const meters = Math.max(50, Math.round(kilometers * 1000));
+          return `${meters} m de você`;
+        }
+        const formatter = new Intl.NumberFormat("pt-BR", {
+          minimumFractionDigits: kilometers < 10 ? 1 : 0,
+          maximumFractionDigits: kilometers < 10 ? 1 : 0,
+        });
+        return `${formatter.format(kilometers)} km de você`;
+      }
+
+      function calculateDistance(origin, destination) {
+        if (!origin || !destination) return null;
+        const originLat = toNumber(origin.lat);
+        const originLng = toNumber(origin.lng);
+        const destinationLat = toNumber(destination.lat);
+        const destinationLng = toNumber(destination.lng);
+
+        if ([originLat, originLng, destinationLat, destinationLng].some((value) => !Number.isFinite(value))) {
+          return null;
+        }
+
+        const toRadians = (deg) => (deg * Math.PI) / 180;
+        const earthRadius = 6371;
+        const dLat = toRadians(destinationLat - originLat);
+        const dLng = toRadians(destinationLng - originLng);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRadians(originLat)) *
+            Math.cos(toRadians(destinationLat)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadius * c;
+      }
+
+      function createMatchCard(item, serviceQuery) {
+        const { pro, distanceKm } = item;
+        const element = document.createElement("li");
+        element.className = "match-results__card";
+
+        const avatar = document.createElement("div");
+        avatar.className = "match-results__avatar";
+        const accentClass = accentClassMap[pro.accent];
+        if (accentClass) {
+          avatar.classList.add(accentClass);
+        }
+
+        if (pro.photoUrl) {
+          avatar.classList.add("match-results__avatar--with-photo");
+          const img = document.createElement("img");
+          img.src = pro.photoUrl;
+          img.alt = `Foto da profissional ${pro.name}`;
+          avatar.textContent = "";
+          avatar.appendChild(img);
+        } else {
+          avatar.textContent = pro.initials || getInitials(pro.name);
+          avatar.setAttribute("aria-hidden", "true");
+        }
+
+        const content = document.createElement("div");
+        content.className = "match-results__content";
+
+        const header = document.createElement("div");
+        header.className = "match-results__card-header";
+
+        const name = document.createElement("h3");
+        name.textContent = pro.name;
+        header.appendChild(name);
+
+        if (typeof pro.rating === "number") {
+          const rating = document.createElement("span");
+          rating.className = "match-results__rating";
+          const ratingDisplay = new Intl.NumberFormat("pt-BR", {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          }).format(pro.rating);
+          rating.textContent = `★ ${ratingDisplay}`;
+          const reviewsLabel =
+            pro.reviews !== undefined ? `${pro.reviews} avaliações` : "Avaliações NailNow";
+          rating.title = `${ratingDisplay} · ${reviewsLabel}`;
+          rating.setAttribute("aria-label", `Avaliação média ${ratingDisplay} de 5`);
+          header.appendChild(rating);
+        }
+
+        const blurb = document.createElement("p");
+        blurb.className = "match-results__blurb";
+        blurb.textContent = pro.focus;
+
+        const meta = document.createElement("div");
+        meta.className = "match-results__meta";
+
+        if (pro.badge) {
+          const locationBadge = document.createElement("span");
+          locationBadge.className = "match-results__badge";
+          locationBadge.textContent = pro.badge;
+          meta.appendChild(locationBadge);
+        }
+
+        const servicesText = (pro.services || []).slice(0, 3).join(" · ");
+        if (servicesText) {
+          const services = document.createElement("span");
+          services.className = "match-results__services";
+          services.textContent = servicesText;
+          meta.appendChild(services);
+        }
+
+        if (item.isFallback && !item.serviceMatch) {
+          const availability = document.createElement("span");
+          availability.className = "match-results__fallback";
+          availability.textContent = "Confirme se este serviço está disponível";
+          meta.appendChild(availability);
+        }
+
+        if (Number.isFinite(distanceKm)) {
+          const distance = document.createElement("span");
+          distance.className = "match-results__distance";
+          const label = formatDistance(distanceKm);
+          if (label) {
+            distance.textContent = label;
+            meta.appendChild(distance);
+          }
+        }
+
+        const cta = document.createElement("a");
+        cta.className = "match-results__cta";
+        const params = new URLSearchParams({
+          profissional: pro.id,
+          servico: serviceQuery || (pro.services?.[0] ?? "Manicure"),
+        });
+        cta.href = `cliente/cadastro.html?${params.toString()}`;
+        cta.textContent = "Reservar atendimento";
+
+        content.appendChild(header);
+        content.appendChild(blurb);
+        content.appendChild(meta);
+        content.appendChild(cta);
+
+        element.appendChild(avatar);
+        element.appendChild(content);
+
+        return element;
+      }
+
+      function sortMatchesByDistance(entries) {
+        return entries.slice().sort((a, b) => {
+          const aDistance = Number.isFinite(a.distanceKm) ? a.distanceKm : Number.POSITIVE_INFINITY;
+          const bDistance = Number.isFinite(b.distanceKm) ? b.distanceKm : Number.POSITIVE_INFINITY;
+
+          if (aDistance !== bDistance) {
+            return aDistance - bDistance;
+          }
+
+          const aRating = typeof a.pro?.rating === "number" ? a.pro.rating : 0;
+          const bRating = typeof b.pro?.rating === "number" ? b.pro.rating : 0;
+
+          if (aRating !== bRating) {
+            return bRating - aRating;
+          }
+
+          return (a.pro?.name || "").localeCompare(b.pro?.name || "");
+        });
+      }
+
+      function scoreMatches(serviceQuery, coordinates) {
+        const canonicalService = normalizeServiceName(serviceQuery);
+        const normalizedService = canonicalService
+          ? canonicalService.toLowerCase()
+          : serviceQuery.toLowerCase();
+        const hasCoordinates = Boolean(coordinates);
+
+        const entries = manicureCatalog
+          .map((pro, index) => {
+            if (!pro) return null;
+
+            const services = Array.isArray(pro.services) ? pro.services : [];
+            const serviceMatch = services.some(
+              (service) => service.toLowerCase() === normalizedService
+            );
+
+            const distanceKm = hasCoordinates && pro.location
+              ? calculateDistance(coordinates, pro.location)
+              : null;
+
+            const ratingScore = typeof pro.rating === "number" ? pro.rating : 4.5 - index * 0.05;
+
+            return {
+              pro,
+              distanceKm,
+              score: ratingScore,
+              serviceMatch,
+            };
+          })
+          .filter(Boolean);
+
+        const matches = sortMatchesByDistance(entries.filter((entry) => entry.serviceMatch));
+
+        if (matches.length) {
+          return { matches, fallback: [] };
+        }
+
+        const fallback = sortMatchesByDistance(
+          entries.filter((entry) => Number.isFinite(entry.distanceKm))
+        ).map((entry) => ({ ...entry, isFallback: true }));
+
+        return { matches: [], fallback };
+      }
+
+      function updateBookingFeedback(message, type = "info") {
+        const feedback = document.getElementById("booking-feedback");
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.className = "booking-card__feedback";
+        if (type === "error") {
+          feedback.classList.add("booking-card__feedback--error");
+        } else if (type === "success") {
+          feedback.classList.add("booking-card__feedback--success");
+        }
+      }
+
+      function renderMatches(matches, fallbackMatches, serviceQuery, locationLabel, coordinates) {
+        const section = document.getElementById("match-results");
+        const list = document.getElementById("match-results-list");
+        const title = document.getElementById("match-results-title");
+        const description = document.getElementById("match-results-description");
+        const eyebrow = document.getElementById("match-results-eyebrow");
+
+        if (!section || !list || !title || !description || !eyebrow) return;
+
+        list.innerHTML = "";
+
+        const matchCount = matches.length;
+        const fallbackCount = fallbackMatches.length;
+        const hasFallback = !matchCount && fallbackCount;
+        const itemsToShow = matchCount ? matches.slice() : fallbackMatches.slice();
+        const serviceLower = serviceQuery.toLowerCase();
+
+        if (matchCount) {
+          eyebrow.textContent = "Combinações perfeitas";
+          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
+          title.textContent = `Manicures para "${serviceQuery}"${locationSuffix}`;
+          description.textContent = locationLabel
+            ? `Selecionamos profissionais que oferecem ${serviceLower} e atendem em ${locationLabel}.`
+            : `Selecionamos profissionais que oferecem ${serviceLower} com ótima avaliação.`;
+
+          const resultWord = matchCount === 1 ? "profissional" : "profissionais";
+          updateBookingFeedback(
+            `${matchCount} ${resultWord} encontrada(s) para ${serviceLower}${locationSuffix}.`,
+            "success"
+          );
+        } else if (hasFallback) {
+          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
+          eyebrow.textContent = "Profissionais mais próximas";
+          title.textContent = `Ainda não temos ${serviceQuery}${locationSuffix}`;
+          description.textContent = locationLabel
+            ? `Enquanto ampliamos nossa rede para ${serviceLower}, conheça as manicures mais próximas de ${locationLabel}.`
+            : `Enquanto ampliamos nossa rede para ${serviceLower}, estas são as profissionais NailNow mais próximas de você.`;
+
+          const resultWord = fallbackCount === 1 ? "profissional" : "profissionais";
+          const qualifier = fallbackCount === 1 ? "mais próxima" : "mais próximas";
+          updateBookingFeedback(
+            `${fallbackCount} ${resultWord} ${qualifier}${locationSuffix}.`,
+            "info"
+          );
+        } else {
+          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
+          eyebrow.textContent = "Nenhuma profissional encontrada";
+          title.textContent = `Ainda não encontramos ${serviceQuery}${locationSuffix}`;
+          description.textContent = locationLabel
+            ? "Estamos ampliando nossa rede na sua região. Tente novamente em breve ou cadastre-se para ser avisada."
+            : "Estamos ampliando nossa rede de manicures para este serviço. Tente novamente em breve.";
+          updateBookingFeedback(
+            `Ainda não encontramos profissionais para ${serviceLower}${locationSuffix}.`,
+            "error"
+          );
+        }
+
+        itemsToShow.forEach((item) => {
+          const element = createMatchCard(item, serviceQuery);
+          list.appendChild(element);
+        });
+
+        updateMapWithMatches(itemsToShow, coordinates, locationLabel);
+
+        section.hidden = false;
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      function initBookingAutocomplete() {
+        const input = document.getElementById("booking-location");
+        if (!input || input.dataset.autocompleteInitialized === "true") return;
+
+        const formattedField = document.getElementById("booking-location-formatted");
+        const placeIdField = document.getElementById("booking-location-place-id");
+        const latField = document.getElementById("booking-location-lat");
+        const lngField = document.getElementById("booking-location-lng");
+
+        if (!window.google || !google.maps?.places) {
+          return;
+        }
+
+        const autocomplete = new google.maps.places.Autocomplete(input, {
+          types: ["geocode"],
+          componentRestrictions: { country: "br" },
+          fields: ["formatted_address", "place_id", "geometry"],
+        });
+
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          const geometry = place.geometry?.location;
+          formattedField.value = place.formatted_address || input.value.trim();
+          placeIdField.value = place.place_id || "";
+          const latitude = geometry ? geometry.lat() : "";
+          const longitude = geometry ? geometry.lng() : "";
+          latField.value = latitude;
+          lngField.value = longitude;
+
+          const coordinates =
+            typeof latitude === "number" && typeof longitude === "number"
+              ? { lat: latitude, lng: longitude }
+              : null;
+
+          if (coordinates) {
+            updateMapWithMatches([], coordinates, formattedField.value || input.value.trim());
+          } else {
+            hideBookingMap();
+          }
+        });
+
+        input.addEventListener("input", () => {
+          if (!input.value.trim()) {
+            formattedField.value = "";
+            placeIdField.value = "";
+            latField.value = "";
+            lngField.value = "";
+            lastClientCoordinates = null;
+            lastClientLabel = "";
+            hideBookingMap();
+          }
+        });
+
+        input.dataset.autocompleteInitialized = "true";
+      }
+
+      async function handleBooking(event) {
+        event.preventDefault();
+        const form = event.target;
+        const serviceField = form.querySelector("[name='service']");
+        const locationField = form.querySelector("[name='location']");
+        const formattedField = form.querySelector("[name='location_formatted']");
+        const latField = form.querySelector("[name='location_lat']");
+        const lngField = form.querySelector("[name='location_lng']");
+
+        if (!serviceField || !locationField) return;
+
+        const serviceQuery = serviceField.value.trim();
+        const locationQuery = locationField.value.trim();
+        const latValue = latField ? toNumber(latField.value) : null;
+        const lngValue = lngField ? toNumber(lngField.value) : null;
+
+        if (!serviceQuery) {
+          updateBookingFeedback("Informe o serviço desejado para continuarmos.", "error");
+          serviceField.focus();
+          return;
+        }
+
+        if (!locationQuery) {
+          updateBookingFeedback("Informe o local do atendimento.", "error");
+          locationField.focus();
+          return;
+        }
+
+        if (latValue === null || lngValue === null) {
+          updateBookingFeedback("Escolha um endereço sugerido para calcularmos as profissionais mais próximas.", "error");
+          locationField.focus();
+          return;
+        }
+
+        updateBookingFeedback("Buscando manicures próximas...");
+
+        try {
+          if (!professionalsPromise) {
+            professionalsPromise = loadProfessionalsFromFirestore();
+          }
+          await professionalsPromise;
+
+          const coordinates = { lat: latValue, lng: lngValue };
+          const locationLabel = formattedField?.value || locationQuery;
+          const { matches, fallback } = scoreMatches(serviceQuery, coordinates);
+          renderMatches(matches, fallback, serviceQuery, locationLabel, coordinates);
+        } catch (error) {
+          console.error("Erro ao buscar manicures", error);
+          updateBookingFeedback(
+            "Não foi possível buscar as profissionais agora. Tente novamente em instantes.",
+            "error"
+          );
+        }
+      }
+
+      function initMapsFeatures() {
+        initBookingAutocomplete();
+        initBookingMap();
+      }
+
+      window.handleBooking = handleBooking;
+      window.initMapsFeatures = initMapsFeatures;
+      window.initBookingAutocomplete = initBookingAutocomplete;
+      window.initBookingMap = initBookingMap;
+
+      document.addEventListener("DOMContentLoaded", () => {
+        populateServiceSelect();
+        professionalsPromise = loadProfessionalsFromFirestore();
+      });
+
+      window.addEventListener("load", () => {
+        if (window.google?.maps) {
+          initMapsFeatures();
+        }
+      });
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR&callback=initMapsFeatures" async defer></script>
   </body>
 </html>
