@@ -691,6 +691,13 @@
           meta.appendChild(services);
         }
 
+        if (item.isFallback && !item.serviceMatch) {
+          const availability = document.createElement("span");
+          availability.className = "match-results__fallback";
+          availability.textContent = "Confirme se este serviço está disponível";
+          meta.appendChild(availability);
+        }
+
         if (Number.isFinite(distanceKm)) {
           const distance = document.createElement("span");
           distance.className = "match-results__distance";
@@ -748,16 +755,14 @@
           : serviceQuery.toLowerCase();
         const hasCoordinates = Boolean(coordinates);
 
-        const matches = manicureCatalog
+        const entries = manicureCatalog
           .map((pro, index) => {
+            if (!pro) return null;
+
             const services = Array.isArray(pro.services) ? pro.services : [];
             const serviceMatch = services.some(
               (service) => service.toLowerCase() === normalizedService
             );
-
-            if (!serviceMatch) {
-              return null;
-            }
 
             const distanceKm = hasCoordinates && pro.location
               ? calculateDistance(coordinates, pro.location)
@@ -769,11 +774,22 @@
               pro,
               distanceKm,
               score: ratingScore,
+              serviceMatch,
             };
           })
           .filter(Boolean);
 
-        return sortMatchesByDistance(matches);
+        const matches = sortMatchesByDistance(entries.filter((entry) => entry.serviceMatch));
+
+        if (matches.length) {
+          return { matches, fallback: [] };
+        }
+
+        const fallback = sortMatchesByDistance(
+          entries.filter((entry) => Number.isFinite(entry.distanceKm))
+        ).map((entry) => ({ ...entry, isFallback: true }));
+
+        return { matches: [], fallback };
       }
 
       function updateBookingFeedback(message, type = "info") {
@@ -788,7 +804,7 @@
         }
       }
 
-      function renderMatches(matches, serviceQuery, locationLabel, coordinates) {
+      function renderMatches(matches, fallbackMatches, serviceQuery, locationLabel, coordinates) {
         const section = document.getElementById("match-results");
         const list = document.getElementById("match-results-list");
         const title = document.getElementById("match-results-title");
@@ -800,21 +816,12 @@
         list.innerHTML = "";
 
         const matchCount = matches.length;
-        const itemsToShow = matches.slice();
+        const fallbackCount = fallbackMatches.length;
+        const hasFallback = !matchCount && fallbackCount;
+        const itemsToShow = matchCount ? matches.slice() : fallbackMatches.slice();
         const serviceLower = serviceQuery.toLowerCase();
 
-        if (!matchCount) {
-          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
-          eyebrow.textContent = "Nenhuma profissional encontrada";
-          title.textContent = `Ainda não encontramos ${serviceQuery}${locationSuffix}`;
-          description.textContent = locationLabel
-            ? "Estamos ampliando nossa rede na sua região. Tente novamente em breve ou cadastre-se para ser avisada."
-            : "Estamos ampliando nossa rede de manicures para este serviço. Tente novamente em breve.";
-          updateBookingFeedback(
-            `Ainda não encontramos profissionais para ${serviceLower}${locationSuffix}.`,
-            "error"
-          );
-        } else {
+        if (matchCount) {
           eyebrow.textContent = "Combinações perfeitas";
           const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
           title.textContent = `Manicures para "${serviceQuery}"${locationSuffix}`;
@@ -826,6 +833,31 @@
           updateBookingFeedback(
             `${matchCount} ${resultWord} encontrada(s) para ${serviceLower}${locationSuffix}.`,
             "success"
+          );
+        } else if (hasFallback) {
+          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
+          eyebrow.textContent = "Profissionais mais próximas";
+          title.textContent = `Ainda não temos ${serviceQuery}${locationSuffix}`;
+          description.textContent = locationLabel
+            ? `Enquanto ampliamos nossa rede para ${serviceLower}, conheça as manicures mais próximas de ${locationLabel}.`
+            : `Enquanto ampliamos nossa rede para ${serviceLower}, estas são as profissionais NailNow mais próximas de você.`;
+
+          const resultWord = fallbackCount === 1 ? "profissional" : "profissionais";
+          const qualifier = fallbackCount === 1 ? "mais próxima" : "mais próximas";
+          updateBookingFeedback(
+            `${fallbackCount} ${resultWord} ${qualifier}${locationSuffix}.`,
+            "info"
+          );
+        } else {
+          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
+          eyebrow.textContent = "Nenhuma profissional encontrada";
+          title.textContent = `Ainda não encontramos ${serviceQuery}${locationSuffix}`;
+          description.textContent = locationLabel
+            ? "Estamos ampliando nossa rede na sua região. Tente novamente em breve ou cadastre-se para ser avisada."
+            : "Estamos ampliando nossa rede de manicures para este serviço. Tente novamente em breve.";
+          updateBookingFeedback(
+            `Ainda não encontramos profissionais para ${serviceLower}${locationSuffix}.`,
+            "error"
           );
         }
 
@@ -940,8 +972,8 @@
 
           const coordinates = { lat: latValue, lng: lngValue };
           const locationLabel = formattedField?.value || locationQuery;
-          const matches = scoreMatches(serviceQuery, coordinates);
-          renderMatches(matches, serviceQuery, locationLabel, coordinates);
+          const { matches, fallback } = scoreMatches(serviceQuery, coordinates);
+          renderMatches(matches, fallback, serviceQuery, locationLabel, coordinates);
         } catch (error) {
           console.error("Erro ao buscar manicures", error);
           updateBookingFeedback(
