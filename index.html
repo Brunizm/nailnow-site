@@ -336,6 +336,76 @@
         return null;
       }
 
+      function pickAddressComponent(components, preferredTypes, options = {}) {
+        const types = Array.isArray(preferredTypes) ? preferredTypes : [preferredTypes];
+        if (!Array.isArray(components) || !components.length || !types.length) {
+          return "";
+        }
+
+        for (const type of types) {
+          const component = components.find((item) => Array.isArray(item?.types) && item.types.includes(type));
+          if (component) {
+            if (options.useShortName && component.short_name) {
+              return component.short_name;
+            }
+            return component.long_name || component.short_name || "";
+          }
+        }
+
+        return "";
+      }
+
+      function formatPlaceAddressLabel(place) {
+        if (!place) return "";
+
+        const components = place.address_components;
+        if (!Array.isArray(components) || !components.length) {
+          return place.formatted_address || "";
+        }
+
+        const route = pickAddressComponent(components, ["route"]);
+        const streetNumber = pickAddressComponent(components, ["street_number"]);
+        const streetPart = [route, streetNumber].filter(Boolean).join(", ");
+
+        const area = pickAddressComponent(components, [
+          "sublocality",
+          "sublocality_level_1",
+          "neighborhood",
+          "political",
+        ]);
+        const city = pickAddressComponent(components, ["locality", "administrative_area_level_2"]);
+        const state = pickAddressComponent(components, ["administrative_area_level_1"], { useShortName: true });
+        const postalCode = pickAddressComponent(components, ["postal_code"]);
+
+        const leadingParts = [];
+        if (streetPart) {
+          leadingParts.push(streetPart);
+        }
+        if (area) {
+          leadingParts.push(area);
+        }
+
+        const trailingParts = [];
+        const cityState = [city, state].filter(Boolean).join(" - ");
+        if (cityState) {
+          trailingParts.push(cityState);
+        }
+        if (postalCode) {
+          trailingParts.push(postalCode);
+        }
+
+        const formatted = [];
+        if (leadingParts.length) {
+          formatted.push(leadingParts.join(" - "));
+        }
+        if (trailingParts.length) {
+          formatted.push(trailingParts.join(", "));
+        }
+
+        const label = formatted.join(", ");
+        return label || place.formatted_address || "";
+      }
+
       function ensureBookingMap() {
         if (!window.google?.maps) return null;
 
@@ -1311,13 +1381,14 @@
         const autocomplete = new google.maps.places.Autocomplete(input, {
           types: ["geocode"],
           componentRestrictions: { country: "br" },
-          fields: ["formatted_address", "place_id", "geometry"],
+          fields: ["formatted_address", "place_id", "geometry", "address_components"],
         });
 
         autocomplete.addListener("place_changed", () => {
           const place = autocomplete.getPlace();
           const geometry = place.geometry?.location;
-          formattedField.value = place.formatted_address || input.value.trim();
+          const refinedLabel = formatPlaceAddressLabel(place);
+          formattedField.value = refinedLabel || place.formatted_address || input.value.trim();
           placeIdField.value = place.place_id || "";
           const latitude = geometry ? geometry.lat() : "";
           const longitude = geometry ? geometry.lng() : "";
