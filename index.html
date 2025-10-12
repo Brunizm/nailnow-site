@@ -355,6 +355,52 @@
         return "";
       }
 
+      function formatPostalCode(value) {
+        if (!value) return "";
+        const digits = String(value).replace(/\D+/g, "");
+        if (!digits) return "";
+        if (digits.length === 8) {
+          return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+        }
+        if (digits.length === 7) {
+          return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+        }
+        return value;
+      }
+
+      function getPostalCodeFromComponents(components) {
+        if (!Array.isArray(components) || !components.length) {
+          return "";
+        }
+
+        const base = pickAddressComponent(components, ["postal_code"]);
+        const suffix = pickAddressComponent(components, ["postal_code_suffix"]);
+        const combined = `${base || ""}${suffix ? suffix : ""}`;
+        const formatted = formatPostalCode(combined || base);
+        if (formatted) {
+          return formatted;
+        }
+
+        if (base) {
+          return formatPostalCode(base);
+        }
+
+        return "";
+      }
+
+      function getPostalCodeFromFormattedAddress(address) {
+        if (typeof address !== "string" || !address) {
+          return "";
+        }
+
+        const match = address.match(/\b\d{5}-?\d{3}\b/);
+        if (!match) {
+          return "";
+        }
+
+        return formatPostalCode(match[0]);
+      }
+
       function formatPlaceAddressLabel(place) {
         if (!place) return "";
 
@@ -375,7 +421,9 @@
         ]);
         const city = pickAddressComponent(components, ["locality", "administrative_area_level_2"]);
         const state = pickAddressComponent(components, ["administrative_area_level_1"], { useShortName: true });
-        const postalCode = pickAddressComponent(components, ["postal_code"]);
+        const postalCode =
+          getPostalCodeFromFormattedAddress(place.formatted_address) ||
+          getPostalCodeFromComponents(components);
 
         const leadingParts = [];
         if (streetPart) {
