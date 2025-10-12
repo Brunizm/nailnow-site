@@ -240,7 +240,7 @@
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -280,9 +280,7 @@
 
       let professionalCatalog = [];
       let professionalsReadyPromise = null;
-      let resolveProfessionalsReady = null;
       let professionalsLoadError = null;
-      let professionalsUnsubscribe = null;
       let lastSearchContext = null;
 
       let selectedServices = new Set();
@@ -801,7 +799,7 @@
         renderMatches(matches, fallback, services, locationLabel, coordinates);
       }
 
-      function handleProfessionalsSnapshot(snapshot) {
+      function processProfessionalsSnapshot(snapshot) {
         const seenIds = new Set();
         const mergedCatalog = [];
 
@@ -816,44 +814,65 @@
           seenIds.add(doc.id);
         });
 
-        professionalCatalog = mergedCatalog;
-        populateServiceSelect();
-        refreshMatchesAfterCatalogUpdate();
+        return mergedCatalog;
       }
 
-      function ensureProfessionalsLoaded() {
-        if (professionalsReadyPromise) {
+      async function loadProfessionalsFromSource(source) {
+        const collectionRef = collection(db, source.path);
+        const snapshot = await getDocs(collectionRef);
+        return processProfessionalsSnapshot(snapshot);
+      }
+
+      function ensureProfessionalsLoaded(options = {}) {
+        const { force = false } = options;
+
+        if (!force && professionalsReadyPromise) {
           return professionalsReadyPromise;
         }
 
-        professionalsReadyPromise = new Promise((resolve) => {
-          resolveProfessionalsReady = resolve;
-        });
+        professionalsReadyPromise = (async () => {
+          professionalsLoadError = null;
+          const sources = [
+            { path: "profissionais", label: "profissionais" },
+            { path: "manicures", label: "manicures" },
+          ];
 
-        const source = { path: "profissionais", label: "profissionais" };
-        const collectionRef = collection(db, source.path);
+          let mergedCatalog = [];
+          let lastError = null;
 
-        professionalsUnsubscribe = onSnapshot(
-          collectionRef,
-          (snapshot) => {
-            professionalsLoadError = null;
-            handleProfessionalsSnapshot(snapshot);
-            if (resolveProfessionalsReady) {
-              resolveProfessionalsReady();
-              resolveProfessionalsReady = null;
-            }
-          },
-          (error) => {
-            professionalsLoadError = error;
-            console.error(`Erro ao escutar ${source.label}`, error);
-            professionalCatalog = [];
-            populateServiceSelect();
-            if (resolveProfessionalsReady) {
-              resolveProfessionalsReady();
-              resolveProfessionalsReady = null;
+          for (const source of sources) {
+            try {
+              const catalog = await loadProfessionalsFromSource(source);
+
+              if (catalog.length) {
+                mergedCatalog = catalog;
+                break;
+              }
+
+              if (!mergedCatalog.length) {
+                mergedCatalog = catalog;
+              }
+            } catch (error) {
+              console.error(`Erro ao carregar ${source.label}`, error);
+              lastError = { error, source };
             }
           }
-        );
+
+          if (!mergedCatalog.length && lastError) {
+            professionalCatalog = [];
+            populateServiceSelect();
+            professionalsLoadError = lastError.error;
+            throw professionalsLoadError;
+          }
+
+          professionalCatalog = mergedCatalog;
+          populateServiceSelect();
+          refreshMatchesAfterCatalogUpdate();
+        })();
+
+        professionalsReadyPromise.catch(() => {
+          professionalsReadyPromise = null;
+        });
 
         return professionalsReadyPromise;
       }
@@ -1405,13 +1424,9 @@
 
       document.addEventListener("DOMContentLoaded", () => {
         populateServiceSelect();
-        ensureProfessionalsLoaded();
-      });
-
-      window.addEventListener("beforeunload", () => {
-        if (typeof professionalsUnsubscribe === "function") {
-          professionalsUnsubscribe();
-        }
+        ensureProfessionalsLoaded().catch((error) => {
+          console.error("Erro inicial ao carregar profissionais", error);
+        });
       });
 
       window.addEventListener("load", () => {
