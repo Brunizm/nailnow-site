@@ -1050,6 +1050,10 @@ main {
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+.booking-card__field--services {
+  position: relative;
+}
+
 .booking-card__control--compact {
   padding: 0.75rem 1rem;
 }
@@ -1065,6 +1069,31 @@ main {
   -webkit-appearance: none;
 }
 
+.booking-card__input--multiselect {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.booking-card__input--multiselect:focus {
+  outline: none;
+}
+
+.booking-card__selection {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  color: var(--text-main);
+}
+
+.booking-card__selection--empty {
+  color: rgba(22, 22, 22, 0.5);
+}
+
 .booking-card__input::placeholder {
   color: rgba(22, 22, 22, 0.5);
 }
@@ -1072,6 +1101,59 @@ main {
 .booking-card__control:focus-within {
   border-color: var(--pink-primary);
   box-shadow: 0 0 0 4px rgba(244, 92, 162, 0.12);
+}
+
+.booking-card__field--open .booking-card__control {
+  border-color: var(--pink-primary);
+  box-shadow: 0 0 0 4px rgba(244, 92, 162, 0.12);
+}
+
+.booking-card__dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(28, 8, 21, 0.12);
+  padding: 0.75rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.booking-card__dropdown[hidden] {
+  display: none;
+}
+
+.booking-card__options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.booking-card__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.booking-card__option input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--pink-primary);
+}
+
+.booking-card__option:hover,
+.booking-card__option[aria-selected='true'] {
+  background: rgba(244, 92, 162, 0.08);
 }
 
 .booking-card__icon {
