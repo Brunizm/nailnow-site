@@ -15,6 +15,8 @@
   --max-width: 1120px;
   --radius-large: 36px;
   --radius-medium: 24px;
+  --success: #2e7d32;
+  --error: #c62828;
 }
 
 
@@ -1109,6 +1111,21 @@ main {
   text-align: center;
 }
 
+.booking-card__feedback {
+  margin-top: 0.85rem;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.booking-card__feedback--error {
+  color: var(--error);
+}
+
+.booking-card__feedback--success {
+  color: var(--success);
+}
+
 .booking-card {
   margin-top: clamp(1.5rem, 4vw, 2.5rem);
   padding: clamp(1.5rem, 5vw, 2.5rem);
@@ -1494,6 +1511,20 @@ main {
   box-shadow: 0 16px 34px -20px rgba(244, 92, 162, 0.65);
 }
 
+.match-results__avatar--with-photo {
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  color: transparent;
+}
+
+.match-results__avatar--with-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .match-results__avatar--rose {
   background: linear-gradient(135deg, #ff8ec3, #f45ca2);
 }
@@ -1557,6 +1588,13 @@ main {
   flex-wrap: wrap;
   gap: 0.5rem 1.1rem;
   font-size: 0.92rem;
+}
+
+.match-results__distance {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(18, 18, 18, 0.6);
 }
 
 .match-results__badge {
