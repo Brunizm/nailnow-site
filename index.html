@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="NailNow conecta clientes e manicures profissionais com agendamentos rápidos, avaliações reais e atendimento onde você estiver."
+      content="NailNow conecta clientes e profissionais NailNow com agendamentos rápidos, avaliações reais e atendimento onde você estiver."
     />
     <title>NailNow | Beleza nas suas mãos</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="promo-banner">Manicure sob medida: agende com profissionais verificadas onde você estiver.</div>
+    <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
     <header class="site-header">
       <div class="header-inner">
         <a href="index.html" class="brand-mark" aria-label="Início da NailNow">
@@ -32,7 +32,7 @@
           </nav>
           <div class="header-actions">
             <a href="cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="profissional/index.html" class="header-cta">Sou Manicure</a>
+            <a href="profissional/index.html" class="header-cta">Sou Profissional</a>
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -59,7 +59,7 @@
           <p>
             Manicure de qualidade, onde você estiver. Agende em 3 cliques, acompanhe o deslocamento da profissional e receba atendimento premium na sua casa ou no trabalho.
           </p>
-          <form class="booking-card" aria-label="Buscar manicures disponíveis" onsubmit="handleBooking(event)">
+          <form class="booking-card" aria-label="Buscar profissionais disponíveis" onsubmit="handleBooking(event)">
             <div class="booking-card__field">
               <label class="booking-card__label" for="booking-location">Local do atendimento</label>
               <div class="booking-card__control">
@@ -150,15 +150,15 @@
           </div>
           <button type="submit" class="booking-card__submit">Agende agora</button>
           <p class="booking-card__feedback" id="booking-feedback" role="status" aria-live="polite"></p>
-          <p class="booking-card__note">Suporte dedicado e avaliações reais para você escolher a manicure ideal com tranquilidade.</p>
+          <p class="booking-card__note">Suporte dedicado e avaliações reais para você escolher a profissional ideal com tranquilidade.</p>
         </form>
       </div>
       <div class="hero-media">
         <div class="hero-image-wrapper">
           <img
-              src="assets/nail1.png"
-              alt="Cliente sorrindo enquanto faz as unhas com uma manicure"
-            />
+            src="assets/nail1.png"
+            alt="Cliente sorrindo enquanto faz as unhas com uma profissional NailNow"
+          />
           </div>
         </div>
       </section>
@@ -167,7 +167,7 @@
         <div class="match-results__inner">
           <header class="match-results__header">
             <span class="eyebrow" id="match-results-eyebrow">Sugestões personalizadas</span>
-            <h2 id="match-results-title">Manicures ideais para você</h2>
+            <h2 id="match-results-title">Profissionais ideais para você</h2>
             <p id="match-results-description">
               Informe o serviço desejado e veja profissionais verificadas prontas para atender no seu endereço.
             </p>
@@ -178,8 +178,8 @@
 
       <section class="cta-profissional" id="profissionais">
         <div class="cta-content">
-          <span class="eyebrow">Para manicures</span>
-          <h2>Seja uma manicure parceira NailNow</h2>
+          <span class="eyebrow">Para profissionais</span>
+          <h2>Seja uma profissional parceira NailNow</h2>
           <p>
             Cadastre-se gratuitamente, receba pedidos recorrentes e tenha suporte financeiro, logístico e de marketing a cada atendimento.
           </p>
@@ -233,7 +233,7 @@
 
     <nav class="bottom-nav" aria-label="Navegação inferior fixa">
       <a href="index.html" class="bottom-nav__link" aria-label="Ir para o início">Home</a>
-      <a href="servicos.html" class="bottom-nav__link" aria-label="Buscar serviços de manicure">Buscar</a>
+      <a href="servicos.html" class="bottom-nav__link" aria-label="Buscar serviços profissionais">Buscar</a>
       <a href="cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
       <a href="cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
     </nav>
@@ -278,7 +278,7 @@
       let lastClientCoordinates = null;
       let lastClientLabel = "";
 
-      let manicureCatalog = [];
+      let professionalCatalog = [];
       let professionalsPromise = null;
 
       let selectedServices = new Set();
@@ -766,10 +766,7 @@
       }
 
       async function loadProfessionalsFromFirestore() {
-        const sources = [
-          { path: "profissionais", label: "profissionais" },
-          { path: "manicures", label: "manicures" },
-        ];
+        const sources = [{ path: "profissionais", label: "profissionais" }];
 
         const seenIds = new Set();
         const mergedCatalog = [];
@@ -803,7 +800,7 @@
         });
 
         if (mergedCatalog.length) {
-          manicureCatalog = mergedCatalog;
+          professionalCatalog = mergedCatalog;
         }
 
         populateServiceSelect();
@@ -811,7 +808,7 @@
 
       function getCatalogServices() {
         const catalogServices = new Set();
-        manicureCatalog.forEach((pro) => {
+        professionalCatalog.forEach((pro) => {
           (pro.services || []).forEach((service) => {
             const normalized = normalizeServiceName(service);
             if (normalized) {
@@ -1037,7 +1034,7 @@
         const hasServiceFilter = uniqueCanonicalServices.length > 0;
         const hasCoordinates = Boolean(coordinates);
 
-        const entries = manicureCatalog
+        const entries = professionalCatalog
           .map((pro, index) => {
             if (!pro) return null;
 
@@ -1143,8 +1140,8 @@
           eyebrow.textContent = "Combinações perfeitas";
           const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
           title.textContent = serviceSummary
-            ? `Manicures para ${serviceSummary}${locationSuffix}`
-            : `Manicures perto de você${locationSuffix}`;
+            ? `Profissionais para ${serviceSummary}${locationSuffix}`
+            : `Profissionais perto de você${locationSuffix}`;
           description.textContent = locationLabel
             ? `Selecionamos profissionais que oferecem ${serviceLowerSummary} e atendem em ${locationLabel}.`
             : `Selecionamos profissionais que oferecem ${serviceLowerSummary} com ótima avaliação.`;
@@ -1161,7 +1158,7 @@
             ? `Ainda não temos ${serviceSummary}${locationSuffix}`
             : `Ainda não temos opções${locationSuffix}`;
           description.textContent = locationLabel
-            ? `Enquanto ampliamos nossa rede para ${serviceLowerSummary}, conheça as manicures mais próximas de ${locationLabel}.`
+            ? `Enquanto ampliamos nossa rede para ${serviceLowerSummary}, conheça as profissionais mais próximas de ${locationLabel}.`
             : `Enquanto ampliamos nossa rede para ${serviceLowerSummary}, estas são as profissionais NailNow mais próximas de você.`;
 
           const resultWord = fallbackCount === 1 ? "profissional" : "profissionais";
@@ -1178,7 +1175,7 @@
             : `Ainda não encontramos opções${locationSuffix}`;
           description.textContent = locationLabel
             ? "Estamos ampliando nossa rede na sua região. Tente novamente em breve ou cadastre-se para ser avisada."
-            : "Estamos ampliando nossa rede de manicures para este serviço. Tente novamente em breve.";
+            : "Estamos ampliando nossa rede de profissionais para este serviço. Tente novamente em breve.";
           updateBookingFeedback(
             `Ainda não encontramos profissionais para ${serviceLowerSummary}${locationSuffix}.`,
             "error"
@@ -1298,7 +1295,7 @@
           return;
         }
 
-        updateBookingFeedback("Buscando manicures próximas...");
+        updateBookingFeedback("Buscando profissionais próximas...");
 
         try {
           if (!professionalsPromise) {
@@ -1311,7 +1308,7 @@
           const { matches, fallback } = scoreMatches(serviceSelections, coordinates);
           renderMatches(matches, fallback, serviceSelections, locationLabel, coordinates);
         } catch (error) {
-          console.error("Erro ao buscar manicures", error);
+          console.error("Erro ao buscar profissionais", error);
           updateBookingFeedback(
             "Não foi possível buscar as profissionais agora. Tente novamente em instantes.",
             "error"
