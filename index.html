@@ -240,7 +240,7 @@
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -279,7 +279,11 @@
       let lastClientLabel = "";
 
       let professionalCatalog = [];
-      let professionalsPromise = null;
+      let professionalsReadyPromise = null;
+      let resolveProfessionalsReady = null;
+      let professionalsLoadError = null;
+      let professionalsUnsubscribe = null;
+      let lastSearchContext = null;
 
       let selectedServices = new Set();
       let serviceDropdownElement = null;
@@ -358,6 +362,18 @@
 
         professionalMarkers.forEach((marker) => marker.setMap(null));
         professionalMarkers = [];
+      }
+
+      function resetMatchResults() {
+        const section = document.getElementById("match-results");
+        const list = document.getElementById("match-results-list");
+        if (list) {
+          list.innerHTML = "";
+        }
+        if (section) {
+          section.hidden = true;
+        }
+        hideBookingMap();
       }
 
       function ensureServiceElements() {
@@ -765,45 +781,81 @@
         };
       }
 
-      async function loadProfessionalsFromFirestore() {
-        const sources = [{ path: "profissionais", label: "profissionais" }];
-
-        const seenIds = new Set();
-        const mergedCatalog = [];
-        let accentIndex = 0;
-
-        const loadPromises = sources.map((source) =>
-          getDocs(collection(db, source.path)).catch((error) => {
-            console.error(`Erro ao carregar ${source.label}`, error);
-            return null;
-          })
-        );
-
-        const snapshots = await Promise.all(loadPromises);
-
-        snapshots.forEach((snapshot) => {
-          if (!snapshot) return;
-
-          snapshot.docs.forEach((doc) => {
-            if (!doc) return;
-            if (seenIds.has(doc.id)) return;
-
-            const normalized = normalizeProfessional(doc);
-            if (!normalized) return;
-
-            normalized.accent = accentPalette[accentIndex % accentPalette.length];
-            accentIndex += 1;
-
-            mergedCatalog.push(normalized);
-            seenIds.add(doc.id);
-          });
-        });
-
-        if (mergedCatalog.length) {
-          professionalCatalog = mergedCatalog;
+      function determineAccentFromId(id) {
+        if (!id) {
+          return accentPalette[0];
         }
 
+        let hash = 0;
+        for (let index = 0; index < id.length; index += 1) {
+          hash = (hash * 31 + id.charCodeAt(index)) % accentPalette.length;
+        }
+
+        return accentPalette[Math.abs(hash) % accentPalette.length];
+      }
+
+      function refreshMatchesAfterCatalogUpdate() {
+        if (!lastSearchContext) return;
+        const { services, coordinates, locationLabel } = lastSearchContext;
+        const { matches, fallback } = scoreMatches(services, coordinates);
+        renderMatches(matches, fallback, services, locationLabel, coordinates);
+      }
+
+      function handleProfessionalsSnapshot(snapshot) {
+        const seenIds = new Set();
+        const mergedCatalog = [];
+
+        snapshot.forEach((doc) => {
+          if (!doc || seenIds.has(doc.id)) return;
+
+          const normalized = normalizeProfessional(doc);
+          if (!normalized) return;
+
+          normalized.accent = determineAccentFromId(doc.id);
+          mergedCatalog.push(normalized);
+          seenIds.add(doc.id);
+        });
+
+        professionalCatalog = mergedCatalog;
         populateServiceSelect();
+        refreshMatchesAfterCatalogUpdate();
+      }
+
+      function ensureProfessionalsLoaded() {
+        if (professionalsReadyPromise) {
+          return professionalsReadyPromise;
+        }
+
+        professionalsReadyPromise = new Promise((resolve) => {
+          resolveProfessionalsReady = resolve;
+        });
+
+        const source = { path: "profissionais", label: "profissionais" };
+        const collectionRef = collection(db, source.path);
+
+        professionalsUnsubscribe = onSnapshot(
+          collectionRef,
+          (snapshot) => {
+            professionalsLoadError = null;
+            handleProfessionalsSnapshot(snapshot);
+            if (resolveProfessionalsReady) {
+              resolveProfessionalsReady();
+              resolveProfessionalsReady = null;
+            }
+          },
+          (error) => {
+            professionalsLoadError = error;
+            console.error(`Erro ao escutar ${source.label}`, error);
+            professionalCatalog = [];
+            populateServiceSelect();
+            if (resolveProfessionalsReady) {
+              resolveProfessionalsReady();
+              resolveProfessionalsReady = null;
+            }
+          }
+        );
+
+        return professionalsReadyPromise;
       }
 
       function getCatalogServices() {
@@ -1242,7 +1294,8 @@
             lngField.value = "";
             lastClientCoordinates = null;
             lastClientLabel = "";
-            hideBookingMap();
+            lastSearchContext = null;
+            resetMatchResults();
           }
         });
 
@@ -1298,17 +1351,41 @@
         updateBookingFeedback("Buscando profissionais próximas...");
 
         try {
-          if (!professionalsPromise) {
-            professionalsPromise = loadProfessionalsFromFirestore();
-          }
-          await professionalsPromise;
+          await ensureProfessionalsLoaded();
 
           const coordinates = { lat: latValue, lng: lngValue };
           const locationLabel = formattedField?.value || locationQuery;
+          lastSearchContext = {
+            services: serviceSelections.slice(),
+            coordinates,
+            locationLabel,
+          };
+
+          if (professionalsLoadError) {
+            console.error("Erro ao acompanhar profissionais", professionalsLoadError);
+            resetMatchResults();
+            updateBookingFeedback(
+              "Não foi possível acessar a lista de profissionais agora. Tente novamente em instantes.",
+              "error"
+            );
+            return;
+          }
+
+          if (!professionalCatalog.length) {
+            renderMatches([], [], serviceSelections, locationLabel, coordinates);
+            updateBookingFeedback(
+              "Ainda não temos profissionais cadastradas na plataforma. Cadastre-se para ser avisada assim que chegarmos à sua região.",
+              "error"
+            );
+            return;
+          }
+
           const { matches, fallback } = scoreMatches(serviceSelections, coordinates);
           renderMatches(matches, fallback, serviceSelections, locationLabel, coordinates);
         } catch (error) {
           console.error("Erro ao buscar profissionais", error);
+          resetMatchResults();
+          lastSearchContext = null;
           updateBookingFeedback(
             "Não foi possível buscar as profissionais agora. Tente novamente em instantes.",
             "error"
@@ -1328,7 +1405,13 @@
 
       document.addEventListener("DOMContentLoaded", () => {
         populateServiceSelect();
-        professionalsPromise = loadProfessionalsFromFirestore();
+        ensureProfessionalsLoaded();
+      });
+
+      window.addEventListener("beforeunload", () => {
+        if (typeof professionalsUnsubscribe === "function") {
+          professionalsUnsubscribe();
+        }
       });
 
       window.addEventListener("load", () => {
