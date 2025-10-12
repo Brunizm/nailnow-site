@@ -59,7 +59,7 @@
           <p>
             Manicure de qualidade, onde você estiver. Agende em 3 cliques, acompanhe o deslocamento da profissional e receba atendimento premium na sua casa ou no trabalho.
           </p>
-          <form class="booking-card" aria-label="Buscar manicures disponíveis" onsubmit="event.preventDefault();">
+          <form class="booking-card" aria-label="Buscar manicures disponíveis" onsubmit="handleBooking(event)">
             <div class="booking-card__field">
               <label class="booking-card__label" for="booking-location">Local do atendimento</label>
               <div class="booking-card__control">
@@ -87,6 +87,8 @@
                   class="booking-card__input"
                   name="service"
                   placeholder="Ex.: manicure, pedicure, spa dos pés"
+                  list="services-list"
+                  autocomplete="off"
                   required
                 />
                 <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
@@ -120,7 +122,7 @@
               </div>
             </div>
           </div>
-          <button type="button" class="booking-card__submit">Agende agora</button>
+          <button type="submit" class="booking-card__submit">Encontrar manicure</button>
           <p class="booking-card__note">Suporte dedicado e avaliações reais para você escolher a manicure ideal com tranquilidade.</p>
         </form>
       </div>
@@ -131,6 +133,21 @@
               alt="Cliente sorrindo enquanto faz as unhas com uma manicure"
             />
           </div>
+        </div>
+      </section>
+
+      <datalist id="services-list"></datalist>
+
+      <section class="match-results" id="match-results" hidden>
+        <div class="match-results__inner">
+          <header class="match-results__header">
+            <span class="eyebrow" id="match-results-eyebrow">Sugestões personalizadas</span>
+            <h2 id="match-results-title">Manicures ideais para você</h2>
+            <p id="match-results-description">
+              Informe o serviço desejado e veja profissionais verificadas prontas para atender no seu endereço.
+            </p>
+          </header>
+          <ul class="match-results__list" id="match-results-list" role="list"></ul>
         </div>
       </section>
 
@@ -195,5 +212,272 @@
       <a href="cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
       <a href="cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
     </nav>
+
+    <script>
+      const manicureCatalog = [
+        {
+          id: "ana-luiza",
+          name: "Ana Luiza",
+          initials: "AL",
+          rating: 4.9,
+          reviews: 128,
+          focus: "Especialista em nail art minimalista e spa das mãos em domicílio.",
+          services: ["Manicure clássica", "Spa das mãos", "Nail art minimalista"],
+          areas: ["São Paulo", "SP", "Zona Sul"],
+          badge: "Zona Sul · São Paulo",
+          accent: "rose",
+        },
+        {
+          id: "mariana-costa",
+          name: "Mariana Costa",
+          initials: "MC",
+          rating: 4.8,
+          reviews: 142,
+          focus: "Referência em alongamento em gel e manutenção rápida para eventos.",
+          services: ["Alongamento em gel", "Manutenção em gel", "Pedicure clássica"],
+          areas: ["Belo Horizonte", "BH", "Centro"],
+          badge: "Centro · Belo Horizonte",
+          accent: "sunset",
+        },
+        {
+          id: "juliana-prado",
+          name: "Juliana Prado",
+          initials: "JP",
+          rating: 4.95,
+          reviews: 96,
+          focus: "Consultoria de cor para noivas e nail art artística sob medida.",
+          services: ["Manicure premium", "Nail art artística", "Blindagem de unhas"],
+          areas: ["Belo Horizonte", "Savassi", "BH"],
+          badge: "Savassi · Belo Horizonte",
+          accent: "violet",
+        },
+        {
+          id: "camila-duarte",
+          name: "Camila Duarte",
+          initials: "CD",
+          rating: 4.7,
+          reviews: 88,
+          focus: "Pedicure spa com ritual relaxante e podologia preventiva.",
+          services: ["Pedicure spa", "Podologia preventiva", "Esmaltação em gel"],
+          areas: ["São Paulo", "Zona Oeste", "Perdizes"],
+          badge: "Zona Oeste · São Paulo",
+          accent: "ocean",
+        },
+        {
+          id: "rafaela-nunes",
+          name: "Rafaela Nunes",
+          initials: "RN",
+          rating: 4.85,
+          reviews: 110,
+          focus: "Alongamento em fibra e esmaltação em gel de longa duração.",
+          services: ["Alongamento fibra de vidro", "Esmaltação em gel", "Manicure express"],
+          areas: ["Rio de Janeiro", "RJ", "Barra da Tijuca"],
+          badge: "Barra da Tijuca · Rio de Janeiro",
+          accent: "blush",
+        },
+        {
+          id: "bianca-alves",
+          name: "Bianca Alves",
+          initials: "BA",
+          rating: 4.92,
+          reviews: 101,
+          focus: "Experiência premium com alongamento em gel e spa dos pés.",
+          services: ["Alongamento em gel", "Spa dos pés", "Pedicure clássica"],
+          areas: ["Curitiba", "PR", "Batel"],
+          badge: "Batel · Curitiba",
+          accent: "lavender",
+        },
+      ];
+
+      const accentClassMap = {
+        rose: "match-results__avatar--rose",
+        sunset: "match-results__avatar--sunset",
+        violet: "match-results__avatar--violet",
+        ocean: "match-results__avatar--ocean",
+        blush: "match-results__avatar--blush",
+        lavender: "match-results__avatar--lavender",
+      };
+
+      function populateServiceList() {
+        const datalist = document.getElementById("services-list");
+        if (!datalist) return;
+        const uniqueServices = new Set();
+        manicureCatalog.forEach((pro) => {
+          pro.services.forEach((service) => uniqueServices.add(service));
+        });
+        datalist.innerHTML = Array.from(uniqueServices)
+          .sort((a, b) => a.localeCompare(b, "pt-BR"))
+          .map((service) => `<option value="${service}"></option>`)
+          .join("");
+      }
+
+      function createMatchCard(pro, serviceQuery) {
+        const item = document.createElement("li");
+        item.className = "match-results__card";
+
+        const avatar = document.createElement("div");
+        avatar.className = "match-results__avatar";
+        const accentClass = accentClassMap[pro.accent];
+        if (accentClass) {
+          avatar.classList.add(accentClass);
+        }
+        avatar.textContent = pro.initials;
+        avatar.setAttribute("aria-hidden", "true");
+
+        const content = document.createElement("div");
+        content.className = "match-results__content";
+
+        const header = document.createElement("div");
+        header.className = "match-results__card-header";
+
+        const name = document.createElement("h3");
+        name.textContent = pro.name;
+
+        const rating = document.createElement("span");
+        rating.className = "match-results__rating";
+        const ratingDisplay = pro.rating.toLocaleString("pt-BR", {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 2,
+        });
+        rating.textContent = `★ ${ratingDisplay}`;
+        rating.setAttribute("aria-label", `Avaliação média ${pro.rating.toFixed(2)} de 5`);
+        rating.title = `${ratingDisplay} · ${pro.reviews} avaliações`;
+
+        header.appendChild(name);
+        header.appendChild(rating);
+
+        const blurb = document.createElement("p");
+        blurb.className = "match-results__blurb";
+        blurb.textContent = pro.focus;
+
+        const meta = document.createElement("div");
+        meta.className = "match-results__meta";
+
+        const location = document.createElement("span");
+        location.className = "match-results__badge";
+        location.textContent = pro.badge;
+
+        const services = document.createElement("span");
+        services.className = "match-results__services";
+        services.textContent = pro.services.slice(0, 3).join(" · ");
+
+        meta.appendChild(location);
+        meta.appendChild(services);
+
+        const cta = document.createElement("a");
+        cta.className = "match-results__cta";
+        const params = new URLSearchParams({
+          profissional: pro.id,
+          servico: serviceQuery || pro.services[0],
+        });
+        cta.href = `cliente/cadastro.html?${params.toString()}`;
+        cta.textContent = "Reservar atendimento";
+
+        content.appendChild(header);
+        content.appendChild(blurb);
+        content.appendChild(meta);
+        content.appendChild(cta);
+
+        item.appendChild(avatar);
+        item.appendChild(content);
+
+        return item;
+      }
+
+      function renderMatches(matches, serviceQuery, locationQuery) {
+        const section = document.getElementById("match-results");
+        const list = document.getElementById("match-results-list");
+        const title = document.getElementById("match-results-title");
+        const description = document.getElementById("match-results-description");
+        const eyebrow = document.getElementById("match-results-eyebrow");
+
+        if (!section || !list || !title || !description || !eyebrow) return;
+
+        list.innerHTML = "";
+
+        let itemsToShow = matches;
+
+        if (!itemsToShow.length) {
+          eyebrow.textContent = "Profissionais em destaque";
+          title.textContent = `Ainda não temos especialistas em "${serviceQuery}" na sua região`;
+          description.textContent = "Veja manicures bem avaliadas que atendem próximas às principais regiões.";
+          itemsToShow = manicureCatalog
+            .slice()
+            .sort((a, b) => {
+              if (b.rating !== a.rating) return b.rating - a.rating;
+              return b.reviews - a.reviews;
+            })
+            .slice(0, 3)
+            .map((pro) => ({ pro }));
+        } else {
+          eyebrow.textContent = "Combinações perfeitas";
+          title.textContent = `Manicures para "${serviceQuery}"`;
+          description.textContent = locationQuery
+            ? `Selecionamos profissionais que oferecem ${serviceQuery.toLowerCase()} e atendem em ${locationQuery}.`
+            : `Selecionamos profissionais que oferecem ${serviceQuery.toLowerCase()} com ótima avaliação.`;
+        }
+
+        itemsToShow.forEach((item) => {
+          const element = createMatchCard(item.pro, serviceQuery);
+          list.appendChild(element);
+        });
+
+        section.hidden = false;
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      function scoreMatches(serviceQuery, locationQuery) {
+        const serviceLower = serviceQuery.toLowerCase();
+        const locationLower = locationQuery.toLowerCase();
+
+        return manicureCatalog
+          .map((pro) => {
+            const serviceMatch = pro.services.some((service) => service.toLowerCase().includes(serviceLower));
+            const locationMatch = locationQuery
+              ? pro.areas.some((area) => locationLower.includes(area.toLowerCase()))
+              : false;
+
+            if (!serviceMatch) {
+              return null;
+            }
+
+            let score = 0;
+            if (serviceMatch) score += 2;
+            if (locationMatch) score += 1;
+            score += pro.rating;
+
+            return { pro, score };
+          })
+          .filter(Boolean)
+          .sort((a, b) => b.score - a.score || b.pro.reviews - a.pro.reviews)
+          .slice(0, 4);
+      }
+
+      function handleBooking(event) {
+        event.preventDefault();
+        const form = event.target;
+        const serviceField = form.querySelector("[name='service']");
+        const locationField = form.querySelector("[name='location']");
+
+        if (!serviceField || !locationField) return;
+
+        const serviceQuery = serviceField.value.trim();
+        const locationQuery = locationField.value.trim();
+
+        if (!serviceQuery) {
+          serviceField.focus();
+          return;
+        }
+
+        const matches = scoreMatches(serviceQuery, locationQuery);
+        renderMatches(matches, serviceQuery, locationQuery);
+      }
+
+      window.handleBooking = handleBooking;
+
+      document.addEventListener("DOMContentLoaded", () => {
+        populateServiceList();
+      });
+    </script>
   </body>
 </html>
