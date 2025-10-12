@@ -261,104 +261,7 @@
       let lastClientCoordinates = null;
       let lastClientLabel = "";
 
-      const fallbackManicureCatalog = [
-        {
-          id: "ana-luiza",
-          name: "Ana Luiza",
-          initials: "AL",
-          rating: 4.9,
-          reviews: 128,
-          focus: "Especialista em manicure clássica com acabamento em gel impecável.",
-          services: [
-            "Manicure clássica",
-            "Esmaltação em gel (manicure)",
-            "Esmaltação em gel (pedicure)",
-          ],
-          areas: ["São Paulo", "SP", "Zona Sul"],
-          badge: "Zona Sul · São Paulo",
-          accent: "rose",
-          location: { lat: -23.602, lng: -46.663 },
-          city: "São Paulo",
-          photoUrl: "",
-        },
-        {
-          id: "mariana-costa",
-          name: "Mariana Costa",
-          initials: "MC",
-          rating: 4.8,
-          reviews: 142,
-          focus: "Referência em alongamento em gel com manutenção rápida para eventos.",
-          services: ["Alongamento em gel", "Esmaltação em gel (manicure)", "Manicure clássica"],
-          areas: ["Belo Horizonte", "BH", "Centro"],
-          badge: "Centro · Belo Horizonte",
-          accent: "sunset",
-          location: { lat: -19.919, lng: -43.938 },
-          city: "Belo Horizonte",
-          photoUrl: "",
-        },
-        {
-          id: "juliana-prado",
-          name: "Juliana Prado",
-          initials: "JP",
-          rating: 4.95,
-          reviews: 96,
-          focus: "Consultoria de cor com manicure clássica e cobertura em gel para noivas.",
-          services: ["Manicure clássica", "Alongamento em gel", "Esmaltação em gel (manicure)"],
-          areas: ["Belo Horizonte", "Savassi", "BH"],
-          badge: "Savassi · Belo Horizonte",
-          accent: "violet",
-          location: { lat: -19.934, lng: -43.935 },
-          city: "Belo Horizonte",
-          photoUrl: "",
-        },
-        {
-          id: "camila-duarte",
-          name: "Camila Duarte",
-          initials: "CD",
-          rating: 4.7,
-          reviews: 88,
-          focus: "Pedicure clássica relaxante com opções de esmaltação em gel.",
-          services: ["Pedicure clássica", "Esmaltação em gel (pedicure)", "Manicure clássica"],
-          areas: ["São Paulo", "Zona Oeste", "Perdizes"],
-          badge: "Zona Oeste · São Paulo",
-          accent: "ocean",
-          location: { lat: -23.538, lng: -46.679 },
-          city: "São Paulo",
-          photoUrl: "",
-        },
-        {
-          id: "rafaela-nunes",
-          name: "Rafaela Nunes",
-          initials: "RN",
-          rating: 4.85,
-          reviews: 110,
-          focus: "Alongamento em gel com esmaltação de longa duração para eventos.",
-          services: ["Alongamento em gel", "Esmaltação em gel (manicure)", "Pedicure clássica"],
-          areas: ["Rio de Janeiro", "RJ", "Barra da Tijuca"],
-          badge: "Barra da Tijuca · Rio de Janeiro",
-          accent: "blush",
-          location: { lat: -23.000, lng: -43.365 },
-          city: "Rio de Janeiro",
-          photoUrl: "",
-        },
-        {
-          id: "bianca-alves",
-          name: "Bianca Alves",
-          initials: "BA",
-          rating: 4.92,
-          reviews: 101,
-          focus: "Experiência premium com alongamento em gel e pedicure clássica.",
-          services: ["Alongamento em gel", "Pedicure clássica", "Manicure clássica"],
-          areas: ["Curitiba", "PR", "Batel"],
-          badge: "Batel · Curitiba",
-          accent: "lavender",
-          location: { lat: -25.441, lng: -49.287 },
-          city: "Curitiba",
-          photoUrl: "",
-        },
-      ];
-
-      let manicureCatalog = fallbackManicureCatalog.slice();
+      let manicureCatalog = [];
       let professionalsPromise = null;
 
       const accentClassMap = {
@@ -896,41 +799,32 @@
 
         list.innerHTML = "";
 
-        let itemsToShow = matches;
+        const matchCount = matches.length;
+        const itemsToShow = matches.slice();
+        const serviceLower = serviceQuery.toLowerCase();
 
-        if (!itemsToShow.length) {
-          const fallbackItems = sortMatchesByDistance(
-            manicureCatalog.map((pro, index) => {
-              const distanceKm = coordinates && pro.location
-                ? calculateDistance(coordinates, pro.location)
-                : null;
-              const ratingScore = typeof pro.rating === "number" ? pro.rating : 4.4 - index * 0.04;
-              return { pro, distanceKm, score: ratingScore };
-            })
-          );
-
-          itemsToShow = fallbackItems;
-          eyebrow.textContent = "Profissionais em destaque";
-          title.textContent = `Ainda não temos especialistas em "${serviceQuery}" na sua região`;
+        if (!matchCount) {
+          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
+          eyebrow.textContent = "Nenhuma profissional encontrada";
+          title.textContent = `Ainda não encontramos ${serviceQuery}${locationSuffix}`;
           description.textContent = locationLabel
-            ? "Veja manicures bem avaliadas que atendem próximas às principais regiões."
-            : "Veja manicures bem avaliadas e disponíveis para novos agendamentos.";
-
-          const fallbackMessage = locationLabel
-            ? `Ainda não encontramos ${serviceQuery.toLowerCase()} próximo de ${locationLabel}. Confira nossas profissionais em destaque.`
-            : "Confira manicures em destaque prontas para novos agendamentos.";
-          updateBookingFeedback(fallbackMessage);
+            ? "Estamos ampliando nossa rede na sua região. Tente novamente em breve ou cadastre-se para ser avisada."
+            : "Estamos ampliando nossa rede de manicures para este serviço. Tente novamente em breve.";
+          updateBookingFeedback(
+            `Ainda não encontramos profissionais para ${serviceLower}${locationSuffix}.`,
+            "error"
+          );
         } else {
           eyebrow.textContent = "Combinações perfeitas";
           const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
           title.textContent = `Manicures para "${serviceQuery}"${locationSuffix}`;
           description.textContent = locationLabel
-            ? `Selecionamos profissionais que oferecem ${serviceQuery.toLowerCase()} e atendem em ${locationLabel}.`
-            : `Selecionamos profissionais que oferecem ${serviceQuery.toLowerCase()} com ótima avaliação.`;
+            ? `Selecionamos profissionais que oferecem ${serviceLower} e atendem em ${locationLabel}.`
+            : `Selecionamos profissionais que oferecem ${serviceLower} com ótima avaliação.`;
 
-          const resultWord = matches.length === 1 ? "profissional" : "profissionais";
+          const resultWord = matchCount === 1 ? "profissional" : "profissionais";
           updateBookingFeedback(
-            `${matches.length} ${resultWord} encontrada(s) para ${serviceQuery.toLowerCase()}${locationSuffix}.`,
+            `${matchCount} ${resultWord} encontrada(s) para ${serviceLower}${locationSuffix}.`,
             "success"
           );
         }
