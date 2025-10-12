@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="NailNow conecta clientes e manicures profissionais com agendamentos rápidos, avaliações reais e atendimento onde você estiver."
+      content="NailNow conecta clientes e profissionais NailNow com agendamentos rápidos, avaliações reais e atendimento onde você estiver."
     />
     <title>NailNow | Beleza nas suas mãos</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="promo-banner">Manicure sob medida: agende com profissionais verificadas onde você estiver.</div>
+    <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
     <header class="site-header">
       <div class="header-inner">
         <a href="index.html" class="brand-mark" aria-label="Início da NailNow">
@@ -32,7 +32,7 @@
           </nav>
           <div class="header-actions">
             <a href="cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="profissional/index.html" class="header-cta">Sou Manicure</a>
+            <a href="profissional/index.html" class="header-cta">Sou Profissional</a>
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -59,7 +59,7 @@
           <p>
             Manicure de qualidade, onde você estiver. Agende em 3 cliques, acompanhe o deslocamento da profissional e receba atendimento premium na sua casa ou no trabalho.
           </p>
-          <form class="booking-card" aria-label="Buscar manicures disponíveis" onsubmit="event.preventDefault();">
+          <form class="booking-card" aria-label="Buscar profissionais disponíveis" onsubmit="handleBooking(event)">
             <div class="booking-card__field">
               <label class="booking-card__label" for="booking-location">Local do atendimento</label>
               <div class="booking-card__control">
@@ -77,24 +77,52 @@
                   />
                 </svg>
               </div>
+              <input type="hidden" id="booking-location-formatted" name="location_formatted" />
+              <input type="hidden" id="booking-location-place-id" name="location_place_id" />
+              <input type="hidden" id="booking-location-lat" name="location_lat" />
+              <input type="hidden" id="booking-location-lng" name="location_lng" />
+              <div
+                id="booking-map"
+                class="booking-card__map"
+                role="presentation"
+                aria-hidden="true"
+                hidden
+              ></div>
             </div>
-            <div class="booking-card__field">
-              <label class="booking-card__label" for="booking-service">Serviço desejado</label>
+            <div class="booking-card__field booking-card__field--services" id="booking-service-field">
+              <label class="booking-card__label" for="booking-service-toggle">Serviços desejados</label>
               <div class="booking-card__control">
-                <input
-                  type="text"
-                  id="booking-service"
-                  class="booking-card__input"
-                  name="service"
-                  placeholder="Ex.: manicure, pedicure, spa dos pés"
-                  required
-                />
+                <button
+                  type="button"
+                  id="booking-service-toggle"
+                  class="booking-card__input booking-card__input--multiselect"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                >
+                  <span
+                    id="booking-service-summary"
+                    class="booking-card__selection booking-card__selection--empty"
+                  >
+                    Selecione os serviços
+                  </span>
+                </button>
                 <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
                   <path
                     d="M5.5 3.5A2.5 2.5 0 0 0 3 6v9.5A3.5 3.5 0 0 0 6.5 19h6.76l2.84 2.84a.75.75 0 0 0 1.28-.53V19H17.5A3.5 3.5 0 0 0 21 15.5v-9a3 3 0 0 0-3-3H6.5a1 1 0 0 0-.18.02Zm.18 1.98H18a1.5 1.5 0 0 1 1.5 1.5v8.52a2 2 0 0 1-2 2h-2.02a.75.75 0 0 0-.75.75v1.3l-1.77-1.77a.75.75 0 0 0-.53-.22H6.5A2 2 0 0 1 4.5 15.5V6a1 1 0 0 1 1-1Z"
                   />
                 </svg>
               </div>
+              <div
+                class="booking-card__dropdown"
+                id="booking-service-dropdown"
+                role="listbox"
+                aria-multiselectable="true"
+                tabindex="-1"
+                hidden
+              >
+                <ul class="booking-card__options" id="booking-service-options"></ul>
+              </div>
+              <input type="hidden" name="services" id="booking-services" />
             </div>
             <div class="booking-card__row">
               <div class="booking-card__field">
@@ -120,24 +148,38 @@
               </div>
             </div>
           </div>
-          <button type="button" class="booking-card__submit">Agende agora</button>
-          <p class="booking-card__note">Suporte dedicado e avaliações reais para você escolher a manicure ideal com tranquilidade.</p>
+          <button type="submit" class="booking-card__submit">Agende agora</button>
+          <p class="booking-card__feedback" id="booking-feedback" role="status" aria-live="polite"></p>
+          <p class="booking-card__note">Suporte dedicado e avaliações reais para você escolher a profissional ideal com tranquilidade.</p>
         </form>
       </div>
       <div class="hero-media">
         <div class="hero-image-wrapper">
           <img
-              src="assets/nail1.png"
-              alt="Cliente sorrindo enquanto faz as unhas com uma manicure"
-            />
+            src="assets/nail1.png"
+            alt="Cliente sorrindo enquanto faz as unhas com uma profissional NailNow"
+          />
           </div>
+        </div>
+      </section>
+
+      <section class="match-results" id="match-results" hidden>
+        <div class="match-results__inner">
+          <header class="match-results__header">
+            <span class="eyebrow" id="match-results-eyebrow">Sugestões personalizadas</span>
+            <h2 id="match-results-title">Profissionais ideais para você</h2>
+            <p id="match-results-description">
+              Informe o serviço desejado e veja profissionais verificadas prontas para atender no seu endereço.
+            </p>
+          </header>
+          <ul class="match-results__list" id="match-results-list" role="list"></ul>
         </div>
       </section>
 
       <section class="cta-profissional" id="profissionais">
         <div class="cta-content">
-          <span class="eyebrow">Para manicures</span>
-          <h2>Seja uma manicure parceira NailNow</h2>
+          <span class="eyebrow">Para profissionais</span>
+          <h2>Seja uma profissional parceira NailNow</h2>
           <p>
             Cadastre-se gratuitamente, receba pedidos recorrentes e tenha suporte financeiro, logístico e de marketing a cada atendimento.
           </p>
@@ -191,9 +233,1242 @@
 
     <nav class="bottom-nav" aria-label="Navegação inferior fixa">
       <a href="index.html" class="bottom-nav__link" aria-label="Ir para o início">Home</a>
-      <a href="servicos.html" class="bottom-nav__link" aria-label="Buscar serviços de manicure">Buscar</a>
+      <a href="servicos.html" class="bottom-nav__link" aria-label="Buscar serviços profissionais">Buscar</a>
       <a href="cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
       <a href="cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
     </nav>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import {
+        getFirestore,
+        collection,
+        getDocs,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.appspot.com",
+        messagingSenderId: "726392294571",
+        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      let authReadyPromise = null;
+
+      const accentPalette = ["rose", "sunset", "violet", "ocean", "blush", "lavender"];
+
+      const allowedServices = [
+        "Manicure clássica",
+        "Pedicure clássica",
+        "Alongamento em gel",
+        "Esmaltação em gel (manicure)",
+        "Esmaltação em gel (pedicure)",
+      ];
+
+      const allowedServicesMap = new Map(
+        allowedServices.map((service) => [service.toLowerCase(), service])
+      );
+
+      const defaultMapCenter = { lat: -14.235004, lng: -51.92528 };
+
+      let bookingMapElement = null;
+      let bookingMapInstance = null;
+      let bookingMapInitialized = false;
+      let clientMarker = null;
+      let professionalMarkers = [];
+      let lastClientCoordinates = null;
+      let lastClientLabel = "";
+
+      let professionalCatalog = [];
+      let professionalsReadyPromise = null;
+      let professionalsLoadError = null;
+      let lastSearchContext = null;
+
+      async function ensureAnonymousAccess() {
+        if (auth.currentUser) {
+          return auth.currentUser;
+        }
+
+        if (!authReadyPromise) {
+          authReadyPromise = signInAnonymously(auth).catch((error) => {
+            authReadyPromise = null;
+            console.error("Erro ao autenticar anonimamente", error);
+            throw error;
+          });
+        }
+
+        return authReadyPromise;
+      }
+
+      let selectedServices = new Set();
+      let serviceDropdownElement = null;
+      let serviceToggleButton = null;
+      let serviceSummaryElement = null;
+      let serviceOptionsList = null;
+      let serviceHiddenField = null;
+      let serviceFieldWrapper = null;
+      let serviceDropdownOpen = false;
+      let serviceDropdownInitialized = false;
+
+      const accentClassMap = {
+        rose: "match-results__avatar--rose",
+        sunset: "match-results__avatar--sunset",
+        violet: "match-results__avatar--violet",
+        ocean: "match-results__avatar--ocean",
+        blush: "match-results__avatar--blush",
+        lavender: "match-results__avatar--lavender",
+      };
+
+      function toNumber(value) {
+        if (typeof value === "number") {
+          return Number.isFinite(value) ? value : null;
+        }
+        if (typeof value === "string") {
+          const parsed = parseFloat(value.replace(',', '.'));
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+        return null;
+      }
+
+      function ensureBookingMap() {
+        if (!window.google?.maps) return null;
+
+        if (!bookingMapElement) {
+          bookingMapElement = document.getElementById("booking-map");
+        }
+
+        if (!bookingMapElement) return null;
+
+        if (!bookingMapInstance) {
+          bookingMapInstance = new google.maps.Map(bookingMapElement, {
+            center: defaultMapCenter,
+            zoom: 4,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+            clickableIcons: false,
+            zoomControl: true,
+          });
+        }
+
+        return bookingMapInstance;
+      }
+
+      function showBookingMap() {
+        if (!bookingMapElement) return;
+        bookingMapElement.hidden = false;
+        bookingMapElement.setAttribute("aria-hidden", "false");
+      }
+
+      function hideBookingMap() {
+        if (!bookingMapElement) {
+          bookingMapElement = document.getElementById("booking-map");
+        }
+
+        if (bookingMapElement) {
+          bookingMapElement.hidden = true;
+          bookingMapElement.setAttribute("aria-hidden", "true");
+        }
+
+        if (clientMarker) {
+          clientMarker.setMap(null);
+          clientMarker = null;
+        }
+
+        professionalMarkers.forEach((marker) => marker.setMap(null));
+        professionalMarkers = [];
+      }
+
+      function resetMatchResults() {
+        const section = document.getElementById("match-results");
+        const list = document.getElementById("match-results-list");
+        if (list) {
+          list.innerHTML = "";
+        }
+        if (section) {
+          section.hidden = true;
+        }
+        hideBookingMap();
+      }
+
+      function ensureServiceElements() {
+        if (!serviceFieldWrapper) {
+          serviceFieldWrapper = document.getElementById("booking-service-field");
+        }
+        if (!serviceDropdownElement) {
+          serviceDropdownElement = document.getElementById("booking-service-dropdown");
+        }
+        if (!serviceOptionsList) {
+          serviceOptionsList = document.getElementById("booking-service-options");
+        }
+        if (!serviceToggleButton) {
+          serviceToggleButton = document.getElementById("booking-service-toggle");
+        }
+        if (!serviceSummaryElement) {
+          serviceSummaryElement = document.getElementById("booking-service-summary");
+        }
+        if (!serviceHiddenField) {
+          serviceHiddenField = document.getElementById("booking-services");
+        }
+
+        return (
+          serviceFieldWrapper &&
+          serviceDropdownElement &&
+          serviceOptionsList &&
+          serviceToggleButton &&
+          serviceSummaryElement &&
+          serviceHiddenField
+        );
+      }
+
+      function formatServiceSummary(services) {
+        const uniqueServices = Array.from(new Set(services));
+        if (!uniqueServices.length) {
+          return "Selecione os serviços";
+        }
+        if (uniqueServices.length <= 2) {
+          return uniqueServices.join(" · ");
+        }
+        const remaining = uniqueServices.length - 2;
+        return `${uniqueServices.slice(0, 2).join(" · ")} +${remaining}`;
+      }
+
+      function formatServiceList(services, { lowercase = false } = {}) {
+        const values = Array.isArray(services) ? services : [];
+        const unique = Array.from(new Set(values.filter(Boolean)));
+        if (!unique.length) return "";
+        const list = lowercase
+          ? unique.map((service) => service.toLowerCase())
+          : unique;
+        if (list.length === 1) {
+          return list[0];
+        }
+        if (list.length === 2) {
+          return `${list[0]} e ${list[1]}`;
+        }
+        return `${list.slice(0, -1).join(", ")} e ${list[list.length - 1]}`;
+      }
+
+      function updateServiceSummary() {
+        if (!ensureServiceElements()) return;
+
+        selectedServices = new Set(selectedServices);
+        const servicesArray = Array.from(selectedServices);
+        const summaryText = formatServiceSummary(servicesArray);
+
+        serviceSummaryElement.textContent = summaryText;
+
+        if (servicesArray.length) {
+          serviceSummaryElement.classList.remove("booking-card__selection--empty");
+        } else {
+          serviceSummaryElement.classList.add("booking-card__selection--empty");
+        }
+
+        serviceHiddenField.value = servicesArray.join("|");
+
+        if (serviceToggleButton) {
+          serviceToggleButton.setAttribute(
+            "aria-label",
+            servicesArray.length
+              ? `Serviços selecionados: ${servicesArray.join(", ")}`
+              : "Nenhum serviço selecionado"
+          );
+        }
+
+        if (serviceOptionsList) {
+          serviceOptionsList
+            .querySelectorAll("label.booking-card__option")
+            .forEach((label) => {
+              const { service } = label.dataset;
+              if (!service) return;
+              label.setAttribute(
+                "aria-selected",
+                selectedServices.has(service) ? "true" : "false"
+              );
+            });
+        }
+      }
+
+      function setServiceDropdownOpen(isOpen) {
+        if (!ensureServiceElements()) return;
+
+        serviceDropdownOpen = Boolean(isOpen);
+
+        if (serviceDropdownElement) {
+          serviceDropdownElement.hidden = !serviceDropdownOpen;
+          serviceDropdownElement.setAttribute(
+            "aria-hidden",
+            serviceDropdownOpen ? "false" : "true"
+          );
+          if (serviceDropdownOpen) {
+            serviceDropdownElement.focus({ preventScroll: true });
+          }
+        }
+
+        if (serviceToggleButton) {
+          serviceToggleButton.setAttribute(
+            "aria-expanded",
+            serviceDropdownOpen ? "true" : "false"
+          );
+        }
+
+        if (serviceFieldWrapper) {
+          serviceFieldWrapper.classList.toggle(
+            "booking-card__field--open",
+            serviceDropdownOpen
+          );
+        }
+      }
+
+      function closeServiceDropdown() {
+        setServiceDropdownOpen(false);
+      }
+
+      function openServiceDropdown() {
+        setServiceDropdownOpen(true);
+      }
+
+      function toggleServiceDropdown() {
+        setServiceDropdownOpen(!serviceDropdownOpen);
+      }
+
+      function handleServiceDocumentClick(event) {
+        if (!serviceDropdownOpen) return;
+        if (!ensureServiceElements()) return;
+
+        if (serviceFieldWrapper.contains(event.target)) {
+          return;
+        }
+
+        closeServiceDropdown();
+      }
+
+      function handleServiceKeydown(event) {
+        if (event.key === "Escape") {
+          closeServiceDropdown();
+        }
+      }
+
+      function handleServiceOptionChange(service, checked) {
+        if (!service) return;
+        if (checked) {
+          selectedServices.add(service);
+        } else {
+          selectedServices.delete(service);
+        }
+        updateServiceSummary();
+      }
+
+      function buildServiceOption(service) {
+        if (!ensureServiceElements()) return null;
+
+        const item = document.createElement("li");
+        item.className = "booking-card__options-item";
+
+        const label = document.createElement("label");
+        label.className = "booking-card__option";
+        label.dataset.service = service;
+        label.setAttribute("role", "option");
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = service;
+        checkbox.checked = selectedServices.has(service);
+        checkbox.addEventListener("change", (event) => {
+          handleServiceOptionChange(service, event.target.checked);
+        });
+
+        const text = document.createElement("span");
+        text.textContent = service;
+
+        label.appendChild(checkbox);
+        label.appendChild(text);
+        item.appendChild(label);
+
+        return item;
+      }
+
+      function initializeServiceMultiselect() {
+        if (!ensureServiceElements()) return;
+
+        if (serviceToggleButton && serviceToggleButton.dataset.initialized !== "true") {
+          serviceToggleButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            toggleServiceDropdown();
+          });
+          serviceToggleButton.dataset.initialized = "true";
+        }
+
+        if (!serviceDropdownInitialized) {
+          document.addEventListener("click", handleServiceDocumentClick);
+          document.addEventListener("keydown", handleServiceKeydown);
+          serviceDropdownInitialized = true;
+        }
+      }
+
+      function getSelectedServiceValues() {
+        return Array.from(selectedServices);
+      }
+
+      function clearProfessionalMarkers() {
+        professionalMarkers.forEach((marker) => marker.setMap(null));
+        professionalMarkers = [];
+      }
+
+      function updateClientMarkerOnMap(coordinates, label) {
+        const map = ensureBookingMap();
+        if (!map) return;
+
+        if (!coordinates || !Number.isFinite(coordinates.lat) || !Number.isFinite(coordinates.lng)) {
+          hideBookingMap();
+          return;
+        }
+
+        showBookingMap();
+
+        const position = { lat: coordinates.lat, lng: coordinates.lng };
+
+        if (!clientMarker) {
+          clientMarker = new google.maps.Marker({
+            map,
+            position,
+            title: label || "Local do atendimento",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: "#F45CA2",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 3,
+            },
+          });
+        } else {
+          clientMarker.setMap(map);
+          clientMarker.setPosition(position);
+          clientMarker.setTitle(label || "Local do atendimento");
+        }
+
+        map.panTo(position);
+        if (map.getZoom() < 12) {
+          map.setZoom(12);
+        }
+      }
+
+      function updateMapWithMatches(items, clientCoordinates, locationLabel) {
+        lastClientCoordinates = clientCoordinates ?? null;
+        lastClientLabel = locationLabel ?? "";
+
+        if (!clientCoordinates || !Number.isFinite(clientCoordinates.lat) || !Number.isFinite(clientCoordinates.lng)) {
+          hideBookingMap();
+          return;
+        }
+
+        const map = ensureBookingMap();
+        if (!map) return;
+
+        updateClientMarkerOnMap(clientCoordinates, lastClientLabel);
+
+        clearProfessionalMarkers();
+
+        const matchesWithLocation = [];
+        (items || []).forEach((item) => {
+          const lat = toNumber(item?.pro?.location?.lat);
+          const lng = toNumber(item?.pro?.location?.lng);
+
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            matchesWithLocation.push({ item, position: { lat, lng } });
+          }
+        });
+
+        if (!matchesWithLocation.length) {
+          map.panTo({ lat: clientCoordinates.lat, lng: clientCoordinates.lng });
+          if (map.getZoom() < 12) {
+            map.setZoom(12);
+          }
+          return;
+        }
+
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(clientCoordinates);
+
+        matchesWithLocation.slice(0, 6).forEach(({ item, position }, index) => {
+          const marker = new google.maps.Marker({
+            map,
+            position,
+            title: `${item.pro.name} · ${item.pro.badge || "Profissional NailNow"}`,
+            label: {
+              text: String(index + 1),
+              color: "#ffffff",
+              fontSize: "12px",
+              fontWeight: "700",
+            },
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: "#FF6EA9",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 3,
+            },
+          });
+          professionalMarkers.push(marker);
+          bounds.extend(position);
+        });
+
+        map.fitBounds(bounds, 64);
+      }
+
+      function initBookingMap() {
+        if (bookingMapInitialized) return;
+        const map = ensureBookingMap();
+        if (map) {
+          bookingMapInitialized = true;
+        }
+      }
+
+      function getInitials(name) {
+        return name
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part[0]?.toUpperCase() || "")
+          .join("");
+      }
+
+      function normalizeServiceName(value) {
+        if (!value) return null;
+        const normalized = value.toString().trim().toLowerCase();
+        return allowedServicesMap.get(normalized) ?? null;
+      }
+
+      function normalizeProfessional(doc) {
+        const data = doc.data();
+        if (!data) return null;
+
+        const rawName = (data.nome ?? "").toString().trim();
+        const name = rawName || "Profissional NailNow";
+        let services = Array.isArray(data.servicos) && data.servicos.length
+          ? data.servicos
+          : [allowedServices[0]];
+
+        services = services
+          .map((service) => normalizeServiceName(service))
+          .filter(Boolean);
+
+        if (!services.length) {
+          services = [allowedServices[0]];
+        } else {
+          services = Array.from(new Set(services));
+        }
+
+        const lat = toNumber(data.lat);
+        const lng = toNumber(data.lng);
+        const location = lat !== null && lng !== null ? { lat, lng } : null;
+
+        const areaCandidates = [data.cidade, data.estado, data.endereco, data.endereco_formatado]
+          .filter(Boolean)
+          .flatMap((value) => value.split(/,|·/).map((part) => part.trim()))
+          .filter(Boolean);
+
+        const city = (data.cidade ?? "").toString().trim();
+        const state = (data.estado ?? "").toString().trim();
+        const badgeParts = [city, state].filter(Boolean);
+        const badge = badgeParts.length
+          ? `${badgeParts.join(' · ')}`
+          : (data.endereco_formatado || data.endereco || "Atendimento móvel");
+
+        const rating = toNumber(data.rating);
+        const reviewsNumber = toNumber(data.reviews);
+
+        return {
+          id: doc.id,
+          name,
+          initials: getInitials(name) || "NN",
+          rating: rating ?? undefined,
+          reviews: reviewsNumber !== null ? Math.max(0, Math.round(reviewsNumber)) : undefined,
+          focus: (data.bio ?? "").toString().trim() || "Atendimento NailNow personalizado no seu endereço.",
+          services,
+          areas: areaCandidates.length ? areaCandidates : services,
+          badge,
+          photoUrl: data.fotoUrl || "",
+          location,
+          city,
+        };
+      }
+
+      function determineAccentFromId(id) {
+        if (!id) {
+          return accentPalette[0];
+        }
+
+        let hash = 0;
+        for (let index = 0; index < id.length; index += 1) {
+          hash = (hash * 31 + id.charCodeAt(index)) % accentPalette.length;
+        }
+
+        return accentPalette[Math.abs(hash) % accentPalette.length];
+      }
+
+      function refreshMatchesAfterCatalogUpdate() {
+        if (!lastSearchContext) return;
+        const { services, coordinates, locationLabel } = lastSearchContext;
+        const { matches, fallback } = scoreMatches(services, coordinates);
+        renderMatches(matches, fallback, services, locationLabel, coordinates);
+      }
+
+      function processProfessionalsSnapshot(snapshot) {
+        const seenIds = new Set();
+        const mergedCatalog = [];
+
+        snapshot.forEach((doc) => {
+          if (!doc || seenIds.has(doc.id)) return;
+
+          const normalized = normalizeProfessional(doc);
+          if (!normalized) return;
+
+          normalized.accent = determineAccentFromId(doc.id);
+          mergedCatalog.push(normalized);
+          seenIds.add(doc.id);
+        });
+
+        return mergedCatalog;
+      }
+
+      async function loadProfessionalsFromSource(source) {
+        const collectionRef = collection(db, source.path);
+        const snapshot = await getDocs(collectionRef);
+        return processProfessionalsSnapshot(snapshot);
+      }
+
+      function ensureProfessionalsLoaded(options = {}) {
+        const { force = false } = options;
+
+        if (!force && professionalsReadyPromise) {
+          return professionalsReadyPromise;
+        }
+
+        professionalsReadyPromise = (async () => {
+          professionalsLoadError = null;
+          try {
+            await ensureAnonymousAccess();
+          } catch (error) {
+            professionalCatalog = [];
+            populateServiceSelect();
+            professionalsLoadError = error;
+            throw error;
+          }
+          const sources = [
+            { path: "profissionais", label: "profissionais" },
+            { path: "manicures", label: "manicures" },
+          ];
+
+          let mergedCatalog = [];
+          let lastError = null;
+
+          for (const source of sources) {
+            try {
+              const catalog = await loadProfessionalsFromSource(source);
+
+              if (catalog.length) {
+                mergedCatalog = catalog;
+                break;
+              }
+
+              if (!mergedCatalog.length) {
+                mergedCatalog = catalog;
+              }
+            } catch (error) {
+              console.error(`Erro ao carregar ${source.label}`, error);
+              lastError = { error, source };
+            }
+          }
+
+          if (!mergedCatalog.length && lastError) {
+            professionalCatalog = [];
+            populateServiceSelect();
+            professionalsLoadError = lastError.error;
+            throw professionalsLoadError;
+          }
+
+          professionalCatalog = mergedCatalog;
+          populateServiceSelect();
+          refreshMatchesAfterCatalogUpdate();
+        })();
+
+        professionalsReadyPromise.catch(() => {
+          professionalsReadyPromise = null;
+        });
+
+        return professionalsReadyPromise;
+      }
+
+      function getCatalogServices() {
+        const catalogServices = new Set();
+        professionalCatalog.forEach((pro) => {
+          (pro.services || []).forEach((service) => {
+            const normalized = normalizeServiceName(service);
+            if (normalized) {
+              catalogServices.add(normalized);
+            }
+          });
+        });
+
+        if (!catalogServices.size) {
+          return allowedServices.slice();
+        }
+
+        const servicesInCatalog = allowedServices.filter((service) => catalogServices.has(service));
+
+        return servicesInCatalog.length ? servicesInCatalog : allowedServices.slice();
+      }
+
+      function populateServiceSelect() {
+        initializeServiceMultiselect();
+        if (!ensureServiceElements()) return;
+
+        const services = getCatalogServices();
+        const allowedSet = new Set(services);
+        selectedServices = new Set(
+          Array.from(selectedServices).filter((service) => allowedSet.has(service))
+        );
+
+        serviceOptionsList.innerHTML = "";
+
+        services.forEach((service) => {
+          const option = buildServiceOption(service);
+          if (option) {
+            serviceOptionsList.appendChild(option);
+          }
+        });
+
+        updateServiceSummary();
+        closeServiceDropdown();
+      }
+
+      function formatDistance(kilometers) {
+        if (!Number.isFinite(kilometers)) return null;
+        if (kilometers < 1) {
+          const meters = Math.max(50, Math.round(kilometers * 1000));
+          return `${meters} m de você`;
+        }
+        const formatter = new Intl.NumberFormat("pt-BR", {
+          minimumFractionDigits: kilometers < 10 ? 1 : 0,
+          maximumFractionDigits: kilometers < 10 ? 1 : 0,
+        });
+        return `${formatter.format(kilometers)} km de você`;
+      }
+
+      function calculateDistance(origin, destination) {
+        if (!origin || !destination) return null;
+        const originLat = toNumber(origin.lat);
+        const originLng = toNumber(origin.lng);
+        const destinationLat = toNumber(destination.lat);
+        const destinationLng = toNumber(destination.lng);
+
+        if ([originLat, originLng, destinationLat, destinationLng].some((value) => !Number.isFinite(value))) {
+          return null;
+        }
+
+        const toRadians = (deg) => (deg * Math.PI) / 180;
+        const earthRadius = 6371;
+        const dLat = toRadians(destinationLat - originLat);
+        const dLng = toRadians(destinationLng - originLng);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRadians(originLat)) *
+            Math.cos(toRadians(destinationLat)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadius * c;
+      }
+
+      function createMatchCard(item, serviceQueries) {
+        const { pro, distanceKm } = item;
+        const element = document.createElement("li");
+        element.className = "match-results__card";
+
+        const avatar = document.createElement("div");
+        avatar.className = "match-results__avatar";
+        const accentClass = accentClassMap[pro.accent];
+        if (accentClass) {
+          avatar.classList.add(accentClass);
+        }
+
+        if (pro.photoUrl) {
+          avatar.classList.add("match-results__avatar--with-photo");
+          const img = document.createElement("img");
+          img.src = pro.photoUrl;
+          img.alt = `Foto da profissional ${pro.name}`;
+          avatar.textContent = "";
+          avatar.appendChild(img);
+        } else {
+          avatar.textContent = pro.initials || getInitials(pro.name);
+          avatar.setAttribute("aria-hidden", "true");
+        }
+
+        const content = document.createElement("div");
+        content.className = "match-results__content";
+
+        const header = document.createElement("div");
+        header.className = "match-results__card-header";
+
+        const name = document.createElement("h3");
+        name.textContent = pro.name;
+        header.appendChild(name);
+
+        if (typeof pro.rating === "number") {
+          const rating = document.createElement("span");
+          rating.className = "match-results__rating";
+          const ratingDisplay = new Intl.NumberFormat("pt-BR", {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          }).format(pro.rating);
+          rating.textContent = `★ ${ratingDisplay}`;
+          const reviewsLabel =
+            pro.reviews !== undefined ? `${pro.reviews} avaliações` : "Avaliações NailNow";
+          rating.title = `${ratingDisplay} · ${reviewsLabel}`;
+          rating.setAttribute("aria-label", `Avaliação média ${ratingDisplay} de 5`);
+          header.appendChild(rating);
+        }
+
+        const blurb = document.createElement("p");
+        blurb.className = "match-results__blurb";
+        blurb.textContent = pro.focus;
+
+        const meta = document.createElement("div");
+        meta.className = "match-results__meta";
+
+        if (pro.badge) {
+          const locationBadge = document.createElement("span");
+          locationBadge.className = "match-results__badge";
+          locationBadge.textContent = pro.badge;
+          meta.appendChild(locationBadge);
+        }
+
+        const servicesText = (pro.services || []).slice(0, 3).join(" · ");
+        if (servicesText) {
+          const services = document.createElement("span");
+          services.className = "match-results__services";
+          services.textContent = servicesText;
+          meta.appendChild(services);
+        }
+
+        if (item.isFallback && !item.serviceMatch) {
+          const availability = document.createElement("span");
+          availability.className = "match-results__fallback";
+          availability.textContent = "Confirme se este serviço está disponível";
+          meta.appendChild(availability);
+        } else if (item.isFallback && item.matchedServices?.length) {
+          const availability = document.createElement("span");
+          availability.className = "match-results__fallback";
+          availability.textContent = `Oferece ${formatServiceList(item.matchedServices)}`;
+          meta.appendChild(availability);
+        }
+
+        if (Number.isFinite(distanceKm)) {
+          const distance = document.createElement("span");
+          distance.className = "match-results__distance";
+          const label = formatDistance(distanceKm);
+          if (label) {
+            distance.textContent = label;
+            meta.appendChild(distance);
+          }
+        }
+
+        const cta = document.createElement("a");
+        cta.className = "match-results__cta";
+        const requestedServices = Array.isArray(serviceQueries) ? serviceQueries : [];
+        const serviceParam = requestedServices.length
+          ? requestedServices.join(", ")
+          : pro.services?.[0] ?? "Manicure";
+        const params = new URLSearchParams({
+          profissional: pro.id,
+          servico: serviceParam,
+        });
+        cta.href = `cliente/cadastro.html?${params.toString()}`;
+        cta.textContent = "Reservar atendimento";
+
+        content.appendChild(header);
+        content.appendChild(blurb);
+        content.appendChild(meta);
+        content.appendChild(cta);
+
+        element.appendChild(avatar);
+        element.appendChild(content);
+
+        return element;
+      }
+
+      function sortMatchesByDistance(entries) {
+        return entries.slice().sort((a, b) => {
+          const aDistance = Number.isFinite(a.distanceKm) ? a.distanceKm : Number.POSITIVE_INFINITY;
+          const bDistance = Number.isFinite(b.distanceKm) ? b.distanceKm : Number.POSITIVE_INFINITY;
+
+          if (aDistance !== bDistance) {
+            return aDistance - bDistance;
+          }
+
+          const aRating = typeof a.pro?.rating === "number" ? a.pro.rating : 0;
+          const bRating = typeof b.pro?.rating === "number" ? b.pro.rating : 0;
+
+          if (aRating !== bRating) {
+            return bRating - aRating;
+          }
+
+          return (a.pro?.name || "").localeCompare(b.pro?.name || "");
+        });
+      }
+
+      function scoreMatches(serviceQueries, coordinates) {
+        const canonicalServices = Array.isArray(serviceQueries)
+          ? serviceQueries
+              .map((service) => normalizeServiceName(service))
+              .filter(Boolean)
+          : [];
+
+        const uniqueCanonicalServices = Array.from(new Set(canonicalServices));
+        const hasServiceFilter = uniqueCanonicalServices.length > 0;
+        const hasCoordinates = Boolean(coordinates);
+
+        const entries = professionalCatalog
+          .map((pro, index) => {
+            if (!pro) return null;
+
+            const services = Array.isArray(pro.services) ? pro.services : [];
+            const normalizedServices = services.map((service) => service.toLowerCase());
+            const professionalServiceSet = new Set(normalizedServices);
+
+            const matchesAll = hasServiceFilter
+              ? uniqueCanonicalServices.every((service) =>
+                  professionalServiceSet.has(service.toLowerCase())
+                )
+              : true;
+
+            const matchedServices = hasServiceFilter
+              ? uniqueCanonicalServices.filter((service) =>
+                  professionalServiceSet.has(service.toLowerCase())
+                )
+              : services.slice();
+
+            const matchesAny = hasServiceFilter
+              ? matchedServices.length > 0
+              : true;
+
+            const distanceKm = hasCoordinates && pro.location
+              ? calculateDistance(coordinates, pro.location)
+              : null;
+
+            const ratingScore = typeof pro.rating === "number" ? pro.rating : 4.5 - index * 0.05;
+
+            return {
+              pro,
+              distanceKm,
+              score: ratingScore,
+              serviceMatch: matchesAll,
+              partialMatch: matchesAny,
+              matchedServices,
+            };
+          })
+          .filter(Boolean);
+
+        const primaryMatchesSource = hasServiceFilter
+          ? entries.filter((entry) => entry.serviceMatch)
+          : entries.slice();
+
+        const matches = sortMatchesByDistance(primaryMatchesSource).map((entry) => ({
+          ...entry,
+          isFallback: false,
+        }));
+
+        if (matches.length) {
+          return { matches, fallback: [] };
+        }
+
+        const fallback = sortMatchesByDistance(entries).map((entry) => ({
+          ...entry,
+          isFallback: true,
+          serviceMatch: entry.partialMatch,
+        }));
+
+        return { matches: [], fallback };
+      }
+
+      function updateBookingFeedback(message, type = "info") {
+        const feedback = document.getElementById("booking-feedback");
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.className = "booking-card__feedback";
+        if (type === "error") {
+          feedback.classList.add("booking-card__feedback--error");
+        } else if (type === "success") {
+          feedback.classList.add("booking-card__feedback--success");
+        }
+      }
+
+      function renderMatches(matches, fallbackMatches, serviceQueries, locationLabel, coordinates) {
+        const section = document.getElementById("match-results");
+        const list = document.getElementById("match-results-list");
+        const title = document.getElementById("match-results-title");
+        const description = document.getElementById("match-results-description");
+        const eyebrow = document.getElementById("match-results-eyebrow");
+
+        if (!section || !list || !title || !description || !eyebrow) return;
+
+        list.innerHTML = "";
+
+        const matchCount = matches.length;
+        const fallbackCount = fallbackMatches.length;
+        const hasFallback = !matchCount && fallbackCount;
+        const itemsToShow = matchCount ? matches.slice() : fallbackMatches.slice();
+        const serviceSummaryRaw = formatServiceList(serviceQueries);
+        const serviceLowerRaw = formatServiceList(serviceQueries, { lowercase: true });
+        const hasServiceSummary = Boolean(serviceSummaryRaw && serviceSummaryRaw.trim());
+        const serviceSummary = hasServiceSummary
+          ? serviceSummaryRaw
+          : "os serviços selecionados";
+        const serviceLowerSummary = hasServiceSummary
+          ? serviceLowerRaw
+          : "os serviços selecionados";
+        const serviceCount = Array.isArray(serviceQueries) ? serviceQueries.length : 0;
+        const serviceLabelFull = serviceCount === 1 ? "o serviço selecionado" : "os serviços selecionados";
+
+        if (matchCount) {
+          eyebrow.textContent = "Combinações perfeitas";
+          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
+          title.textContent = serviceSummary
+            ? `Profissionais para ${serviceSummary}${locationSuffix}`
+            : `Profissionais perto de você${locationSuffix}`;
+          description.textContent = locationLabel
+            ? `Selecionamos profissionais que oferecem ${serviceLowerSummary} e atendem em ${locationLabel}.`
+            : `Selecionamos profissionais que oferecem ${serviceLowerSummary} com ótima avaliação.`;
+
+          const resultWord = matchCount === 1 ? "profissional" : "profissionais";
+          updateBookingFeedback(
+            `${matchCount} ${resultWord} encontrada(s) para ${serviceLowerSummary}${locationSuffix}.`,
+            "success"
+          );
+        } else if (hasFallback) {
+          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
+          eyebrow.textContent = "Profissionais mais próximas";
+          title.textContent = serviceSummary
+            ? `Ainda não temos ${serviceSummary}${locationSuffix}`
+            : `Ainda não temos opções${locationSuffix}`;
+          description.textContent = locationLabel
+            ? `Enquanto ampliamos nossa rede para ${serviceLowerSummary}, conheça as profissionais mais próximas de ${locationLabel}.`
+            : `Enquanto ampliamos nossa rede para ${serviceLowerSummary}, estas são as profissionais NailNow mais próximas de você.`;
+
+          const resultWord = fallbackCount === 1 ? "profissional" : "profissionais";
+          const qualifier = fallbackCount === 1 ? "mais próxima" : "mais próximas";
+          updateBookingFeedback(
+            `${fallbackCount} ${resultWord} ${qualifier} para ${serviceLabelFull}${locationSuffix}.`,
+            "info"
+          );
+        } else {
+          const locationSuffix = locationLabel ? ` em ${locationLabel}` : "";
+          eyebrow.textContent = "Nenhuma profissional encontrada";
+          title.textContent = serviceSummary
+            ? `Ainda não encontramos ${serviceSummary}${locationSuffix}`
+            : `Ainda não encontramos opções${locationSuffix}`;
+          description.textContent = locationLabel
+            ? "Estamos ampliando nossa rede na sua região. Tente novamente em breve ou cadastre-se para ser avisada."
+            : "Estamos ampliando nossa rede de profissionais para este serviço. Tente novamente em breve.";
+          updateBookingFeedback(
+            `Ainda não encontramos profissionais para ${serviceLowerSummary}${locationSuffix}.`,
+            "error"
+          );
+        }
+
+        itemsToShow.forEach((item) => {
+          const element = createMatchCard(item, serviceQueries);
+          list.appendChild(element);
+        });
+
+        updateMapWithMatches(itemsToShow, coordinates, locationLabel);
+
+        section.hidden = false;
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      function initBookingAutocomplete() {
+        const input = document.getElementById("booking-location");
+        if (!input || input.dataset.autocompleteInitialized === "true") return;
+
+        const formattedField = document.getElementById("booking-location-formatted");
+        const placeIdField = document.getElementById("booking-location-place-id");
+        const latField = document.getElementById("booking-location-lat");
+        const lngField = document.getElementById("booking-location-lng");
+
+        if (!window.google || !google.maps?.places) {
+          return;
+        }
+
+        const autocomplete = new google.maps.places.Autocomplete(input, {
+          types: ["geocode"],
+          componentRestrictions: { country: "br" },
+          fields: ["formatted_address", "place_id", "geometry"],
+        });
+
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          const geometry = place.geometry?.location;
+          formattedField.value = place.formatted_address || input.value.trim();
+          placeIdField.value = place.place_id || "";
+          const latitude = geometry ? geometry.lat() : "";
+          const longitude = geometry ? geometry.lng() : "";
+          latField.value = latitude;
+          lngField.value = longitude;
+
+          const coordinates =
+            typeof latitude === "number" && typeof longitude === "number"
+              ? { lat: latitude, lng: longitude }
+              : null;
+
+          if (coordinates) {
+            updateMapWithMatches([], coordinates, formattedField.value || input.value.trim());
+          } else {
+            hideBookingMap();
+          }
+        });
+
+        input.addEventListener("input", () => {
+          if (!input.value.trim()) {
+            formattedField.value = "";
+            placeIdField.value = "";
+            latField.value = "";
+            lngField.value = "";
+            lastClientCoordinates = null;
+            lastClientLabel = "";
+            lastSearchContext = null;
+            resetMatchResults();
+          }
+        });
+
+        input.dataset.autocompleteInitialized = "true";
+      }
+
+      async function handleBooking(event) {
+        event.preventDefault();
+        const form = event.target;
+        const serviceField = form.querySelector("[name='services']");
+        const locationField = form.querySelector("[name='location']");
+        const formattedField = form.querySelector("[name='location_formatted']");
+        const latField = form.querySelector("[name='location_lat']");
+        const lngField = form.querySelector("[name='location_lng']");
+
+        if (!serviceField || !locationField) return;
+
+        const rawServiceValue = serviceField.value || "";
+        let serviceSelections = rawServiceValue
+          .split("|")
+          .map((value) => value.trim())
+          .filter(Boolean);
+
+        if (!serviceSelections.length) {
+          serviceSelections = getSelectedServiceValues();
+        }
+
+        const locationQuery = locationField.value.trim();
+        const latValue = latField ? toNumber(latField.value) : null;
+        const lngValue = lngField ? toNumber(lngField.value) : null;
+
+        if (!serviceSelections.length) {
+          updateBookingFeedback("Selecione pelo menos um serviço para continuarmos.", "error");
+          ensureServiceElements();
+          if (serviceToggleButton) {
+            serviceToggleButton.focus();
+          }
+          return;
+        }
+
+        if (!locationQuery) {
+          updateBookingFeedback("Informe o local do atendimento.", "error");
+          locationField.focus();
+          return;
+        }
+
+        if (latValue === null || lngValue === null) {
+          updateBookingFeedback("Escolha um endereço sugerido para calcularmos as profissionais mais próximas.", "error");
+          locationField.focus();
+          return;
+        }
+
+        updateBookingFeedback("Buscando profissionais próximas...");
+
+        try {
+          await ensureProfessionalsLoaded();
+
+          const coordinates = { lat: latValue, lng: lngValue };
+          const locationLabel = formattedField?.value || locationQuery;
+          lastSearchContext = {
+            services: serviceSelections.slice(),
+            coordinates,
+            locationLabel,
+          };
+
+          if (professionalsLoadError) {
+            console.error("Erro ao acompanhar profissionais", professionalsLoadError);
+            resetMatchResults();
+            updateBookingFeedback(
+              "Não foi possível acessar a lista de profissionais agora. Tente novamente em instantes.",
+              "error"
+            );
+            return;
+          }
+
+          if (!professionalCatalog.length) {
+            renderMatches([], [], serviceSelections, locationLabel, coordinates);
+            updateBookingFeedback(
+              "Ainda não temos profissionais cadastradas na plataforma. Cadastre-se para ser avisada assim que chegarmos à sua região.",
+              "error"
+            );
+            return;
+          }
+
+          const { matches, fallback } = scoreMatches(serviceSelections, coordinates);
+          renderMatches(matches, fallback, serviceSelections, locationLabel, coordinates);
+        } catch (error) {
+          console.error("Erro ao buscar profissionais", error);
+          resetMatchResults();
+          lastSearchContext = null;
+          updateBookingFeedback(
+            "Não foi possível buscar as profissionais agora. Tente novamente em instantes.",
+            "error"
+          );
+        }
+      }
+
+      function initMapsFeatures() {
+        initBookingAutocomplete();
+        initBookingMap();
+      }
+
+      window.handleBooking = handleBooking;
+      window.initMapsFeatures = initMapsFeatures;
+      window.initBookingAutocomplete = initBookingAutocomplete;
+      window.initBookingMap = initBookingMap;
+
+      document.addEventListener("DOMContentLoaded", () => {
+        populateServiceSelect();
+        ensureAnonymousAccess().catch((error) => {
+          console.error("Erro ao preparar autenticação anônima", error);
+        });
+        ensureProfessionalsLoaded().catch((error) => {
+          console.error("Erro inicial ao carregar profissionais", error);
+        });
+      });
+
+      window.addEventListener("load", () => {
+        if (window.google?.maps) {
+          initMapsFeatures();
+        }
+      });
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR&callback=initMapsFeatures" async defer></script>
   </body>
 </html>
