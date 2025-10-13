@@ -289,6 +289,12 @@
         box-shadow: var(--shadow);
         padding: 24px;
       }
+      .is-hidden {
+        display: none !important;
+      }
+      .card-login.is-hidden {
+        display: none;
+      }
       .card-login h3 {
         font-size: 18px;
         margin: 0 0 12px;
@@ -313,6 +319,17 @@
       .field input:focus {
         border-color: var(--pink);
         box-shadow: 0 0 0 3px #ffe1f2;
+      }
+      .login-feedback {
+        margin-top: 8px;
+        font-size: 13px;
+        color: #7d6a63;
+      }
+      .login-feedback.error {
+        color: #c62828;
+      }
+      .login-feedback.success {
+        color: #2e7d32;
       }
       .muted {
         color: #7d6a63;
@@ -366,6 +383,225 @@
       section.flow {
         padding: 80px 0;
         background: var(--nude);
+      }
+      .portal {
+        display: none;
+        padding: 72px 0;
+        background: #fff;
+      }
+      .portal.is-active {
+        display: block;
+      }
+      .portal-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      .portal-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .portal-meta {
+        margin-top: 8px;
+        font-size: 13px;
+        color: #7a5b52;
+      }
+      .portal-status {
+        margin-top: 32px;
+        border-radius: 20px;
+        padding: 18px;
+        background: #fff7fb;
+        color: #6b544c;
+        display: none;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid #f6d3e8;
+      }
+      .portal-status.is-visible {
+        display: flex;
+      }
+      .portal-status.is-error {
+        background: #ffe4e6;
+        border-color: #ffccd5;
+        color: #b71c1c;
+      }
+      .portal-status.is-success {
+        background: #ecf8ee;
+        border-color: #c8e6c9;
+        color: #1b5e20;
+      }
+      .portal-status .spinner {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid rgba(198, 27, 128, 0.2);
+        border-top-color: rgba(198, 27, 128, 0.8);
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .summary-grid {
+        margin-top: 32px;
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+      .summary-card {
+        background: var(--white);
+        border: 1px solid #f1e6e1;
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: var(--shadow-soft);
+      }
+      .summary-card span {
+        display: block;
+        font-size: 13px;
+        color: #7a5b52;
+      }
+      .summary-card strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 24px;
+        color: #3b2a24;
+      }
+      .requests-wrapper {
+        margin-top: 40px;
+      }
+      .requests-list {
+        display: grid;
+        gap: 16px;
+      }
+      .request-card {
+        background: var(--white);
+        border-radius: 20px;
+        border: 1px solid #f1e6e1;
+        padding: 20px;
+        box-shadow: var(--shadow-soft);
+      }
+      .request-card header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .request-card h3 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        background: #fff2f9;
+        color: var(--pink-600);
+        border: 1px solid #f6d3e8;
+      }
+      .status-pill[data-tone='confirmado'] {
+        background: #ecf8ee;
+        border-color: #c8e6c9;
+        color: #1b5e20;
+      }
+      .status-pill[data-tone='concluido'] {
+        background: #e3f2fd;
+        border-color: #bbdefb;
+        color: #0d47a1;
+      }
+      .status-pill[data-tone='cancelado'] {
+        background: #ffebee;
+        border-color: #ffcdd2;
+        color: #c62828;
+      }
+      .status-pill[data-tone='pendente'] {
+        background: #fff7e6;
+        border-color: #ffe0b2;
+        color: #e65100;
+      }
+      .status-pill[data-tone='em andamento'] {
+        background: #f3e8ff;
+        border-color: #d0bcff;
+        color: #5a189a;
+      }
+      .request-details {
+        display: grid;
+        gap: 12px;
+      }
+      .request-details dl {
+        margin: 0;
+        display: grid;
+        grid-template-columns: minmax(120px, 1fr) 2fr;
+        gap: 4px 12px;
+        font-size: 14px;
+        color: #5a453e;
+      }
+      .request-details dt {
+        font-weight: 600;
+        color: #4a342d;
+      }
+      .request-empty {
+        margin-top: 28px;
+        padding: 28px;
+        text-align: center;
+        border-radius: 20px;
+        background: var(--nude);
+        border: 1px dashed #f6d3e8;
+        color: #6b544c;
+        font-size: 15px;
+      }
+      .request-meta {
+        margin-top: 12px;
+        font-size: 12px;
+        color: #8a756d;
+      }
+      .badge-soft {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #fff2f9;
+        color: var(--pink-600);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .request-actions {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .request-actions a {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--pink-600);
+        text-decoration: none;
+      }
+      @media (max-width: 840px) {
+        .portal-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .portal-actions {
+          width: 100%;
+        }
+        .portal-actions .btn-modern {
+          flex: 1 1 auto;
+        }
+      }
+      @media (max-width: 620px) {
+        .request-details dl {
+          grid-template-columns: 1fr;
+        }
       }
       .flow-visual {
         display: flex;
@@ -488,11 +724,598 @@
       }
     </style>
 
-    <script>
-      function handleLogin(event) {
-        event.preventDefault();
-        alert('Login de profissional - integração com Firebase em breve.');
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        signInWithEmailAndPassword,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import {
+        getFirestore,
+        collection,
+        doc,
+        getDoc,
+        getDocs,
+        query,
+        where,
+        limit,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.appspot.com",
+        messagingSenderId: "726392294571",
+        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const loginForm = document.getElementById("login-form");
+      const loginCard = document.getElementById("login-card");
+      const loginButton = document.getElementById("login-submit");
+      const loginFeedback = document.getElementById("login-feedback");
+      const portalSection = document.getElementById("professional-portal");
+      const portalGreeting = document.getElementById("portal-greeting");
+      const portalSubhead = document.getElementById("portal-subhead");
+      const portalMeta = document.getElementById("portal-meta");
+      const portalStatus = document.getElementById("portal-status");
+      const summaryGrid = document.getElementById("request-summary");
+      const requestList = document.getElementById("requests-list");
+      const emptyState = document.getElementById("requests-empty");
+      const refreshButton = document.getElementById("refresh-requests");
+      const logoutButton = document.getElementById("logout-button");
+
+      let currentUser = null;
+      let isLoadingAppointments = false;
+
+      const COLLECTION_CANDIDATES = [
+        { name: "agendamentos", label: "agendamentos" },
+        { name: "solicitacoes", label: "solicitações" },
+        { name: "pedidos", label: "pedidos" },
+        { name: "requests", label: "requests" },
+      ];
+
+      const PROFESSIONAL_FIELD_CANDIDATES = [
+        "profissionalId",
+        "profissionalUID",
+        "profissionalUid",
+        "uidProfissional",
+        "professionalId",
+        "manicureId",
+        "manicureUid",
+      ];
+
+      function setLoginFeedback(message, tone = "") {
+        if (!loginFeedback) return;
+        loginFeedback.textContent = message || "";
+        loginFeedback.classList.remove("error", "success");
+        if (tone) {
+          loginFeedback.classList.add(tone);
+        }
       }
+
+      function togglePortal(isVisible) {
+        if (isVisible) {
+          portalSection?.classList.add("is-active");
+          loginCard?.classList.add("is-hidden");
+        } else {
+          portalSection?.classList.remove("is-active");
+          loginCard?.classList.remove("is-hidden");
+          resetPortal();
+        }
+      }
+
+      function resetPortal() {
+        setPortalStatus("");
+        portalMeta && (portalMeta.textContent = "");
+        if (summaryGrid) summaryGrid.innerHTML = "";
+        if (requestList) requestList.innerHTML = "";
+        emptyState?.classList.add("is-hidden");
+      }
+
+      function setPortalStatus(message, { tone = "info", loading = false } = {}) {
+        if (!portalStatus) return;
+        portalStatus.innerHTML = "";
+        portalStatus.classList.remove("is-visible", "is-error", "is-success");
+        if (!message && !loading) {
+          return;
+        }
+        portalStatus.classList.add("is-visible");
+        if (tone === "error") {
+          portalStatus.classList.add("is-error");
+        } else if (tone === "success") {
+          portalStatus.classList.add("is-success");
+        }
+        if (loading) {
+          const spinner = document.createElement("span");
+          spinner.className = "spinner";
+          spinner.setAttribute("aria-hidden", "true");
+          portalStatus.appendChild(spinner);
+        }
+        const text = document.createElement("span");
+        text.textContent = message;
+        portalStatus.appendChild(text);
+      }
+
+      function extractFirstName(name) {
+        if (!name) return "Profissional";
+        const parts = name.trim().split(/\s+/);
+        return parts[0] || name;
+      }
+
+      function normalizeUid(value) {
+        if (!value) return "";
+        return String(value).trim();
+      }
+
+      function normalizeStatus(value) {
+        if (!value) return "pendente";
+        const raw = String(value).toLowerCase();
+        if (raw.includes("confirm") || raw.includes("aceit")) return "confirmado";
+        if (raw.includes("concl") || raw.includes("final")) return "concluido";
+        if (raw.includes("cancel") || raw.includes("recus")) return "cancelado";
+        if (raw.includes("andament") || raw.includes("progres")) return "em andamento";
+        if (raw.includes("pend")) return "pendente";
+        return raw;
+      }
+
+      function formatStatusLabel(status) {
+        const map = {
+          pendente: "Pendente",
+          confirmado: "Confirmado",
+          "em andamento": "Em andamento",
+          concluido: "Concluído",
+          cancelado: "Cancelado",
+        };
+        return map[status] || status.replace(/^(\w)/, (match) => match.toUpperCase());
+      }
+
+      function parseDateTime(value) {
+        if (!value) return null;
+        if (value instanceof Date) return value;
+        if (typeof value === "number") {
+          const date = new Date(value);
+          return isNaN(date.getTime()) ? null : date;
+        }
+        if (typeof value === "string") {
+          const normalized = value.replace(/T/, " ").trim();
+          const direct = new Date(normalized);
+          if (!isNaN(direct.getTime())) {
+            return direct;
+          }
+          const match = normalized.match(
+            /(\d{2})[\/-](\d{2})[\/-](\d{4})(?:[\sT](\d{2}):(\d{2})(?::(\d{2}))?)?/
+          );
+          if (match) {
+            const [, day, month, year, hours = "00", minutes = "00", seconds = "00"] = match;
+            const iso = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+            const parsed = new Date(iso);
+            if (!isNaN(parsed.getTime())) {
+              return parsed;
+            }
+          }
+          return null;
+        }
+        if (typeof value === "object") {
+          if (typeof value.seconds === "number") {
+            const ms = value.seconds * 1000 + (value.nanoseconds || 0) / 1e6;
+            const date = new Date(ms);
+            return isNaN(date.getTime()) ? null : date;
+          }
+          if (value.toDate instanceof Function) {
+            const date = value.toDate();
+            return isNaN(date.getTime()) ? null : date;
+          }
+        }
+        return null;
+      }
+
+      function formatDateTime(value) {
+        const date = parseDateTime(value);
+        if (!date) return null;
+        return date.toLocaleString("pt-BR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        });
+      }
+
+      function normalizeServices(value) {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+          return value
+            .map((item) => (item ? String(item).trim() : ""))
+            .filter(Boolean);
+        }
+        return String(value)
+          .split(/[,;\n]/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      function formatCurrency(value) {
+        if (value == null || value === "") return null;
+        const numeric = typeof value === "string" ? Number(value.replace(/[^0-9,-]/g, "").replace(",", ".")) : Number(value);
+        if (!isFinite(numeric)) return null;
+        return numeric.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      }
+
+      function normalizePhone(value) {
+        if (!value) return null;
+        const digits = String(value).replace(/\D/g, "");
+        return digits || null;
+      }
+
+      function formatPhoneLabel(digits) {
+        if (!digits) return null;
+        if (digits.length === 11) {
+          return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+        }
+        if (digits.length === 10) {
+          return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+        }
+        return digits;
+      }
+
+      function normalizeAppointment(docSnap) {
+        const data = docSnap.data() || {};
+        const services = Array.from(
+          new Set(
+            normalizeServices(
+              data.servicos || data.servicosOferecidos || data.services || data.servico || data.servicoDesejado
+            )
+          )
+        );
+        const status = normalizeStatus(data.status || data.situacao || data.state || data.etapa);
+        const requestedAt =
+          data.dataHora ||
+          data.horario ||
+          data.dataAtendimento ||
+          data.dataAgendada ||
+          data.data ||
+          data.agendamento?.inicio ||
+          data.inicio ||
+          data.startAt;
+        const createdAtValue =
+          data.criadoEm ||
+          data.createdAt ||
+          data.solicitadoEm ||
+          data.dataSolicitacao ||
+          data.timestamp ||
+          data.created_on;
+
+        const rawPrice = data.valor || data.preco || data.total || data.price;
+        const formattedPrice = formatCurrency(rawPrice);
+
+        const notesRaw = data.observacoes ?? data.notas ?? data.notes ?? "";
+        const notes = Array.isArray(notesRaw)
+          ? notesRaw.map((item) => (item ? String(item).trim() : "")).filter(Boolean).join("; ")
+          : typeof notesRaw === "string"
+          ? notesRaw.trim()
+          : "";
+
+        return {
+          id: docSnap.id,
+          status,
+          rawStatus: data.status || data.situacao || data.state || data.etapa || "",
+          services,
+          clientName:
+            data.clienteNome ||
+            data.nomeCliente ||
+            data.cliente?.nome ||
+            data.clientName ||
+            data.cliente ||
+            "Cliente NailNow",
+          address:
+            data.enderecoAtendimento ||
+            data.endereco ||
+            data.local?.descricao ||
+            data.local?.endereco ||
+            data.address ||
+            data.location ||
+            "",
+          price: formattedPrice || (rawPrice ? String(rawPrice) : ""),
+          phone: normalizePhone(
+            data.telefoneCliente ||
+              data.telefone ||
+              data.celular ||
+              data.clientPhone ||
+              data.contatoCliente ||
+              data.whatsapp
+          ),
+          notes,
+          time: parseDateTime(requestedAt),
+          createdAt: parseDateTime(createdAtValue),
+          raw: data,
+        };
+      }
+
+      function createSummaryCard(label, value) {
+        const card = document.createElement("div");
+        card.className = "summary-card";
+        const span = document.createElement("span");
+        span.textContent = label;
+        const strong = document.createElement("strong");
+        strong.textContent = value;
+        card.append(span, strong);
+        return card;
+      }
+
+      function renderSummary(appointments) {
+        if (!summaryGrid) return;
+        summaryGrid.innerHTML = "";
+        const totalCard = createSummaryCard("Solicitações", appointments.length);
+        summaryGrid.appendChild(totalCard);
+
+        const counts = appointments.reduce((acc, appointment) => {
+          const key = appointment.status;
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {});
+
+        ["pendente", "confirmado", "em andamento", "concluido", "cancelado"].forEach((status) => {
+          if (counts[status]) {
+            summaryGrid.appendChild(createSummaryCard(formatStatusLabel(status), counts[status]));
+          }
+        });
+      }
+
+      function appendDetail(dl, label, value) {
+        if (!value) return;
+        const dt = document.createElement("dt");
+        dt.textContent = label;
+        const dd = document.createElement("dd");
+        dd.textContent = value;
+        dl.append(dt, dd);
+      }
+
+      function renderAppointments(appointments, sourceLabel) {
+        if (portalMeta) {
+          portalMeta.textContent = sourceLabel ? `Origem dos dados: coleção “${sourceLabel}”.` : "";
+        }
+
+        if (!requestList) return;
+        requestList.innerHTML = "";
+
+        const sorted = [...appointments].sort((a, b) => {
+          const aTime = a.time?.getTime() ?? a.createdAt?.getTime() ?? Number.POSITIVE_INFINITY;
+          const bTime = b.time?.getTime() ?? b.createdAt?.getTime() ?? Number.POSITIVE_INFINITY;
+          if (aTime === bTime) {
+            return (a.clientName || "").localeCompare(b.clientName || "");
+          }
+          return aTime - bTime;
+        });
+
+        if (!sorted.length) {
+          emptyState?.classList.remove("is-hidden");
+          renderSummary(sorted);
+          return;
+        }
+
+        emptyState?.classList.add("is-hidden");
+        renderSummary(sorted);
+
+        sorted.forEach((appointment) => {
+          const card = document.createElement("article");
+          card.className = "request-card";
+
+          const header = document.createElement("header");
+          const title = document.createElement("h3");
+          title.textContent = appointment.clientName;
+          const statusPill = document.createElement("span");
+          statusPill.className = "status-pill";
+          statusPill.dataset.tone = appointment.status;
+          statusPill.textContent = formatStatusLabel(appointment.status);
+          header.append(title, statusPill);
+          card.appendChild(header);
+
+          const detailsWrapper = document.createElement("div");
+          detailsWrapper.className = "request-details";
+          const dl = document.createElement("dl");
+          appendDetail(dl, "Data e horário", formatDateTime(appointment.time) || "A definir");
+          if (appointment.services.length) {
+            appendDetail(dl, "Serviços", appointment.services.join(", "));
+          }
+          appendDetail(dl, "Local", appointment.address);
+          appendDetail(dl, "Valor", appointment.price);
+          if (appointment.phone) {
+            appendDetail(dl, "Contato", formatPhoneLabel(appointment.phone));
+          }
+          if (appointment.notes) {
+            appendDetail(dl, "Observações", appointment.notes);
+          }
+          detailsWrapper.appendChild(dl);
+          card.appendChild(detailsWrapper);
+
+          if (appointment.createdAt) {
+            const meta = document.createElement("div");
+            meta.className = "request-meta";
+            meta.textContent = `Solicitação recebida em ${formatDateTime(appointment.createdAt)}.`;
+            card.appendChild(meta);
+          }
+
+          if (appointment.phone) {
+            const actions = document.createElement("div");
+            actions.className = "request-actions";
+            const whatsappLink = document.createElement("a");
+            whatsappLink.href = `https://wa.me/55${appointment.phone}`;
+            whatsappLink.target = "_blank";
+            whatsappLink.rel = "noopener";
+            whatsappLink.textContent = "Chamar no WhatsApp";
+            actions.appendChild(whatsappLink);
+            const callLink = document.createElement("a");
+            callLink.href = `tel:${appointment.phone}`;
+            callLink.textContent = "Ligar";
+            actions.appendChild(callLink);
+            card.appendChild(actions);
+          }
+
+          requestList.appendChild(card);
+        });
+      }
+
+      async function fetchAppointments(uid) {
+        for (const candidate of COLLECTION_CANDIDATES) {
+          const collectionRef = collection(db, candidate.name);
+          for (const field of PROFESSIONAL_FIELD_CANDIDATES) {
+            try {
+              const snapshot = await getDocs(query(collectionRef, where(field, "==", uid), limit(50)));
+              if (!snapshot.empty) {
+                return {
+                  appointments: snapshot.docs.map(normalizeAppointment),
+                  source: candidate.label,
+                };
+              }
+            } catch (error) {
+              console.warn(`Falha ao consultar ${candidate.name} por ${field}`, error);
+            }
+          }
+
+          try {
+            const snapshot = await getDocs(query(collectionRef, limit(50)));
+            const filtered = snapshot.docs.filter((docSnap) => {
+              const data = docSnap.data() || {};
+              return PROFESSIONAL_FIELD_CANDIDATES.some((field) => normalizeUid(data[field]) === uid);
+            });
+            if (filtered.length) {
+              return {
+                appointments: filtered.map(normalizeAppointment),
+                source: candidate.label,
+              };
+            }
+          } catch (error) {
+            console.warn(`Falha ao carregar ${candidate.name}`, error);
+          }
+        }
+
+        return { appointments: [], source: null };
+      }
+
+      async function loadProfile(uid, fallbackEmail) {
+        try {
+          const profileRef = doc(db, "profissionais", uid);
+          const snapshot = await getDoc(profileRef);
+          if (snapshot.exists()) {
+            return snapshot.data();
+          }
+        } catch (error) {
+          console.warn("Não foi possível buscar o perfil da profissional", error);
+        }
+        return { nome: fallbackEmail || "Profissional NailNow" };
+      }
+
+      async function hydratePortal(user, { silent = false } = {}) {
+        if (!user) return;
+        if (!silent) {
+          setPortalStatus("Carregando suas solicitações…", { loading: true });
+        }
+        isLoadingAppointments = true;
+        try {
+          const profile = await loadProfile(user.uid, user.email || "");
+          const firstName = extractFirstName(profile.nome || profile.name || user.displayName || user.email);
+          if (portalGreeting) {
+            portalGreeting.textContent = `Olá, ${firstName}!`;
+          }
+          if (portalSubhead) {
+            const cidade = profile.cidade || profile.city || profile.localidade || "";
+            portalSubhead.textContent = cidade
+              ? `Veja os pedidos de agendamento na sua região (${cidade}) e confirme seu próximo atendimento.`
+              : "Veja os pedidos de agendamento e confirme seu próximo atendimento.";
+          }
+
+          const { appointments, source } = await fetchAppointments(user.uid);
+          renderAppointments(appointments, source);
+
+          if (appointments.length) {
+            setPortalStatus(
+              `Encontramos ${appointments.length} solicitação${appointments.length > 1 ? "s" : ""} para você.`,
+              { tone: "success" }
+            );
+          } else {
+            setPortalStatus(
+              "Ainda não há solicitações registradas para sua conta. Assim que uma cliente fizer um pedido, ele aparecerá aqui.",
+              { tone: "info" }
+            );
+          }
+        } catch (error) {
+          console.error("Erro ao carregar portal da profissional", error);
+          setPortalStatus(
+            "Não foi possível carregar suas solicitações agora. Tente novamente em alguns instantes.",
+            { tone: "error" }
+          );
+        } finally {
+          isLoadingAppointments = false;
+        }
+      }
+
+      async function handleLogin(event) {
+        event.preventDefault();
+        if (!loginForm || !loginButton) return;
+        const formData = new FormData(loginForm);
+        const email = String(formData.get("email") || "").trim();
+        const password = String(formData.get("senha") || "").trim();
+        if (!email || !password) {
+          setLoginFeedback("Preencha e-mail e senha para continuar.", "error");
+          return;
+        }
+        loginButton.disabled = true;
+        loginButton.textContent = "Entrando…";
+        setLoginFeedback("Autenticando…");
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+          setLoginFeedback("Login realizado com sucesso!", "success");
+          loginForm.reset();
+        } catch (error) {
+          console.error("Erro ao autenticar profissional", error);
+          const message =
+            error.code === "auth/wrong-password"
+              ? "Senha incorreta. Tente novamente."
+              : error.code === "auth/user-not-found"
+              ? "Não encontramos uma conta com esse e-mail. Confira os dados informados."
+              : "Não foi possível entrar agora. Verifique seus dados e tente novamente.";
+          setLoginFeedback(message, "error");
+        } finally {
+          loginButton.disabled = false;
+          loginButton.textContent = "Entrar na plataforma";
+        }
+      }
+
+      async function handleLogout() {
+        try {
+          await signOut(auth);
+          setLoginFeedback("Sessão encerrada com sucesso.", "success");
+        } catch (error) {
+          console.error("Erro ao encerrar sessão", error);
+          setLoginFeedback("Não foi possível sair agora. Tente novamente.", "error");
+        }
+      }
+
+      loginForm?.addEventListener("submit", handleLogin);
+      refreshButton?.addEventListener("click", () => {
+        if (currentUser && !isLoadingAppointments) {
+          refreshButton.disabled = true;
+          setPortalStatus("Atualizando solicitações…", { loading: true });
+          hydratePortal(currentUser, { silent: true }).finally(() => {
+            refreshButton.disabled = false;
+          });
+        }
+      });
+      logoutButton?.addEventListener("click", handleLogout);
+
+      onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        if (user) {
+          togglePortal(true);
+          hydratePortal(user);
+        } else {
+          togglePortal(false);
+        }
+      });
     </script>
   </head>
   <body class="professional-page">
@@ -549,22 +1372,52 @@
                 <span class="pill">Suporte dedicado</span>
               </div>
             </div>
-            <div class="card-login" id="login">
+            <div class="card-login" id="login-card">
               <h3>Acesse sua conta</h3>
-              <form onsubmit="handleLogin(event)">
+              <form id="login-form" autocomplete="on" novalidate>
                 <div class="field">
                   <label for="email">E-mail</label>
-                  <input type="email" id="email" name="email" required />
+                  <input type="email" id="login-email" name="email" required autocomplete="email" />
                 </div>
                 <div class="field">
                   <label for="senha">Senha</label>
-                  <input type="password" id="senha" name="senha" required />
+                  <input type="password" id="login-password" name="senha" required autocomplete="current-password" />
                 </div>
-                <button type="submit" class="btn-modern btn-pink" style="width: 100%">
+                <button type="submit" class="btn-modern btn-pink" id="login-submit" style="width: 100%">
                   Entrar na plataforma
                 </button>
                 <p class="muted">Esqueceu a senha? Entre em contato com nosso suporte.</p>
               </form>
+              <p class="login-feedback" id="login-feedback" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="portal" id="professional-portal" aria-live="polite">
+        <div class="container">
+          <div class="portal-header">
+            <div>
+              <span class="chip">Área da profissional</span>
+              <h2 id="portal-greeting">Bem-vinda de volta</h2>
+              <p class="portal-meta" id="portal-subhead">
+                Visualize suas solicitações de agendamento e organize seus atendimentos.
+              </p>
+              <p class="portal-meta" id="portal-meta"></p>
+            </div>
+            <div class="portal-actions">
+              <button type="button" class="btn-modern btn-outline" id="refresh-requests">
+                Atualizar lista
+              </button>
+              <button type="button" class="btn-modern btn-white" id="logout-button">Sair</button>
+            </div>
+          </div>
+          <div class="portal-status" id="portal-status" role="status" aria-live="polite"></div>
+          <div class="summary-grid" id="request-summary"></div>
+          <div class="requests-wrapper">
+            <div class="requests-list" id="requests-list" aria-live="polite"></div>
+            <div class="request-empty is-hidden" id="requests-empty">
+              Nenhuma solicitação por aqui ainda. Assim que uma cliente pedir um atendimento, você verá os detalhes nesta área.
             </div>
           </div>
         </div>
