@@ -5,38 +5,500 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Área da profissional da NailNow para manicures acessarem suas contas e atender clientes."
+      content="Portal para profissionais NailNow acessarem oportunidades, acompanharem agendamentos e descobrirem os benefícios de fazer parte da rede."
     />
-    <title>Profissional - NailNow</title>
-    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <title>Portal da Profissional | NailNow</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Playfair+Display:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../styles.css" />
+
+    <style>
+      /* NailNow — Componentes reutilizáveis */
+      .pill {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid #f1e6e1;
+        font-size: 13px;
+        color: #6b544c;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .pill.pink {
+        background: #fff2f9;
+        border-color: #f6d3e8;
+        color: #c61b80;
+      }
+      .badge {
+        background: #fff;
+        border: 1px solid #f1e6e1;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        color: #7a5b52;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .card {
+        background: var(--white);
+        border: 1px solid #f1e6e1;
+        border-radius: var(--radius, 16px);
+        padding: 16px;
+        box-shadow: none;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow, 0 8px 28px rgba(0, 0, 0, 0.06));
+      }
+      .card-row {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 14px;
+        align-items: center;
+      }
+      .avatar,
+      .avatar-md,
+      .avatar-xl {
+        border-radius: 50%;
+        background: #ffe1f2;
+        overflow: hidden;
+      }
+      .avatar {
+        width: 44px;
+        height: 44px;
+      }
+      .avatar-md {
+        width: 64px;
+        height: 64px;
+      }
+      .avatar-xl {
+        width: 104px;
+        height: 104px;
+      }
+      .stars {
+        color: #e08dbe;
+        font-size: 14px;
+        letter-spacing: 1px;
+      }
+      .rating {
+        color: #e08dbe;
+        font-weight: 700;
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 980px) {
+        .grid-3 {
+          grid-template-columns: 1fr 1fr;
+        }
+        .grid-4 {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 620px) {
+        .grid-2,
+        .grid-3,
+        .grid-4 {
+          grid-template-columns: 1fr;
+        }
+      }
+      .input,
+      .select,
+      .textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1.5px solid #eadbd5;
+        border-radius: 12px;
+        font: inherit;
+      }
+      .input:focus,
+      .select:focus,
+      .textarea:focus {
+        outline: none;
+        border-color: var(--pink, #fe68bf);
+        box-shadow: 0 0 0 3px #ffe1f2;
+      }
+      .label {
+        font-size: 12px;
+        color: #6b544c;
+        display: block;
+        margin-bottom: 6px;
+      }
+      .show-mobile {
+        display: none;
+      }
+      @media (max-width: 840px) {
+        .show-mobile {
+          display: block !important;
+        }
+      }
+
+      :root {
+        --pink: #fe68bf;
+        --pink-600: #c61b80;
+        --pink-50: #fff1f6;
+        --rose-50: #fff8f4;
+        --nude: #fff8f4;
+        --brown: #74260a;
+        --text: #2b1f1a;
+        --white: #ffffff;
+        --radius: 16px;
+        --shadow: 0 8px 28px rgba(0, 0, 0, 0.06);
+        --shadow-soft: 0 8px 14px rgba(0, 0, 0, 0.05);
+        --container: 1160px;
+      }
+      body.professional-page {
+        font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica,
+          Arial, sans-serif;
+        color: var(--text);
+        background: var(--white);
+        line-height: 1.6;
+      }
+      .container {
+        width: 100%;
+        max-width: var(--container);
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      .grid {
+        display: grid;
+        gap: 24px;
+      }
+      .btn-modern {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px 20px;
+        border-radius: 12px;
+        border: 2px solid transparent;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease,
+          color 0.2s ease;
+        font-size: 16px;
+      }
+      .btn-modern:active {
+        transform: translateY(1px);
+      }
+      .btn-pink {
+        background: var(--pink);
+        color: var(--white);
+        box-shadow: var(--shadow-soft);
+      }
+      .btn-pink:hover {
+        filter: brightness(0.97);
+      }
+      .btn-outline {
+        background: var(--white);
+        color: var(--pink);
+        border-color: var(--pink);
+        border-style: solid;
+      }
+      .btn-outline:hover {
+        background: #fff2f9;
+      }
+      .btn-white {
+        background: var(--white);
+        color: var(--pink-600);
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica,
+          Arial, sans-serif;
+        color: #1e1512;
+        line-height: 1.2;
+        font-weight: 700;
+      }
+      h1 {
+        font-size: clamp(30px, 5vw, 44px);
+        margin: 0 0 12px;
+        letter-spacing: -0.02em;
+      }
+      h2 {
+        font-size: clamp(22px, 4vw, 32px);
+        margin: 0 0 10px;
+        letter-spacing: -0.01em;
+      }
+      h3 {
+        font-size: clamp(18px, 3vw, 22px);
+        margin: 0 0 8px;
+        font-weight: 700;
+      }
+      p.lead {
+        font-size: clamp(16px, 2.4vw, 18px);
+        color: #5a453e;
+        max-width: 56ch;
+      }
+      .chip {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--nude);
+        color: #7a5b52;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+      .hero-section {
+        background: linear-gradient(180deg, var(--pink-50), var(--rose-50));
+        padding: 72px 0 56px;
+      }
+      .grid-hero {
+        grid-template-columns: 1.1fr 0.9fr;
+        align-items: center;
+      }
+      .hero-media {
+        min-height: 280px;
+        border-radius: var(--radius);
+        background: url('https://images.unsplash.com/photo-1616394584738-fc6e612e71ac?q=80&w=1200&auto=format&fit=crop')
+          center/cover no-repeat;
+        box-shadow: var(--shadow);
+      }
+      .hero-cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+      }
+      .card-login {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 24px;
+      }
+      .card-login h3 {
+        font-size: 18px;
+        margin: 0 0 12px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .field label {
+        font-size: 12px;
+        color: #6b544c;
+      }
+      .field input {
+        padding: 12px;
+        border: 1.5px solid #eadbd5;
+        border-radius: 12px;
+        outline: none;
+        font-size: 14px;
+      }
+      .field input:focus {
+        border-color: var(--pink);
+        box-shadow: 0 0 0 3px #ffe1f2;
+      }
+      .muted {
+        color: #7d6a63;
+        font-size: 12px;
+      }
+      @media (max-width: 980px) {
+        .grid-hero {
+          grid-template-columns: 1fr;
+        }
+        .hero-media {
+          min-height: 220px;
+        }
+      }
+      section.beneficios {
+        padding: 64px 0;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .cards .card {
+        padding: 22px;
+      }
+      .icon {
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        background: #fff2f9;
+        color: var(--pink-600);
+        font-size: 20px;
+        border: 1px solid #f6d3e8;
+      }
+      .cards .card p {
+        margin: 8px 0 0;
+        color: #5a453e;
+        font-size: 14px;
+      }
+      @media (max-width: 980px) {
+        .cards {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 620px) {
+        .cards {
+          grid-template-columns: 1fr;
+        }
+      }
+      section.flow {
+        padding: 80px 0;
+        background: var(--nude);
+      }
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        counter-reset: step;
+      }
+      .step {
+        background: var(--white);
+        border-radius: var(--radius);
+        padding: 18px;
+        border: 1px solid #f1e6e1;
+        position: relative;
+      }
+      .step:before {
+        counter-increment: step;
+        content: counter(step);
+        position: absolute;
+        top: -12px;
+        left: -12px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--pink);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        box-shadow: var(--shadow-soft);
+      }
+      .step h4 {
+        margin: 6px 0 4px;
+        font-size: 16px;
+      }
+      .step p {
+        margin: 0;
+        font-size: 14px;
+        color: #5a453e;
+      }
+      @media (max-width: 980px) {
+        .steps {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 620px) {
+        .steps {
+          grid-template-columns: 1fr;
+        }
+      }
+      section.deps {
+        padding: 64px 0;
+      }
+      .dep-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .dep {
+        background: var(--white);
+        border: 1px solid #f1e6e1;
+        border-radius: var(--radius);
+        padding: 20px;
+      }
+      .person {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .dep p {
+        margin: 0;
+        font-size: 14px;
+        color: #4d3b35;
+      }
+      @media (max-width: 980px) {
+        .dep-row {
+          grid-template-columns: 1fr;
+        }
+      }
+      section.trust {
+        padding: 72px 0;
+        background: var(--rose-50);
+      }
+      .trust-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .trust-item {
+        background: var(--white);
+        border: 1px solid #f1e6e1;
+        border-radius: var(--radius);
+        padding: 20px;
+      }
+      .trust-item h4 {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+      .trust-item p {
+        margin: 0;
+        font-size: 14px;
+        color: #5a453e;
+      }
+      @media (max-width: 980px) {
+        .trust-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+
     <script>
       function handleLogin(event) {
         event.preventDefault();
-        alert("Login de profissional - integração com Firebase em breve.");
+        alert('Login de profissional - integração com Firebase em breve.');
       }
     </script>
   </head>
-  <body>
+  <body class="professional-page">
     <header class="site-header">
       <div class="header-inner">
-        <a href="../" class="brand-mark" aria-label="Início da NailNow">
-          NailNow
-        </a>
+        <a href="/" class="brand-mark" aria-label="Início da NailNow">NailNow</a>
         <div class="header-navigation">
           <nav class="primary-nav" aria-label="Principal">
-            <a href="../index.html" class="nav-link">Home</a>
+            <a href="/" class="nav-link">Home</a>
             <a href="../como-funciona.html" class="nav-link">Como funciona</a>
             <a href="../servicos.html" class="nav-link">Serviços</a>
             <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
           </nav>
           <div class="header-actions">
             <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="../profissional/index.html" class="header-cta">Sou Manicure</a>
+            <a href="../profissional/index.html" class="header-cta" aria-current="page"
+              >Sou Profissional</a
+            >
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -55,25 +517,205 @@
       </div>
     </header>
 
-    <main class="page-content">
-      <img
-        src="https://images.unsplash.com/photo-1522336572468-97b06e8ef143?auto=format&fit=crop&w=800&q=80"
-        alt="Profissional cuidando das unhas"
-        class="page-img"
-        loading="lazy"
-        width="500"
-        height="333"
-      />
-      <h1>Área da Profissional</h1>
-      <form onsubmit="handleLogin(event)">
-        <label for="email">Email</label>
-        <input type="email" id="email" required />
-        <label for="senha">Senha</label>
-        <input type="password" id="senha" required />
-        <button type="submit" class="btn">Entrar</button>
-      </form>
-      <p>Primeira vez por aqui?</p>
-      <a href="cadastro.html" class="btn">Cadastrar</a>
+    <main>
+      <section class="hero-section">
+        <div class="container">
+          <div class="grid grid-hero">
+            <div>
+              <span class="chip">Portal da profissional</span>
+              <h1>Seu talento merece visibilidade.</h1>
+              <p class="lead">
+                Com a NailNow, você tem autonomia, segurança e uma rede inteira de clientes ao seu
+                alcance. Faça parte do movimento beauty-on-demand.
+              </p>
+              <div class="hero-cta">
+                <a href="cadastro.html" class="btn-modern btn-outline">Quero fazer parte</a>
+              </div>
+              <div class="hero-highlights" style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+                <span class="pill pink">Agendas cheias</span>
+                <span class="pill">Pagamentos semanais</span>
+                <span class="pill">Suporte dedicado</span>
+              </div>
+            </div>
+            <div class="card-login" id="login">
+              <h3>Acesse sua conta</h3>
+              <form onsubmit="handleLogin(event)">
+                <div class="field">
+                  <label for="email">E-mail</label>
+                  <input type="email" id="email" name="email" required />
+                </div>
+                <div class="field">
+                  <label for="senha">Senha</label>
+                  <input type="password" id="senha" name="senha" required />
+                </div>
+                <button type="submit" class="btn-modern btn-pink" style="width: 100%">
+                  Entrar na plataforma
+                </button>
+                <p class="muted">Esqueceu a senha? Entre em contato com nosso suporte.</p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="beneficios">
+        <div class="container">
+          <span class="chip">Por que ser uma profissional NailNow</span>
+          <h2>Autonomia para atender com tranquilidade</h2>
+          <div class="cards">
+            <div class="card">
+              <div class="icon">💼</div>
+              <h3>Pedidos recorrentes</h3>
+              <p>Agenda sua rotina com clientes fiéis e novas oportunidades toda semana.</p>
+            </div>
+            <div class="card">
+              <div class="icon">🕒</div>
+              <h3>Horários flexíveis</h3>
+              <p>Defina sua disponibilidade e aceite apenas os atendimentos que fizerem sentido.</p>
+            </div>
+            <div class="card">
+              <div class="icon">💳</div>
+              <h3>Pagamentos garantidos</h3>
+              <p>Receba via plataforma com segurança e acompanhe seus ganhos em tempo real.</p>
+            </div>
+            <div class="card">
+              <div class="icon">🎯</div>
+              <h3>Marketing constante</h3>
+              <p>Conte com a NailNow para destacar seus serviços e atrair mais clientes.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="flow">
+        <div class="container">
+          <span class="chip">Como funciona</span>
+          <h2>Conectamos você com clientes em 4 passos</h2>
+          <div class="steps">
+            <div class="step">
+              <h4>Cadastre-se</h4>
+              <p>Preencha seu perfil, envie documentos e personalize os serviços que oferece.</p>
+            </div>
+            <div class="step">
+              <h4>Receba pedidos</h4>
+              <p>Acompanhe notificações pelo app NailNow e aceite os atendimentos ideais.</p>
+            </div>
+            <div class="step">
+              <h4>Atenda com liberdade</h4>
+              <p>Escolha onde atender: em domicílio, coworkings de beleza ou no próprio estúdio.</p>
+            </div>
+            <div class="step">
+              <h4>Receba seus ganhos</h4>
+              <p>Pagamentos protegidos e suporte financeiro para manter seu fluxo em dia.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="deps">
+        <div class="container">
+          <span class="chip">Elas já fazem parte</span>
+          <h2>Histórias reais de profissionais</h2>
+          <div class="dep-row">
+            <div class="dep">
+              <div class="person">
+                <div class="avatar"></div>
+                <div>
+                  <strong>Bianca, Porto Alegre</strong>
+                  <div class="stars">★★★★★</div>
+                </div>
+              </div>
+              <p>
+                “Com a NailNow consigo manter minha agenda cheia e ainda ter tempo para os cursos de
+                aperfeiçoamento. Os clientes amam o atendimento!”
+              </p>
+            </div>
+            <div class="dep">
+              <div class="person">
+                <div class="avatar"></div>
+                <div>
+                  <strong>Mariana, São Paulo</strong>
+                  <div class="stars">★★★★★</div>
+                </div>
+              </div>
+              <p>
+                “O suporte é incrível. Sempre que preciso atualizar portfólio ou tirar dúvidas o time
+                está pronto para ajudar.”
+              </p>
+            </div>
+            <div class="dep">
+              <div class="person">
+                <div class="avatar"></div>
+                <div>
+                  <strong>Camila, Rio de Janeiro</strong>
+                  <div class="stars">★★★★★</div>
+                </div>
+              </div>
+              <p>
+                “Recebo meus pagamentos em dia e com transparência. Isso me dá confiança para crescer
+                dentro da plataforma.”
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="trust">
+        <div class="container">
+          <span class="chip">Transparência e confiança</span>
+          <h2>Segurança em cada etapa do atendimento</h2>
+          <div class="trust-grid">
+            <div class="trust-item">
+              <h4>Segurança verificada</h4>
+              <p>Clientes verificados e avaliações públicas em todos os atendimentos.</p>
+            </div>
+            <div class="trust-item">
+              <h4>Pagamentos garantidos</h4>
+              <p>Antecipe valores, acompanhe repasses e tenha relatórios completos.</p>
+            </div>
+            <div class="trust-item">
+              <h4>Política justa</h4>
+              <p>Contrato transparente, proteção em casos de cancelamento e suporte jurídico.</p>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-column footer-column--brand">
+          <h2 class="footer-logo">NailNow</h2>
+          <p>
+            Beleza na sua agenda com profissionais selecionadas, atendimento onde você estiver e
+            suporte humanizado.
+          </p>
+        </div>
+        <div class="footer-column footer-links" aria-label="Links úteis">
+          <h3>FAQ</h3>
+          <a href="../faq.html">Perguntas frequentes</a>
+          <a href="../como-funciona.html">Como funciona</a>
+          <a href="../agendamentos.html">Agendamentos</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Contato e suporte">
+          <h3>Contato &amp; suporte</h3>
+          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Termos e políticas">
+          <h3>Termos &amp; políticas</h3>
+          <a href="#">Termos de uso</a>
+          <a href="#">Política de privacidade</a>
+          <a href="#">Cookies e preferências</a>
+        </div>
+      </div>
+      <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
+    </footer>
+
+    <nav class="bottom-nav" aria-label="Navegação inferior fixa">
+      <a href="/" class="bottom-nav__link">Home</a>
+      <a href="../servicos.html" class="bottom-nav__link">Buscar</a>
+      <a href="../cliente/index.html" class="bottom-nav__link">Agendamentos</a>
+      <a href="../cliente/" class="bottom-nav__link">Perfil</a>
+    </nav>
   </body>
 </html>
