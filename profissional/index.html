@@ -367,52 +367,64 @@
         padding: 80px 0;
         background: var(--nude);
       }
-      .steps {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        counter-reset: step;
+      .flow-visual {
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        gap: 24px;
+        margin-top: 32px;
+        flex-wrap: wrap;
       }
-      .step {
+      .flow-step {
+        flex: 1 1 220px;
+        max-width: 260px;
         background: var(--white);
-        border-radius: var(--radius);
-        padding: 18px;
+        border-radius: 24px;
         border: 1px solid #f1e6e1;
-        position: relative;
-      }
-      .step:before {
-        counter-increment: step;
-        content: counter(step);
-        position: absolute;
-        top: -12px;
-        left: -12px;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: var(--pink);
-        color: #fff;
-        display: grid;
-        place-items: center;
-        font-weight: 700;
+        padding: 24px 20px;
+        text-align: center;
         box-shadow: var(--shadow-soft);
       }
-      .step h4 {
-        margin: 6px 0 4px;
-        font-size: 16px;
+      .flow-step img {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #ffe1f2;
+        margin-bottom: 16px;
       }
-      .step p {
+      .flow-step h3 {
+        font-size: 18px;
+        margin: 0 0 8px;
+      }
+      .flow-step p {
         margin: 0;
         font-size: 14px;
         color: #5a453e;
       }
+      .flow-arrow {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: var(--pink-600);
+      }
       @media (max-width: 980px) {
-        .steps {
-          grid-template-columns: repeat(2, 1fr);
+        .flow-visual {
+          justify-content: flex-start;
         }
       }
-      @media (max-width: 620px) {
-        .steps {
-          grid-template-columns: 1fr;
+      @media (max-width: 720px) {
+        .flow-visual {
+          flex-direction: column;
+          align-items: center;
+        }
+        .flow-arrow {
+          display: none;
+        }
+        .flow-step {
+          max-width: 320px;
         }
       }
       section.deps {
@@ -591,22 +603,41 @@
         <div class="container">
           <span class="chip">Como funciona</span>
           <h2>Conectamos você com clientes em 4 passos</h2>
-          <div class="steps">
-            <div class="step">
-              <h4>Cadastre-se</h4>
-              <p>Preencha seu perfil, envie documentos e personalize os serviços que oferece.</p>
+          <div class="flow-visual">
+            <div class="flow-step">
+              <img
+                src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=320&q=80"
+                alt="Profissional de beleza sorrindo para a câmera"
+              />
+              <h3>Crie seu perfil</h3>
+              <p>Cadastre-se, adicione fotos e conte sua história para encantar novas clientes.</p>
             </div>
-            <div class="step">
-              <h4>Receba pedidos</h4>
-              <p>Acompanhe notificações pelo app NailNow e aceite os atendimentos ideais.</p>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <div class="flow-step">
+              <img
+                src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=320&q=80"
+                alt="Cliente analisando o perfil de uma profissional no celular"
+              />
+              <h3>Receba pedidos</h3>
+              <p>Clientes verificadas encontram seus serviços e enviam pedidos recorrentes.</p>
             </div>
-            <div class="step">
-              <h4>Atenda com liberdade</h4>
-              <p>Escolha onde atender: em domicílio, coworkings de beleza ou no próprio estúdio.</p>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <div class="flow-step">
+              <img
+                src="https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=320&q=80"
+                alt="Profissional atendendo cliente com liberdade"
+              />
+              <h3>Atenda com liberdade</h3>
+              <p>Escolha onde e quando atender: em domicílio, no estúdio ou em coworkings parceiros.</p>
             </div>
-            <div class="step">
-              <h4>Receba seus ganhos</h4>
-              <p>Pagamentos protegidos e suporte financeiro para manter seu fluxo em dia.</p>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <div class="flow-step">
+              <img
+                src="https://images.unsplash.com/photo-1525182008055-f88b95ff7980?auto=format&fit=crop&w=320&q=80"
+                alt="Profissional comemorando pagamentos recebidos"
+              />
+              <h3>Receba com segurança</h3>
+              <p>Acompanhe repasses protegidos e amplie sua base de clientes com total suporte.</p>
             </div>
           </div>
         </div>
