@@ -50,6 +50,44 @@
       </div>
     </header>
 
+    <main class="auth-layout" aria-labelledby="auth-heading">
+      <section class="auth-hero">
+        <p class="auth-kicker">Painel para manicures NailNow</p>
+        <h1 id="auth-heading">Faça login para cuidar da sua agenda</h1>
+        <p class="auth-intro">
+          Acesse seu espaço exclusivo para confirmar atendimentos, organizar horários e acompanhar pagamentos com segurança.
+        </p>
+        <ul class="auth-benefits">
+          <li>Sincronize sua agenda em tempo real com os pedidos das clientes.</li>
+          <li>Confirme reservas com um toque e receba notificações instantâneas.</li>
+          <li>Controle seus ganhos e acompanhe o histórico de atendimentos.</li>
+        </ul>
+      </section>
+
+      <section class="auth-card" aria-labelledby="login-heading">
+        <div class="auth-card__inner">
+          <h2 id="login-heading">Entrar com e-mail e senha</h2>
+          <p class="auth-card__hint">Use o e-mail cadastrado na NailNow para acessar o painel de manicures.</p>
+          <form id="login-form" class="auth-form" novalidate>
+            <div class="auth-form__group">
+              <label for="email">E-mail</label>
+              <input type="email" id="email" name="email" autocomplete="email" required placeholder="seunome@nailnow.com" />
+            </div>
+            <div class="auth-form__group">
+              <label for="password">Senha</label>
+              <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="••••••••" />
+            </div>
+            <button type="submit" class="auth-form__submit">Entrar</button>
+          </form>
+          <div id="login-status" class="auth-status" role="alert" aria-live="polite"></div>
+          <div class="auth-actions">
+            <button type="button" id="reset-password" class="auth-link-button">Esqueci minha senha</button>
+            <a href="./cadastro.html" class="auth-secondary-link">Ainda não é parceira? Cadastre-se</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
     <footer class="site-footer">
       <div class="footer-inner">
         <div class="footer-column footer-column--brand">
@@ -75,12 +113,103 @@
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        sendPasswordResetEmail,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    <nav class="bottom-nav" aria-label="Navegação inferior fixa">
-      <a href="/" class="bottom-nav__link" aria-label="Ir para o início">Home</a>
-      <a href="../servicos.html" class="bottom-nav__link" aria-label="Buscar serviços profissionais">Buscar</a>
-      <a href="../cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
-      <a href="../cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
-    </nav>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDvMxPKyw7M70fvj-YLwzudfIaquohkDIA",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.appspot.com",
+        messagingSenderId: "145591976960",
+        appId: "1:145591976960:web:957f13cd9d61acdfda4dde",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+
+      const loginForm = document.getElementById("login-form");
+      const statusEl = document.getElementById("login-status");
+      const submitButton = loginForm.querySelector("button[type='submit']");
+      const resetButton = document.getElementById("reset-password");
+
+      const setStatus = (message, type = "") => {
+        statusEl.textContent = message;
+        statusEl.classList.remove("auth-status--error", "auth-status--success");
+        if (type) {
+          statusEl.classList.add(`auth-status--${type}`);
+        }
+      };
+
+      const setLoading = (isLoading) => {
+        submitButton.disabled = isLoading;
+        submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
+      };
+
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = loginForm.email.value.trim();
+        const password = loginForm.password.value;
+
+        if (!email || !password) {
+          setStatus("Preencha e-mail e senha para continuar.", "error");
+          return;
+        }
+
+        setStatus("");
+        setLoading(true);
+
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+          setStatus("Login realizado com sucesso!", "success");
+          loginForm.reset();
+        } catch (error) {
+          console.error("Erro no login", error);
+          let friendlyMessage = "Não foi possível entrar. Verifique seus dados.";
+          if (error.code === "auth/invalid-email") {
+            friendlyMessage = "Formato de e-mail inválido.";
+          } else if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+            friendlyMessage = "Credenciais não encontradas. Confira e tente novamente.";
+          } else if (error.code === "auth/too-many-requests") {
+            friendlyMessage = "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+          }
+          setStatus(friendlyMessage, "error");
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      resetButton.addEventListener("click", async () => {
+        const email = loginForm.email.value.trim();
+        if (!email) {
+          setStatus("Informe seu e-mail para enviarmos o link de redefinição.", "error");
+          return;
+        }
+
+        setStatus("Enviando instruções de redefinição...", "");
+        resetButton.disabled = true;
+
+        try {
+          await sendPasswordResetEmail(auth, email);
+          setStatus("Enviamos um link de redefinição para o seu e-mail.", "success");
+        } catch (error) {
+          console.error("Erro ao enviar redefinição", error);
+          let friendlyMessage = "Não foi possível enviar o e-mail de redefinição.";
+          if (error.code === "auth/invalid-email") {
+            friendlyMessage = "Formato de e-mail inválido.";
+          } else if (error.code === "auth/user-not-found") {
+            friendlyMessage = "Não encontramos uma manicure com esse e-mail.";
+          }
+          setStatus(friendlyMessage, "error");
+        } finally {
+          resetButton.disabled = false;
+        }
+      });
+    </script>
   </body>
 </html>
