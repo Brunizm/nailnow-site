@@ -155,15 +155,13 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import {
-        getFirestore,
-        collection,
-        doc,
-        getDoc,
-        getDocs,
-        limit,
-        query,
-        where,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        browserLocalPersistence,
+        getAuth,
+        onAuthStateChanged,
+        sendPasswordResetEmail,
+        setPersistence,
+        signInWithEmailAndPassword,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyDvMxPKyw7M70fvj-YLwzudfIaquohkDIA",
@@ -175,130 +173,16 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+      const auth = getAuth(app);
+
+      setPersistence(auth, browserLocalPersistence).catch((error) => {
+        console.warn("Não foi possível aplicar a persistência local no momento", error);
+      });
 
       const loginForm = document.getElementById("login-form");
       const statusEl = document.getElementById("login-status");
       const submitButton = loginForm.querySelector("button[type='submit']");
       const resetButton = document.getElementById("reset-password");
-
-      const sessionKey = "nailnowPortalManicure";
-
-      const toComparable = (value) => (typeof value === "string" ? value.trim() : value ?? "");
-
-      const extractPassword = (profile) => {
-        const candidates = ["senha", "password", "senhaPortal", "senhaAcesso"];
-        for (const field of candidates) {
-          const stored = profile[field];
-          if (typeof stored === "string" && stored.trim()) {
-            return stored.trim();
-          }
-          if (typeof stored === "number") {
-            return String(stored);
-          }
-        }
-        return "";
-      };
-
-      const buildLookupCandidates = (rawEmail) => {
-        const trimmed = (rawEmail ?? "").trim();
-        if (!trimmed) {
-          return [];
-        }
-
-        const lower = trimmed.toLowerCase();
-        const combinations = [
-          ["email", trimmed],
-          ["email", lower],
-          ["emailLowercase", lower],
-          ["contato.email", trimmed],
-          ["contato.email", lower],
-          ["contato.emailLowercase", lower],
-        ];
-
-        const seen = new Set();
-        return combinations.reduce((list, [field, value]) => {
-          if (!value) {
-            return list;
-          }
-          const key = `${field}|${value}`;
-          if (seen.has(key)) {
-            return list;
-          }
-          seen.add(key);
-          list.push({ field, value });
-          return list;
-        }, []);
-      };
-
-      const fetchProfileByEmail = async (email) => {
-        const manicuresRef = collection(db, "manicures");
-        const lookups = buildLookupCandidates(email);
-
-        for (const { field, value } of lookups) {
-          try {
-            const manicureQuery = query(manicuresRef, where(field, "==", value), limit(1));
-            const snapshot = await getDocs(manicureQuery);
-            if (!snapshot.empty) {
-              const document = snapshot.docs[0];
-              return { id: document.id, ...document.data() };
-            }
-          } catch (error) {
-            console.error(`Erro ao buscar manicure pelo campo ${field}`, error);
-            if (error.code === "permission-denied") {
-              const permissionError = new Error("permission-denied");
-              permissionError.cause = error;
-              throw permissionError;
-            }
-            throw error;
-          }
-        }
-
-        return null;
-      };
-
-      const persistSession = (profile) => {
-        const sessionPayload = {
-          id: profile.id,
-          email: profile.email ?? profile.emailLowercase ?? "",
-          nome: profile.nome ?? profile.name ?? profile.displayName ?? "",
-          telefone: profile.telefone ?? profile.phone ?? "",
-        };
-        localStorage.setItem(sessionKey, JSON.stringify(sessionPayload));
-      };
-
-      const authenticateManicure = async (email, password) => {
-        const profile = await fetchProfileByEmail(email);
-        if (!profile) {
-          throw new Error("not-found");
-        }
-
-        const storedPassword = extractPassword(profile);
-        if (!storedPassword) {
-          throw new Error("missing-password");
-        }
-
-        if (toComparable(storedPassword) !== toComparable(password)) {
-          throw new Error("invalid-credentials");
-        }
-
-        try {
-          const docRef = doc(db, "manicures", profile.id);
-          const latestSnapshot = await getDoc(docRef);
-          if (latestSnapshot.exists()) {
-            Object.assign(profile, latestSnapshot.data());
-          }
-        } catch (refreshError) {
-          if (refreshError.code === "permission-denied") {
-            console.warn("Sem permissão para atualizar o perfil completo no momento.");
-          } else {
-            console.warn("Não foi possível atualizar o perfil completo", refreshError);
-          }
-        }
-
-        persistSession(profile);
-        return profile;
-      };
 
       const setStatus = (message, type = "") => {
         statusEl.textContent = message;
@@ -312,6 +196,36 @@
       const setLoading = (isLoading) => {
         submitButton.disabled = isLoading;
         submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
+      };
+
+      const redirectToPortal = () => {
+        setTimeout(() => {
+          window.location.href = "./portal.html";
+        }, 800);
+      };
+
+      const handleAuthError = (error) => {
+        const code = error.code || error.message;
+        if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+          setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+        } else if (code === "auth/wrong-password") {
+          setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
+        } else if (code === "auth/invalid-email") {
+          setStatus("Informe um e-mail válido para continuar.", "error");
+        } else if (code === "auth/too-many-requests") {
+          setStatus(
+            "Detectamos muitas tentativas. Aguarde alguns instantes antes de tentar novamente.",
+            "error",
+          );
+        } else if (code === "auth/network-request-failed") {
+          setStatus("Sem conexão no momento. Verifique sua internet e tente novamente.", "error");
+        } else {
+          console.error("Erro inesperado no login", error);
+          setStatus(
+            "Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.",
+            "error",
+          );
+        }
       };
 
       loginForm.addEventListener("submit", async (event) => {
@@ -328,35 +242,12 @@
         setLoading(true);
 
         try {
-          await authenticateManicure(email, password);
+          await signInWithEmailAndPassword(auth, email, password);
           setStatus("Login realizado com sucesso! Redirecionando para o portal...", "success");
           loginForm.reset();
-          setTimeout(() => {
-            window.location.href = "./portal.html";
-          }, 900);
+          redirectToPortal();
         } catch (error) {
-          console.error("Erro no login", error);
-          const code = error.code || error.message;
-          if (code === "missing-password") {
-            setStatus(
-              "Não encontramos uma senha cadastrada. Fale com o suporte NailNow para concluir o acesso.",
-              "error",
-            );
-          } else if (code === "invalid-credentials") {
-            setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
-          } else if (code === "not-found") {
-            setStatus("Não localizamos uma manicure com esse e-mail.", "error");
-          } else if (code === "permission-denied") {
-            setStatus(
-              "Não conseguimos validar seus dados agora. Entre em contato com o suporte NailNow.",
-              "error",
-            );
-          } else {
-            setStatus(
-              "Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.",
-              "error",
-            );
-          }
+          handleAuthError(error);
         } finally {
           setLoading(false);
         }
@@ -364,15 +255,33 @@
 
       resetButton.addEventListener("click", async () => {
         const email = loginForm.email.value.trim();
-        const supportLink =
-          "mailto:contato@nailnow.com?subject=Redefini%C3%A7%C3%A3o%20de%20senha%20NailNow&body=Ol%C3%A1%20time%20NailNow,%20preciso%20redefinir%20minha%20senha.%20Meu%20e-mail%20%C3%A9%20" +
-          encodeURIComponent(email || "");
+        if (!email) {
+          setStatus("Informe seu e-mail para receber o link de redefinição.", "error");
+          return;
+        }
 
-        window.location.href = supportLink;
-        setStatus(
-          "Abrimos um e-mail para o suporte NailNow concluir a redefinição da sua senha.",
-          "success",
-        );
+        try {
+          await sendPasswordResetEmail(auth, email);
+          setStatus("Enviamos um e-mail com as instruções para redefinir sua senha.", "success");
+        } catch (error) {
+          const code = error.code || error.message;
+          if (code === "auth/user-not-found") {
+            setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+          } else if (code === "auth/invalid-email") {
+            setStatus("Informe um e-mail válido para continuar.", "error");
+          } else {
+            console.error("Erro ao enviar redefinição de senha", error);
+            setStatus("Não foi possível iniciar a redefinição agora. Tente novamente em instantes.", "error");
+          }
+        }
+      });
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          setStatus("Você já está conectada! Redirecionando para o portal...", "success");
+          submitButton.disabled = true;
+          redirectToPortal();
+        }
       });
     </script>
   </body>
