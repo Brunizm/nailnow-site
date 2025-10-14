@@ -17,32 +17,26 @@
 
     <style>
       :root {
-        /* Paleta principal */
         --pink: #F55BA2;
-        --pink-600: #C61B80; /* acento/ícone */
-        --pink-50: #FFF1F6; /* fundo suave hero */
-        --rose-50: #FFF8F4; /* seção clara */
-        --nude: #FFF8F4;
-        --brown: #74260A; /* rodapé institucional */
-        --text: #2B1F1A; /* preto suave */
-        --text-muted: #7d6a63;
+        --pink-600: #c61b80;
+        --pink-50: #fff1f6;
+        --nude: #fff5f1;
+        --sand: #faf1ec;
+        --text: #2b1f1a;
+        --muted: #7d6a63;
+        --border: #f0dfd8;
         --white: #ffffff;
-
-        /* Dimensões */
-        --radius: 16px;
-        --shadow: 0 8px 28px rgba(0,0,0,.06);
-        --shadow-soft: 0 8px 14px rgba(0,0,0,.05);
-        --container: 1160px;
+        --radius-lg: 18px;
+        --radius-md: 14px;
+        --shadow: 0 15px 50px rgba(45, 22, 11, 0.08);
+        --shadow-soft: 0 12px 30px rgba(45, 22, 11, 0.08);
+        --container: 1120px;
       }
 
-      /* Reset base leve */
       * {
         box-sizing: border-box;
       }
-      html,
-      body {
-        height: 100%;
-      }
+
       body {
         margin: 0;
         font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
@@ -51,391 +45,470 @@
         line-height: 1.6;
       }
 
-      /* Utilitários simples */
       .container {
         width: 100%;
         max-width: var(--container);
         margin: 0 auto;
-        padding: 0 20px;
-      }
-      .grid {
-        display: grid;
-        gap: 24px;
-      }
-      .btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 14px 20px;
-        border-radius: 12px;
-        border: 2px solid transparent;
-        font-weight: 600;
-        cursor: pointer;
-        text-decoration: none;
-        transition: transform .15s ease, box-shadow .15s ease, background-color .2s ease, color .2s ease;
-        font-size: 16px;
-      }
-      .btn:active {
-        transform: translateY(1px);
-      }
-      .btn[disabled] {
-        cursor: not-allowed;
-        opacity: .7;
-      }
-      .btn-pink {
-        background: var(--pink);
-        color: var(--white);
-        box-shadow: var(--shadow-soft);
-      }
-      .btn-pink:hover {
-        filter: brightness(0.95);
-      }
-      .btn-outline {
-        background: var(--white);
-        color: var(--pink);
-        border-color: var(--pink);
-      }
-      .btn-outline:hover {
-        background: #fff2f9;
-      }
-      .btn-white {
-        background: var(--white);
-        color: var(--pink-600);
+        padding: 0 24px;
       }
 
       h1,
       h2,
       h3 {
-        font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        color: #1e1512;
-        line-height: 1.2;
         font-weight: 700;
+        line-height: 1.2;
+        color: #1f1611;
       }
+
       h1 {
-        font-size: clamp(30px, 5vw, 44px);
-        margin: 0 0 12px;
+        font-size: clamp(32px, 4vw, 48px);
         letter-spacing: -0.02em;
+        margin: 0 0 16px;
       }
+
       h2 {
-        font-size: clamp(22px, 4vw, 32px);
-        margin: 0 0 10px;
-        letter-spacing: -0.01em;
+        font-size: clamp(24px, 3vw, 36px);
+        margin: 0 0 12px;
       }
+
       h3 {
-        font-size: clamp(18px, 3vw, 24px);
+        font-size: clamp(18px, 2.6vw, 22px);
         margin: 0 0 8px;
       }
+
       p.lead {
-        font-size: clamp(16px, 2.4vw, 18px);
-        color: #5a453e;
-        max-width: 56ch;
+        font-size: clamp(16px, 2.3vw, 18px);
+        color: var(--muted);
+        max-width: 52ch;
+        margin: 0;
       }
 
       .chip {
-        display: inline-block;
-        padding: 6px 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
         border-radius: 999px;
-        background: var(--nude);
-        color: #7a5b52;
+        background: rgba(245, 91, 162, 0.12);
+        color: var(--pink-600);
         font-size: 12px;
         font-weight: 600;
-        letter-spacing: .2px;
+        letter-spacing: 0.2px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px 24px;
+        border-radius: 14px;
+        border: 2px solid transparent;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 16px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.2s ease, color 0.2s ease;
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+      }
+
+      .btn[disabled] {
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+
+      .btn-pink {
+        background: var(--pink);
+        color: var(--white);
+        box-shadow: 0 12px 30px rgba(245, 91, 162, 0.26);
+      }
+
+      .btn-pink:hover {
+        filter: brightness(0.96);
+      }
+
+      .btn-outline {
+        background: transparent;
+        color: var(--pink);
+        border-color: rgba(245, 91, 162, 0.3);
+      }
+
+      .btn-outline:hover {
+        background: rgba(245, 91, 162, 0.08);
+      }
+
+      .btn-white {
+        background: var(--white);
+        color: var(--pink-600);
+      }
+
+      .btn-white:hover {
+        background: rgba(255, 255, 255, 0.85);
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
       }
 
       /* Hero */
-      .hero {
-        background: linear-gradient(180deg, var(--pink-50), var(--rose-50));
-        padding: 72px 0 56px;
+      .pro-hero {
+        padding: 80px 0 56px;
+        background: linear-gradient(180deg, var(--pink-50), var(--sand) 60%, var(--white));
       }
-      .hero .grid-hero {
-        grid-template-columns: 1.1fr .9fr;
+
+      .pro-hero__grid {
+        display: grid;
+        grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+        gap: 56px;
         align-items: center;
       }
-      .hero .media {
-        min-height: 280px;
-        border-radius: var(--radius);
-        background: url('https://images.unsplash.com/photo-1616394584738-fc6e612e71ac?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat;
-        box-shadow: var(--shadow);
+
+      .pro-hero__copy {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
       }
-      .hero .cta {
+
+      .pro-hero__actions {
         display: flex;
         gap: 12px;
         flex-wrap: wrap;
-        margin-top: 18px;
       }
 
-      /* Card de login */
-      .card-login {
-        background: var(--white);
-        border-radius: var(--radius);
+      .pro-hero__media {
+        display: grid;
+        gap: 20px;
+        justify-items: center;
+      }
+
+      .pro-hero__photo {
+        width: min(420px, 100%);
+        aspect-ratio: 4 / 5;
+        border-radius: var(--radius-lg);
+        background: url('https://images.unsplash.com/photo-1616394584738-fc6e612e71ac?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat;
         box-shadow: var(--shadow);
-        padding: 20px;
       }
-      .card-login h3 {
-        font-family: Poppins, sans-serif;
-        font-size: 18px;
-        margin: 0 0 12px;
+
+      .pro-login-card {
+        width: min(420px, 100%);
+        padding: 28px;
+        border-radius: var(--radius-lg);
+        background: var(--white);
+        box-shadow: var(--shadow-soft);
+        border: 1px solid rgba(234, 219, 213, 0.6);
       }
-      .field {
+
+      .pro-login-card h3 {
+        margin: 0 0 14px;
+        font-size: 20px;
+      }
+
+      .form-field {
         display: flex;
         flex-direction: column;
         gap: 6px;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
       }
-      .field label {
+
+      .form-field label {
         font-size: 12px;
-        color: #6b544c;
+        font-weight: 500;
+        color: var(--muted);
       }
-      .field input {
-        padding: 12px 12px;
-        border: 1.5px solid #eadbd5;
+
+      .form-field input {
+        padding: 12px 14px;
         border-radius: 12px;
-        outline: none;
+        border: 1.5px solid var(--border);
         font-size: 14px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
-      .field input:focus {
+
+      .form-field input:focus {
         border-color: var(--pink);
-        box-shadow: 0 0 0 3px #ffe1f2;
-      }
-      .muted {
-        color: var(--text-muted);
-        font-size: 12px;
+        box-shadow: 0 0 0 4px rgba(245, 91, 162, 0.15);
+        outline: none;
       }
 
       .login-feedback {
-        margin: 10px 0 0;
-        padding: 10px 12px;
-        border-radius: 12px;
+        margin-top: 16px;
         font-size: 13px;
-        line-height: 1.45;
-        display: none;
-      }
-      .login-feedback.is-visible {
-        display: block;
-      }
-      .login-feedback.success {
-        background: #e7f6ec;
-        color: #1b5e20;
-        border: 1px solid #c8e6c9;
-      }
-      .login-feedback.error {
-        background: #fdecea;
-        color: #b71c1c;
-        border: 1px solid #f5c6cb;
-      }
-      .login-feedback.warning {
-        background: #fff4e5;
-        color: #8a6100;
-        border: 1px solid #ffe0b2;
-      }
-
-      @media (max-width: 980px) {
-        .hero .grid-hero {
-          grid-template-columns: 1fr;
-        }
-        .hero .media {
-          min-height: 220px;
-        }
-      }
-
-      /* Benefícios */
-      section.beneficios {
-        padding: 64px 0;
-      }
-      .cards {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-      }
-      .card {
-        background: var(--white);
-        border: 1px solid #f1e6e1;
-        border-radius: var(--radius);
-        padding: 22px;
-        transition: transform .15s ease, box-shadow .15s ease;
-      }
-      .card:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow);
-      }
-      .icon {
-        width: 44px;
-        height: 44px;
-        display: grid;
-        place-items: center;
-        border-radius: 12px;
-        background: #fff2f9;
-        color: var(--pink-600);
-        font-size: 20px;
-        border: 1px solid #f6d3e8;
-      }
-      .card p {
-        margin: 8px 0 0;
-        color: #5a453e;
-        font-size: 14px;
-      }
-
-      @media (max-width: 980px) {
-        .cards {
-          grid-template-columns: repeat(2, 1fr);
-        }
-      }
-      @media (max-width: 620px) {
-        .cards {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      /* Como funciona */
-      section.flow {
-        padding: 80px 0;
-        background: var(--nude);
-      }
-      .steps {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        counter-reset: step;
-      }
-      .step {
-        background: var(--white);
-        border-radius: 16px;
-        padding: 18px;
-        border: 1px solid #f1e6e1;
-        position: relative;
-      }
-      .step:before {
-        counter-increment: step;
-        content: counter(step);
-        position: absolute;
-        top: -12px;
-        left: -12px;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: var(--pink);
-        color: #fff;
-        display: grid;
-        place-items: center;
-        font-weight: 700;
-        box-shadow: var(--shadow-soft);
-      }
-      .step h4 {
-        margin: 6px 0 4px;
-        font-size: 16px;
-        font-weight: 700;
-      }
-      .step p {
-        margin: 0;
-        font-size: 14px;
-        color: #5a453e;
-      }
-
-      @media (max-width: 980px) {
-        .steps {
-          grid-template-columns: repeat(2, 1fr);
-        }
-      }
-      @media (max-width: 620px) {
-        .steps {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      /* Depoimentos */
-      section.deps {
-        padding: 64px 0;
-      }
-      .dep-row {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-      }
-      .dep {
-        background: var(--white);
-        border: 1px solid #f1e6e1;
-        border-radius: 16px;
-        padding: 20px;
-      }
-      .person {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 10px;
-      }
-      .avatar {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        background: #ffe1f2;
-      }
-      .dep p {
-        margin: 0;
-        font-size: 14px;
-        color: #4d3b35;
-      }
-
-      @media (max-width: 980px) {
-        .dep-row {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      /* Confiança */
-      section.trust {
-        padding: 72px 0;
-        background: var(--rose-50);
-      }
-      .trust-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-      }
-      .trust-item {
-        background: var(--white);
-        border: 1px solid #f1e6e1;
-        border-radius: 16px;
-        padding: 20px;
-      }
-      .trust-item h4 {
-        margin: 0 0 6px;
-        font-size: 16px;
-        font-weight: 700;
-      }
-      .trust-item p {
-        margin: 0;
-        font-size: 14px;
-        color: #5a453e;
-      }
-      @media (max-width: 980px) {
-        .trust-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      /* CTA final */
-      section.cta {
-        padding: 80px 0;
-        background: linear-gradient(135deg, var(--pink), #fc97d4);
-        color: var(--white);
-        text-align: center;
-      }
-      section.cta p {
-        color: #fffafc;
-      }
-
-      /* Entradas animadas (scroll) */
-      .reveal {
+        line-height: 1.5;
+        color: var(--muted);
         opacity: 0;
-        transform: translateY(16px);
-        transition: opacity .6s ease, transform .6s ease;
+        transform: translateY(6px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
       }
-      .reveal.visible {
+
+      .login-feedback.is-visible {
         opacity: 1;
         transform: translateY(0);
       }
+
+      .login-feedback.success {
+        color: #0f8a4b;
+      }
+
+      .login-feedback.warning {
+        color: #b36b00;
+      }
+
+      .login-feedback.error {
+        color: #b42318;
+      }
+
+      .pro-hero__badges {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 12px;
+      }
+
+      .pro-feature {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: var(--radius-md);
+        background: rgba(245, 91, 162, 0.08);
+        color: #4b332d;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .pro-feature__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--white);
+        box-shadow: inset 0 0 0 2px rgba(245, 91, 162, 0.2);
+        font-size: 16px;
+      }
+
+      @media (max-width: 1024px) {
+        .pro-hero__grid {
+          grid-template-columns: 1fr;
+          text-align: center;
+        }
+
+        .pro-hero__copy {
+          align-items: center;
+        }
+
+        .pro-hero__badges {
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          width: 100%;
+        }
+
+        .pro-hero__media {
+          justify-items: center;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .pro-hero {
+          padding: 72px 0 48px;
+        }
+
+        .pro-login-card {
+          padding: 24px;
+        }
+
+        .btn {
+          width: 100%;
+        }
+
+        .pro-hero__actions {
+          width: 100%;
+        }
+      }
+
+      /* Sections */
+      .section {
+        padding: 72px 0;
+      }
+
+      .section__header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 32px;
+        text-align: left;
+      }
+
+      .section__header p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 52ch;
+      }
+
+      .pro-benefits {
+        background: var(--white);
+      }
+
+      .pro-benefits__grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .pro-benefit {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 18px 20px;
+        background: #fffbfa;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .pro-benefit:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 18px 32px rgba(45, 22, 11, 0.06);
+      }
+
+      .pro-benefit__icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: rgba(245, 91, 162, 0.12);
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+        color: var(--pink-600);
+      }
+
+      .pro-benefit p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 900px) {
+        .pro-benefits__grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 560px) {
+        .pro-benefits__grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .pro-how-it-works {
+        background: var(--nude);
+      }
+
+      .pro-steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .pro-step {
+        background: var(--white);
+        border-radius: var(--radius-md);
+        padding: 20px 22px;
+        border: 1px solid rgba(234, 219, 213, 0.7);
+        display: grid;
+        gap: 10px;
+        position: relative;
+      }
+
+      .pro-step::before {
+        content: attr(data-step);
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: var(--pink);
+        color: var(--white);
+        font-weight: 600;
+        display: grid;
+        place-items: center;
+        position: absolute;
+        top: -18px;
+        left: 22px;
+        box-shadow: 0 8px 16px rgba(245, 91, 162, 0.25);
+      }
+
+      .pro-step p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 1024px) {
+        .pro-steps {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 600px) {
+        .pro-steps {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .pro-trust {
+        background: var(--sand);
+      }
+
+      .pro-trust__grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .pro-trust__item {
+        background: var(--white);
+        border-radius: var(--radius-md);
+        padding: 24px;
+        border: 1px solid rgba(234, 219, 213, 0.7);
+        display: grid;
+        gap: 10px;
+      }
+
+      .pro-trust__item p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 900px) {
+        .pro-trust__grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 560px) {
+        .pro-trust__grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .pro-cta {
+        padding: 84px 0;
+        background: linear-gradient(135deg, var(--pink), #fd8abd);
+        color: var(--white);
+        text-align: center;
+      }
+
+      .pro-cta p {
+        max-width: 56ch;
+        margin: 12px auto 24px;
+        color: rgba(255, 255, 255, 0.92);
+      }
     </style>
+
   </head>
 
   <body>
@@ -519,163 +592,151 @@
     </header>
 
     <main>
-      <section class="hero" id="hero">
-        <div class="container grid grid-hero">
-          <div>
+      <section class="pro-hero" id="hero">
+        <div class="container pro-hero__grid">
+          <div class="pro-hero__copy">
             <span class="chip">Portal da Manicure</span>
             <h1>Seu talento merece visibilidade.</h1>
             <p class="lead">Com a NailNow, você tem autonomia, segurança e uma rede inteira de clientes ao seu alcance.</p>
-            <div class="cta">
+            <div class="pro-hero__actions">
               <a href="/login.html" class="btn btn-outline">Entrar</a>
               <a href="/cadastro.html" class="btn btn-pink">Quero fazer parte</a>
             </div>
-          </div>
-
-          <aside class="card-login" aria-label="Acesso rápido">
-            <h3>Entrar na minha conta</h3>
-            <form id="login-form">
-              <div class="field">
-                <label for="email">E-mail</label>
-                <input type="email" id="email" name="email" placeholder="voce@email.com" autocomplete="email" required />
+            <div class="pro-hero__badges" aria-label="Benefícios essenciais">
+              <div class="pro-feature">
+                <span class="pro-feature__icon" aria-hidden="true">💎</span>
+                Mais visibilidade para os seus serviços
               </div>
-              <div class="field">
-                <label for="senha">Senha</label>
-                <input type="password" id="senha" name="senha" placeholder="••••••••" autocomplete="current-password" required />
+              <div class="pro-feature">
+                <span class="pro-feature__icon" aria-hidden="true">⏰</span>
+                Horários flexíveis que se adaptam a você
               </div>
-              <button class="btn btn-pink" type="submit" style="width:100%">Entrar</button>
-              <p class="muted" style="margin-top:8px">Primeira vez aqui? <a href="/cadastro.html" style="color:var(--pink)">Quero me cadastrar</a></p>
-            </form>
-            <p id="login-feedback" class="login-feedback" role="status" aria-live="polite"></p>
-          </aside>
-        </div>
-      </section>
-
-      <section class="beneficios reveal" id="beneficios">
-        <div class="container">
-          <h2>Por que ser uma manicure NailNow?</h2>
-          <p class="lead">Autonomia, visibilidade e suporte real para crescer com segurança.</p>
-
-          <div class="cards" style="margin-top:18px;">
-            <article class="card">
-              <div class="icon" aria-hidden="true">💎</div>
-              <h3>Mais visibilidade</h3>
-              <p>Apareça para dezenas ou centenas de clientes próximas a você, prontas para agendar.</p>
-            </article>
-            <article class="card">
-              <div class="icon" aria-hidden="true">⏰</div>
-              <h3>Horários flexíveis</h3>
-              <p>Você escolhe quando atender. A NailNow se adapta à sua rotina.</p>
-            </article>
-            <article class="card">
-              <div class="icon" aria-hidden="true">💰</div>
-              <h3>Ganhos garantidos</h3>
-              <p>Pagamentos rápidos, justos e seguros. Transparência total.</p>
-            </article>
-            <article class="card">
-              <div class="icon" aria-hidden="true">💬</div>
-              <h3>Suporte e comunidade</h3>
-              <p>Você nunca estará sozinha — nosso time e outras profissionais estão com você.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="flow reveal" id="como-funciona">
-        <div class="container">
-          <h2>Como funciona</h2>
-          <p class="lead">Um caminho simples para você conquistar clientes e aumentar seus ganhos.</p>
-
-          <div class="steps" style="margin-top:18px;">
-            <div class="step">
-              <h4>Crie seu perfil</h4>
-              <p>Cadastre-se, adicione fotos e conte sua história.</p>
-            </div>
-            <div class="step">
-              <h4>Receba pedidos</h4>
-              <p>Clientes verificadas encontram você e enviam solicitações.</p>
-            </div>
-            <div class="step">
-              <h4>Atenda com liberdade</h4>
-              <p>No salão, em domicílio ou onde preferir.</p>
-            </div>
-            <div class="step">
-              <h4>Receba com segurança</h4>
-              <p>Pagamentos direto no app, sem burocracia e com transparência.</p>
+              <div class="pro-feature">
+                <span class="pro-feature__icon" aria-hidden="true">💰</span>
+                Pagamentos seguros e transparentes
+              </div>
+              <div class="pro-feature">
+                <span class="pro-feature__icon" aria-hidden="true">🤝</span>
+                Comunidade e suporte em cada etapa
+              </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      <section class="deps reveal" id="depoimentos">
-        <div class="container">
-          <h2>Histórias reais</h2>
-          <div class="dep-row" style="margin-top:18px;">
-            <article class="dep">
-              <div class="person">
-                <div class="avatar" aria-hidden="true"></div>
-                <div>
-                  <strong>Marina</strong>
-                  <div class="muted">Porto Alegre</div>
+          <div class="pro-hero__media">
+            <div class="pro-hero__photo" role="img" aria-label="Profissional da beleza atendendo cliente com sorriso"></div>
+            <aside class="pro-login-card" aria-label="Acesso rápido">
+              <h3>Entrar na minha conta</h3>
+              <form id="login-form">
+                <div class="form-field">
+                  <label for="email">E-mail</label>
+                  <input type="email" id="email" name="email" placeholder="voce@email.com" autocomplete="email" required />
                 </div>
-              </div>
-              <p>“Antes, eu dependia só de indicações. Agora, minha agenda está sempre cheia.”</p>
-            </article>
-            <article class="dep">
-              <div class="person">
-                <div class="avatar" aria-hidden="true"></div>
-                <div>
-                  <strong>Carol</strong>
-                  <div class="muted">São Paulo</div>
+                <div class="form-field">
+                  <label for="senha">Senha</label>
+                  <input type="password" id="senha" name="senha" placeholder="••••••••" autocomplete="current-password" required />
                 </div>
-              </div>
-              <p>“A NailNow me devolveu a confiança. Trabalho com liberdade e ganho mais.”</p>
+                <button class="btn btn-pink" type="submit" style="width:100%">Entrar</button>
+                <p class="muted" style="margin-top:10px;">
+                  Primeira vez aqui?
+                  <a href="/cadastro.html" style="color: var(--pink);">Quero me cadastrar</a>
+                </p>
+              </form>
+              <p id="login-feedback" class="login-feedback" role="status" aria-live="polite"></p>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="section pro-benefits" id="beneficios">
+        <div class="container">
+          <div class="section__header">
+            <h2>Por que ser uma manicure NailNow?</h2>
+            <p>Autonomia para organizar sua agenda, visibilidade para encantar novas clientes e suporte real para crescer com segurança.</p>
+          </div>
+          <div class="pro-benefits__grid">
+            <article class="pro-benefit">
+              <div class="pro-benefit__icon" aria-hidden="true">📍</div>
+              <h3>Clientes próximas a você</h3>
+              <p>Apareça nos bairros onde atua e receba solicitações certeiras.</p>
             </article>
-            <article class="dep">
-              <div class="person">
-                <div class="avatar" aria-hidden="true"></div>
-                <div>
-                  <strong>Joyce</strong>
-                  <div class="muted">Curitiba</div>
-                </div>
-              </div>
-              <p>“Além de clientes novas, encontrei uma comunidade de mulheres incríveis.”</p>
+            <article class="pro-benefit">
+              <div class="pro-benefit__icon" aria-hidden="true">🗓️</div>
+              <h3>Controle da agenda</h3>
+              <p>Defina sua disponibilidade, organize períodos de descanso e mantenha equilíbrio.</p>
+            </article>
+            <article class="pro-benefit">
+              <div class="pro-benefit__icon" aria-hidden="true">🔒</div>
+              <h3>Pagamentos garantidos</h3>
+              <p>Transações protegidas, sem atrasos e com taxa justa para o seu trabalho.</p>
+            </article>
+            <article class="pro-benefit">
+              <div class="pro-benefit__icon" aria-hidden="true">🌟</div>
+              <h3>Reputação em alta</h3>
+              <p>Avaliações reais e vitrine de portfólio para fidelizar clientes.</p>
             </article>
           </div>
         </div>
       </section>
 
-      <section class="trust reveal" id="transparencia">
+      <section class="section pro-how-it-works" id="como-funciona">
         <div class="container">
-          <h2>Transparência e confiança</h2>
-          <p class="lead">Segurança para você focar no que faz de melhor.</p>
-
-          <div class="trust-grid" style="margin-top:18px;">
-            <div class="trust-item">
-              <h4>Segurança em primeiro lugar</h4>
-              <p>Documentos verificados, avaliações reais e suporte dedicado.</p>
-            </div>
-            <div class="trust-item">
-              <h4>Pagamentos garantidos</h4>
-              <p>Tudo dentro do app, sem risco e sem atraso.</p>
-            </div>
-            <div class="trust-item">
-              <h4>Política justa</h4>
-              <p>Taxas transparentes, cancelamentos com aviso prévio e sem pegadinhas.</p>
-            </div>
+          <div class="section__header">
+            <h2>Como funciona</h2>
+            <p>Do cadastro ao pagamento, o processo é pensado para que você foque na experiência das suas clientes.</p>
+          </div>
+          <div class="pro-steps">
+            <article class="pro-step" data-step="1">
+              <h3>Crie seu perfil</h3>
+              <p>Cadastre-se, conte sua história, adicione fotos e serviços favoritos.</p>
+            </article>
+            <article class="pro-step" data-step="2">
+              <h3>Receba pedidos</h3>
+              <p>Clientes verificadas encontram você pelo app e enviam solicitações.</p>
+            </article>
+            <article class="pro-step" data-step="3">
+              <h3>Atenda com liberdade</h3>
+              <p>Escolha atender em domicílio, no próprio estúdio ou onde preferir.</p>
+            </article>
+            <article class="pro-step" data-step="4">
+              <h3>Receba com segurança</h3>
+              <p>Pagamento direto no app, com acompanhamento em tempo real.</p>
+            </article>
           </div>
         </div>
       </section>
 
-      <section class="cta reveal" id="convite">
+      <section class="section pro-trust" id="transparencia">
         <div class="container">
-          <h2>Faça parte da revolução do autocuidado.</h2>
-          <p>Na NailNow, você cresce, conquista clientes e vive daquilo que ama.</p>
-          <div style="margin-top:12px;">
-            <a class="btn btn-white" href="/cadastro.html">Quero ser uma manicure NailNow</a>
+          <div class="section__header">
+            <h2>Transparência e confiança</h2>
+            <p>Construímos cada etapa para que você ofereça um serviço impecável com tranquilidade.</p>
           </div>
+          <div class="pro-trust__grid">
+            <article class="pro-trust__item">
+              <h3>Segurança em primeiro lugar</h3>
+              <p>Verificação de documentos, avaliações reais e suporte humano ao seu lado.</p>
+            </article>
+            <article class="pro-trust__item">
+              <h3>Pagamentos garantidos</h3>
+              <p>Fluxo financeiro transparente, com repasses rápidos e acompanhamento no app.</p>
+            </article>
+            <article class="pro-trust__item">
+              <h3>Política justa</h3>
+              <p>Taxas claras, cancelamentos com aviso e equilíbrio entre profissional e cliente.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="pro-cta" id="convite">
+        <div class="container">
+          <h2>Junte-se ao movimento NailNow</h2>
+          <p>Na NailNow, você cresce, conquista clientes fiéis e vive daquilo que ama com autonomia e segurança.</p>
+          <a class="btn btn-white" href="/cadastro.html">Quero ser uma manicure NailNow</a>
         </div>
       </section>
     </main>
+
 
     <footer class="site-footer">
       <div class="footer-inner">
@@ -709,18 +770,6 @@
       <a href="../cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
       <a href="../cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
     </nav>
-
-    <script>
-      const revealEls = document.querySelectorAll('.reveal');
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-          }
-        });
-      }, { threshold: 0.12 });
-      revealEls.forEach((el) => io.observe(el));
-    </script>
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
