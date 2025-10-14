@@ -20,12 +20,12 @@
     <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
     <header class="site-header">
       <div class="header-inner">
-        <a href="index.html" class="brand-mark" aria-label="Início da NailNow">
+        <a href="/" class="brand-mark" aria-label="Início da NailNow">
           NailNow
         </a>
         <div class="header-navigation">
           <nav class="primary-nav" aria-label="Principal">
-            <a href="index.html" class="nav-link" aria-current="page">Home</a>
+            <a href="/" class="nav-link" aria-current="page">Home</a>
             <a href="como-funciona.html" class="nav-link">Como funciona</a>
             <a href="servicos.html" class="nav-link">Serviços</a>
             <a href="agendamentos.html" class="nav-link">Agendamentos</a>
@@ -184,7 +184,7 @@
             Cadastre-se gratuitamente, receba pedidos recorrentes e tenha suporte financeiro, logístico e de marketing a cada atendimento.
           </p>
         </div>
-        <a href="profissional/" class="btn btn--light">Cadastrar-se</a>
+        <a href="profissional/cadastro.html" class="btn btn--light">Cadastrar-se</a>
       </section>
 
       <section class="newsletter" id="newsletter">
@@ -232,7 +232,7 @@
     </footer>
 
     <nav class="bottom-nav" aria-label="Navegação inferior fixa">
-      <a href="index.html" class="bottom-nav__link" aria-label="Ir para o início">Home</a>
+        <a href="/" class="bottom-nav__link" aria-label="Ir para o início">Home</a>
       <a href="servicos.html" class="bottom-nav__link" aria-label="Buscar serviços profissionais">Buscar</a>
       <a href="cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
       <a href="cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
@@ -334,6 +334,124 @@
           return Number.isFinite(parsed) ? parsed : null;
         }
         return null;
+      }
+
+      function pickAddressComponent(components, preferredTypes, options = {}) {
+        const types = Array.isArray(preferredTypes) ? preferredTypes : [preferredTypes];
+        if (!Array.isArray(components) || !components.length || !types.length) {
+          return "";
+        }
+
+        for (const type of types) {
+          const component = components.find((item) => Array.isArray(item?.types) && item.types.includes(type));
+          if (component) {
+            if (options.useShortName && component.short_name) {
+              return component.short_name;
+            }
+            return component.long_name || component.short_name || "";
+          }
+        }
+
+        return "";
+      }
+
+      function formatPostalCode(value) {
+        if (!value) return "";
+        const digits = String(value).replace(/\D+/g, "");
+        if (!digits) return "";
+        if (digits.length === 8) {
+          return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+        }
+        if (digits.length === 7) {
+          return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+        }
+        return value;
+      }
+
+      function getPostalCodeFromComponents(components) {
+        if (!Array.isArray(components) || !components.length) {
+          return "";
+        }
+
+        const base = pickAddressComponent(components, ["postal_code"]);
+        const suffix = pickAddressComponent(components, ["postal_code_suffix"]);
+        const combined = `${base || ""}${suffix ? suffix : ""}`;
+        const formatted = formatPostalCode(combined || base);
+        if (formatted) {
+          return formatted;
+        }
+
+        if (base) {
+          return formatPostalCode(base);
+        }
+
+        return "";
+      }
+
+      function getPostalCodeFromFormattedAddress(address) {
+        if (typeof address !== "string" || !address) {
+          return "";
+        }
+
+        const match = address.match(/\b\d{5}-?\d{3}\b/);
+        if (!match) {
+          return "";
+        }
+
+        return formatPostalCode(match[0]);
+      }
+
+      function formatPlaceAddressLabel(place) {
+        if (!place) return "";
+
+        const components = place.address_components;
+        if (!Array.isArray(components) || !components.length) {
+          return place.formatted_address || "";
+        }
+
+        const route = pickAddressComponent(components, ["route"]);
+        const streetNumber = pickAddressComponent(components, ["street_number"]);
+        const streetPart = [route, streetNumber].filter(Boolean).join(", ");
+
+        const area = pickAddressComponent(components, [
+          "sublocality",
+          "sublocality_level_1",
+          "neighborhood",
+          "political",
+        ]);
+        const city = pickAddressComponent(components, ["locality", "administrative_area_level_2"]);
+        const state = pickAddressComponent(components, ["administrative_area_level_1"], { useShortName: true });
+        const postalCode =
+          getPostalCodeFromFormattedAddress(place.formatted_address) ||
+          getPostalCodeFromComponents(components);
+
+        const leadingParts = [];
+        if (streetPart) {
+          leadingParts.push(streetPart);
+        }
+        if (area) {
+          leadingParts.push(area);
+        }
+
+        const trailingParts = [];
+        const cityState = [city, state].filter(Boolean).join(" - ");
+        if (cityState) {
+          trailingParts.push(cityState);
+        }
+        if (postalCode) {
+          trailingParts.push(postalCode);
+        }
+
+        const formatted = [];
+        if (leadingParts.length) {
+          formatted.push(leadingParts.join(" - "));
+        }
+        if (trailingParts.length) {
+          formatted.push(trailingParts.join(", "));
+        }
+
+        const label = formatted.join(", ");
+        return label || place.formatted_address || "";
       }
 
       function ensureBookingMap() {
@@ -1316,13 +1434,14 @@
         const autocomplete = new google.maps.places.Autocomplete(input, {
           types: ["geocode"],
           componentRestrictions: { country: "br" },
-          fields: ["formatted_address", "place_id", "geometry"],
+          fields: ["formatted_address", "place_id", "geometry", "address_components"],
         });
 
         autocomplete.addListener("place_changed", () => {
           const place = autocomplete.getPlace();
           const geometry = place.geometry?.location;
-          formattedField.value = place.formatted_address || input.value.trim();
+          const refinedLabel = formatPlaceAddressLabel(place);
+          formattedField.value = refinedLabel || place.formatted_address || input.value.trim();
           placeIdField.value = place.place_id || "";
           const latitude = geometry ? geometry.lat() : "";
           const longitude = geometry ? geometry.lng() : "";
