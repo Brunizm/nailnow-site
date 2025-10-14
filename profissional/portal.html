@@ -197,12 +197,16 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import {
-        getAuth,
-        onAuthStateChanged,
-        sendPasswordResetEmail,
-        signInWithEmailAndPassword,
-        signOut,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        Timestamp,
+        collection,
+        doc,
+        getDoc,
+        getDocs,
+        getFirestore,
+        limit,
+        query,
+        where,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyDvMxPKyw7M70fvj-YLwzudfIaquohkDIA",
@@ -214,7 +218,7 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
+      const db = getFirestore(app);
 
       const loginForm = document.getElementById("login-form");
       const statusEl = document.getElementById("login-status");
@@ -226,6 +230,8 @@
       const profileNameElements = document.querySelectorAll("[data-profile-name]");
       const profileDisplay = document.getElementById("profile-display");
       const profileEmail = document.getElementById("profile-email");
+      const profileSpecialties = document.getElementById("profile-specialties");
+      const profileArea = document.getElementById("profile-area");
       const metricPending = document.getElementById("metric-pending");
       const metricConfirmed = document.getElementById("metric-confirmed");
       const metricPast = document.getElementById("metric-past");
@@ -236,7 +242,9 @@
       const confirmedList = document.getElementById("confirmed-list");
       const pastList = document.getElementById("past-list");
 
-      const appointmentData = {
+      const sessionKey = "nailnowPortalManicure";
+
+      const defaultAppointmentData = {
         pending: [
           {
             id: "SOL-1842",
@@ -305,6 +313,85 @@
         ],
       };
 
+      const appointmentCollections = {
+        pending: "solicitacoes",
+        confirmed: "confirmados",
+        past: "historico",
+      };
+
+      const toComparable = (value) => (typeof value === "string" ? value.trim() : value ?? "");
+
+      const extractPassword = (profile) => {
+        const candidates = ["senha", "password", "senhaPortal", "senhaAcesso"];
+        for (const field of candidates) {
+          const stored = profile[field];
+          if (typeof stored === "string" && stored.trim()) {
+            return stored.trim();
+          }
+          if (typeof stored === "number") {
+            return String(stored);
+          }
+        }
+        return "";
+      };
+
+      const persistSession = (profile) => {
+        const sessionPayload = {
+          id: profile.id,
+          email: profile.email ?? profile.emailLowercase ?? "",
+          nome: profile.nome ?? profile.name ?? profile.displayName ?? "",
+          telefone: profile.telefone ?? profile.phone ?? "",
+        };
+        localStorage.setItem(sessionKey, JSON.stringify(sessionPayload));
+      };
+
+      const readSession = () => {
+        try {
+          const raw = localStorage.getItem(sessionKey);
+          return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+          console.warn("Não foi possível ler a sessão armazenada", error);
+          return null;
+        }
+      };
+
+      const clearSession = () => {
+        localStorage.removeItem(sessionKey);
+      };
+
+      const authenticateManicure = async (email, password) => {
+        const manicuresRef = collection(db, "manicures");
+        const attempts = [email, email.toLowerCase()];
+
+        for (const candidate of attempts) {
+          const manicureQuery = query(manicuresRef, where("email", "==", candidate), limit(1));
+          const snapshot = await getDocs(manicureQuery);
+          if (!snapshot.empty) {
+            const document = snapshot.docs[0];
+            const profile = { id: document.id, ...document.data() };
+            const storedPassword = extractPassword(profile);
+            if (!storedPassword) {
+              throw new Error("missing-password");
+            }
+
+            if (toComparable(storedPassword) !== toComparable(password)) {
+              throw new Error("invalid-credentials");
+            }
+
+            const docRef = doc(db, "manicures", profile.id);
+            const latestSnapshot = await getDoc(docRef);
+            if (latestSnapshot.exists()) {
+              Object.assign(profile, latestSnapshot.data());
+            }
+
+            persistSession(profile);
+            return profile;
+          }
+        }
+
+        throw new Error("not-found");
+      };
+
       const setStatus = (message, type = "") => {
         statusEl.textContent = message;
         statusEl.classList.remove("auth-status--error", "auth-status--success");
@@ -319,69 +406,37 @@
         submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
       };
 
-      loginForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const email = loginForm.email.value.trim();
-        const password = loginForm.password.value;
-
-        if (!email || !password) {
-          setStatus("Preencha e-mail e senha para continuar.", "error");
-          return;
-        }
-
-        setStatus("");
-        setLoading(true);
-
-        try {
-          await signInWithEmailAndPassword(auth, email, password);
-          setStatus("Login realizado com sucesso! Redirecionando para o painel...", "success");
-          loginForm.reset();
-        } catch (error) {
-          console.error("Erro no login", error);
-          let friendlyMessage = "Não foi possível entrar. Verifique seus dados.";
-          if (error.code === "auth/invalid-email") {
-            friendlyMessage = "Formato de e-mail inválido.";
-          } else if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
-            friendlyMessage = "Credenciais não encontradas. Confira e tente novamente.";
-          } else if (error.code === "auth/too-many-requests") {
-            friendlyMessage = "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
-          }
-          setStatus(friendlyMessage, "error");
-        } finally {
-          setLoading(false);
-        }
-      });
-
-      resetButton.addEventListener("click", async () => {
-        const email = loginForm.email.value.trim();
-        if (!email) {
-          setStatus("Informe seu e-mail para enviarmos o link de redefinição.", "error");
-          return;
-        }
-
-        setStatus("Enviando instruções de redefinição...", "");
-        resetButton.disabled = true;
-
-        try {
-          await sendPasswordResetEmail(auth, email);
-          setStatus("Enviamos um link de redefinição para o seu e-mail.", "success");
-        } catch (error) {
-          console.error("Erro ao enviar redefinição", error);
-          let friendlyMessage = "Não foi possível enviar o e-mail de redefinição.";
-          if (error.code === "auth/invalid-email") {
-            friendlyMessage = "Formato de e-mail inválido.";
-          } else if (error.code === "auth/user-not-found") {
-            friendlyMessage = "Não encontramos uma manicure com esse e-mail.";
-          }
-          setStatus(friendlyMessage, "error");
-        } finally {
-          resetButton.disabled = false;
-        }
-      });
-
       const toggleView = (isLoggedIn) => {
         loginView.hidden = isLoggedIn;
         dashboard.hidden = !isLoggedIn;
+      };
+
+      const formatCurrency = (value) => {
+        if (typeof value === "number") {
+          return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        }
+        if (!value) return "—";
+        return value;
+      };
+
+      const parseDateValue = (rawDate, rawTime) => {
+        if (!rawDate && !rawTime) return null;
+        if (rawDate instanceof Timestamp) {
+          return rawDate.toDate();
+        }
+        if (rawDate && typeof rawDate.toDate === "function") {
+          return rawDate.toDate();
+        }
+        if (typeof rawDate === "string" && rawDate.includes("T")) {
+          return new Date(rawDate);
+        }
+        if (typeof rawDate === "string") {
+          return new Date(`${rawDate}T${rawTime || "00:00"}`);
+        }
+        if (rawTime instanceof Timestamp) {
+          return rawTime.toDate();
+        }
+        return null;
       };
 
       const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -400,136 +455,250 @@
         wrapper.className = `schedule-card schedule-card--${status}`;
         wrapper.setAttribute("role", "listitem");
 
-        const appointmentDate = new Date(`${appointment.date}T${appointment.time}`);
+        const heading = document.createElement("header");
+        heading.className = "schedule-card__header";
+        heading.innerHTML = `
+          <div>
+            <p class="schedule-card__service">${appointment.service}</p>
+            <h3 class="schedule-card__client">${appointment.client}</h3>
+          </div>
+          <span class="schedule-card__id">${appointment.id}</span>
+        `;
 
-        wrapper.innerHTML = `
-          <header class="schedule-card__header">
-            <span class="schedule-card__id">${appointment.id}</span>
-            <span class="schedule-card__status">${
-              status === "pending"
-                ? "Aguardando confirmação"
-                : status === "confirmed"
-                ? "Confirmado"
-                : "Atendimento concluído"
-            }</span>
-          </header>
-          <div class="schedule-card__body">
-            <div class="schedule-card__info">
-              <h3>${appointment.client}</h3>
-              <p class="schedule-card__service">${appointment.service}</p>
-              <p class="schedule-card__note">${appointment.note}</p>
-            </div>
-            <dl class="schedule-card__meta">
-              <div>
-                <dt>Data</dt>
-                <dd>${dateFormatter.format(appointmentDate)}</dd>
-              </div>
-              <div>
-                <dt>Horário</dt>
-                <dd>${timeFormatter.format(appointmentDate)}</dd>
-              </div>
-              <div>
-                <dt>Local</dt>
-                <dd>${appointment.location}</dd>
-              </div>
-              <div>
-                <dt>Valor</dt>
-                <dd>${appointment.price}</dd>
-              </div>
-            </dl>
+        const appointmentDate = parseDateValue(appointment.date, appointment.time);
+        const formattedDate = appointmentDate ? dateFormatter.format(appointmentDate) : appointment.date ?? "—";
+        const formattedTime = appointmentDate
+          ? timeFormatter.format(appointmentDate)
+          : appointment.time ?? "—";
+
+        const details = document.createElement("dl");
+        details.className = "schedule-card__details";
+        details.innerHTML = `
+          <div>
+            <dt>Data</dt>
+            <dd>${formattedDate}</dd>
+          </div>
+          <div>
+            <dt>Horário</dt>
+            <dd>${formattedTime}</dd>
+          </div>
+          <div>
+            <dt>Local</dt>
+            <dd>${appointment.location || "—"}</dd>
+          </div>
+          <div>
+            <dt>Valor</dt>
+            <dd>${formatCurrency(appointment.price)}</dd>
           </div>
         `;
+
+        if (appointment.note) {
+          const note = document.createElement("p");
+          note.className = "schedule-card__note";
+          note.textContent = appointment.note;
+          wrapper.append(heading, details, note);
+        } else {
+          wrapper.append(heading, details);
+        }
 
         return wrapper;
       };
 
-      const renderAppointments = (type, items) => {
-        const listMap = {
-          pending: pendingList,
-          confirmed: confirmedList,
-          past: pastList,
+      const renderAppointments = (status, appointments) => {
+        const mapping = {
+          pending: { list: pendingList, badge: badgePending, metric: metricPending },
+          confirmed: { list: confirmedList, badge: badgeConfirmed, metric: metricConfirmed },
+          past: { list: pastList, badge: badgePast, metric: metricPast },
         };
 
-        const listElement = listMap[type];
-        listElement.innerHTML = "";
+        const { list, badge, metric } = mapping[status];
+        list.innerHTML = "";
 
-        if (!items.length) {
+        if (!appointments.length) {
           const emptyState = document.createElement("p");
           emptyState.className = "schedule-empty";
-          emptyState.textContent =
-            type === "pending"
-              ? "Nenhuma solicitação aguardando confirmação."
-              : type === "confirmed"
-              ? "Você não possui agendamentos confirmados no momento."
-              : "Sem atendimentos recentes registrados.";
-          listElement.appendChild(emptyState);
+          emptyState.textContent = "Nenhum agendamento por aqui ainda.";
+          list.append(emptyState);
+        } else {
+          appointments.forEach((appointment) => {
+            list.append(createAppointmentCard(appointment, status));
+          });
+        }
+
+        badge.textContent = appointments.length;
+        metric.textContent = appointments.length;
+      };
+
+      const mapAppointmentSnapshot = (snapshot) => {
+        const data = snapshot.data();
+        return {
+          id: data.id ?? snapshot.id,
+          client: data.cliente ?? data.client ?? "Cliente NailNow",
+          service: data.servico ?? data.service ?? "Serviço NailNow",
+          date: data.data ?? data.date ?? null,
+          time: data.hora ?? data.time ?? null,
+          location: data.local ?? data.location ?? "",
+          price: data.valor ?? data.price ?? "",
+          note: data.observacao ?? data.note ?? "",
+        };
+      };
+
+      const loadAppointments = async (profileId) => {
+        const docRef = doc(db, "manicures", profileId);
+        const results = {};
+
+        await Promise.all(
+          Object.entries(appointmentCollections).map(async ([status, collectionName]) => {
+            try {
+              const subCollection = collection(docRef, collectionName);
+              const snapshot = await getDocs(subCollection);
+              if (snapshot.empty) {
+                results[status] = defaultAppointmentData[status];
+                return;
+              }
+              results[status] = snapshot.docs.map(mapAppointmentSnapshot);
+            } catch (error) {
+              console.warn(`Não foi possível carregar ${collectionName}`, error);
+              results[status] = defaultAppointmentData[status];
+            }
+          }),
+        );
+
+        renderAppointments("pending", results.pending ?? defaultAppointmentData.pending);
+        renderAppointments("confirmed", results.confirmed ?? defaultAppointmentData.confirmed);
+        renderAppointments("past", results.past ?? defaultAppointmentData.past);
+      };
+
+      const buildSpecialtiesLabel = (profile) => {
+        const services = profile.servicos ?? profile.especialidades ?? profile.specialties;
+        if (Array.isArray(services) && services.length) {
+          return services.join(" · ");
+        }
+        if (typeof services === "string" && services.trim()) {
+          return services;
+        }
+        return "Alongamento em fibra · Spa das mãos";
+      };
+
+      const buildAreaLabel = (profile) => {
+        const parts = [
+          profile.bairro ?? profile.neighborhood,
+          profile.cidade ?? profile.city,
+          profile.estado ?? profile.state,
+        ].filter(Boolean);
+        if (parts.length) {
+          return parts.join(" - ");
+        }
+        return profile.areaAtendimento ?? profile.area_atendimento ?? "São Paulo e região metropolitana";
+      };
+
+      const hydrateDashboard = async (profile) => {
+        const name = profile.nome ?? profile.name ?? profile.displayName ?? "manicure";
+        profileNameElements.forEach((element) => {
+          element.textContent = name;
+        });
+        profileDisplay.textContent = name;
+        profileEmail.textContent = profile.email ?? profile.emailLowercase ?? "—";
+        profileSpecialties.textContent = buildSpecialtiesLabel(profile);
+        profileArea.textContent = buildAreaLabel(profile);
+
+        await loadAppointments(profile.id);
+      };
+
+      const fetchManicureProfile = async (profileId) => {
+        const docRef = doc(db, "manicures", profileId);
+        const snapshot = await getDoc(docRef);
+        if (!snapshot.exists()) {
+          throw new Error("not-found");
+        }
+        const profile = { id: profileId, ...snapshot.data() };
+        persistSession(profile);
+        return profile;
+      };
+
+      const startWithSession = async () => {
+        const session = readSession();
+        if (!session || !session.id) {
+          toggleView(false);
           return;
         }
 
-        items.forEach((appointment) => {
-          listElement.appendChild(createAppointmentCard(appointment, type));
-        });
-      };
-
-      const updateMetrics = () => {
-        const pendingCount = appointmentData.pending.length;
-        const confirmedCount = appointmentData.confirmed.length;
-        const pastCount = appointmentData.past.length;
-
-        metricPending.textContent = pendingCount;
-        metricConfirmed.textContent = confirmedCount;
-        metricPast.textContent = pastCount;
-
-        badgePending.textContent = pendingCount;
-        badgeConfirmed.textContent = confirmedCount;
-        badgePast.textContent = pastCount;
-      };
-
-      const populateDashboard = (user) => {
-        const fallbackName = user.email.split("@")[0].replace(/[._-]+/g, " ");
-        const displayName = (user.displayName || fallbackName)
-          .split(" ")
-          .filter(Boolean)
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(" ");
-
-        profileNameElements.forEach((element) => {
-          element.textContent = displayName;
-        });
-
-        profileDisplay.textContent = displayName;
-        profileEmail.textContent = user.email;
-
-        updateMetrics();
-        renderAppointments("pending", appointmentData.pending);
-        renderAppointments("confirmed", appointmentData.confirmed);
-        renderAppointments("past", appointmentData.past);
-      };
-
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          populateDashboard(user);
+        try {
+          setStatus("Carregando seu painel...");
           toggleView(true);
-        } else {
+          const profile = await fetchManicureProfile(session.id);
+          await hydrateDashboard(profile);
+          setStatus("");
+        } catch (error) {
+          console.error("Não foi possível restaurar a sessão", error);
+          clearSession();
           toggleView(false);
+          setStatus("Sua sessão expirou. Faça login novamente para acessar o portal.", "error");
         }
-      });
+      };
 
-      signOutButton.addEventListener("click", async () => {
-        signOutButton.disabled = true;
-        signOutButton.textContent = "Saindo...";
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = loginForm.email.value.trim();
+        const password = loginForm.password.value;
+
+        if (!email || !password) {
+          setStatus("Preencha e-mail e senha para continuar.", "error");
+          return;
+        }
+
+        setStatus("");
+        setLoading(true);
 
         try {
-          await signOut(auth);
-          setStatus("Você saiu do portal. Faça login novamente para acessar.");
+          const profile = await authenticateManicure(email, password);
+          setStatus("Login realizado com sucesso!", "success");
+          loginForm.reset();
+          toggleView(true);
+          await hydrateDashboard(profile);
         } catch (error) {
-          console.error("Erro ao sair", error);
-          setStatus("Não foi possível encerrar a sessão. Tente novamente.", "error");
+          console.error("Erro no login", error);
+          if (error.message === "missing-password") {
+            setStatus(
+              "Não encontramos uma senha cadastrada. Fale com o suporte NailNow para concluir o acesso.",
+              "error",
+            );
+          } else if (error.message === "invalid-credentials") {
+            setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
+          } else if (error.message === "not-found") {
+            setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+          } else {
+            setStatus("Não foi possível entrar. Verifique seus dados.", "error");
+          }
         } finally {
-          signOutButton.disabled = false;
-          signOutButton.textContent = "Sair";
+          setLoading(false);
         }
       });
+
+      resetButton.addEventListener("click", () => {
+        const email = loginForm.email.value.trim();
+        const supportLink =
+          "mailto:contato@nailnow.com?subject=Redefini%C3%A7%C3%A3o%20de%20senha%20NailNow&body=Ol%C3%A1%20time%20NailNow,%20preciso%20redefinir%20minha%20senha.%20Meu%20e-mail%20%C3%A9%20" +
+          encodeURIComponent(email || "");
+
+        window.location.href = supportLink;
+        setStatus(
+          "Abrimos um e-mail para o suporte NailNow concluir a redefinição da sua senha.",
+          "success",
+        );
+      });
+
+      signOutButton.addEventListener("click", () => {
+        clearSession();
+        toggleView(false);
+        setStatus("Você saiu do portal com segurança.", "success");
+        renderAppointments("pending", []);
+        renderAppointments("confirmed", []);
+        renderAppointments("past", []);
+      });
+
+      startWithSession();
     </script>
+
   </body>
 </html>

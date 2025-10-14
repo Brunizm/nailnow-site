@@ -156,11 +156,15 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import {
-        getAuth,
-        onAuthStateChanged,
-        sendPasswordResetEmail,
-        signInWithEmailAndPassword,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        getFirestore,
+        collection,
+        doc,
+        getDoc,
+        getDocs,
+        limit,
+        query,
+        where,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyDvMxPKyw7M70fvj-YLwzudfIaquohkDIA",
@@ -172,14 +176,80 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
+      const db = getFirestore(app);
 
       const loginForm = document.getElementById("login-form");
       const statusEl = document.getElementById("login-status");
       const submitButton = loginForm.querySelector("button[type='submit']");
       const resetButton = document.getElementById("reset-password");
 
-      let redirecting = false;
+      const sessionKey = "nailnowPortalManicure";
+
+      const toComparable = (value) => (typeof value === "string" ? value.trim() : value ?? "");
+
+      const extractPassword = (profile) => {
+        const candidates = ["senha", "password", "senhaPortal", "senhaAcesso"];
+        for (const field of candidates) {
+          const stored = profile[field];
+          if (typeof stored === "string" && stored.trim()) {
+            return stored.trim();
+          }
+          if (typeof stored === "number") {
+            return String(stored);
+          }
+        }
+        return "";
+      };
+
+      const persistSession = (profile) => {
+        const sessionPayload = {
+          id: profile.id,
+          email: profile.email ?? profile.emailLowercase ?? "",
+          nome: profile.nome ?? profile.name ?? profile.displayName ?? "",
+          telefone: profile.telefone ?? profile.phone ?? "",
+        };
+        localStorage.setItem(sessionKey, JSON.stringify(sessionPayload));
+      };
+
+      const authenticateManicure = async (email, password) => {
+        const manicuresRef = collection(db, "manicures");
+        const attempts = [email, email.toLowerCase()];
+
+        for (const candidate of attempts) {
+          const manicureQuery = query(manicuresRef, where("email", "==", candidate), limit(1));
+          const snapshot = await getDocs(manicureQuery);
+          if (!snapshot.empty) {
+            const document = snapshot.docs[0];
+            const profile = { id: document.id, ...document.data() };
+            const storedPassword = extractPassword(profile);
+            if (!storedPassword) {
+              throw new Error("missing-password");
+            }
+
+            if (toComparable(storedPassword) !== toComparable(password)) {
+              throw new Error("invalid-credentials");
+            }
+
+            const shouldRefreshProfile = !profile.nome && profile.id;
+            if (shouldRefreshProfile) {
+              try {
+                const docRef = doc(db, "manicures", profile.id);
+                const latestSnapshot = await getDoc(docRef);
+                if (latestSnapshot.exists()) {
+                  Object.assign(profile, latestSnapshot.data());
+                }
+              } catch (refreshError) {
+                console.warn("Não foi possível atualizar o perfil completo", refreshError);
+              }
+            }
+
+            persistSession(profile);
+            return profile;
+          }
+        }
+
+        throw new Error("not-found");
+      };
 
       const setStatus = (message, type = "") => {
         statusEl.textContent = message;
@@ -195,18 +265,6 @@
         submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
       };
 
-      const redirectToPortal = () => {
-        if (redirecting) return;
-        redirecting = true;
-        window.location.href = "./portal.html";
-      };
-
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          redirectToPortal();
-        }
-      });
-
       loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         const email = loginForm.email.value.trim();
@@ -221,21 +279,26 @@
         setLoading(true);
 
         try {
-          await signInWithEmailAndPassword(auth, email, password);
+          await authenticateManicure(email, password);
           setStatus("Login realizado com sucesso! Redirecionando para o portal...", "success");
           loginForm.reset();
-          setTimeout(redirectToPortal, 900);
+          setTimeout(() => {
+            window.location.href = "./portal.html";
+          }, 900);
         } catch (error) {
           console.error("Erro no login", error);
-          let friendlyMessage = "Não foi possível entrar. Verifique seus dados.";
-          if (error.code === "auth/invalid-email") {
-            friendlyMessage = "Formato de e-mail inválido.";
-          } else if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
-            friendlyMessage = "Credenciais não encontradas. Confira e tente novamente.";
-          } else if (error.code === "auth/too-many-requests") {
-            friendlyMessage = "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+          if (error.message === "missing-password") {
+            setStatus(
+              "Não encontramos uma senha cadastrada. Fale com o suporte NailNow para concluir o acesso.",
+              "error",
+            );
+          } else if (error.message === "invalid-credentials") {
+            setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
+          } else if (error.message === "not-found") {
+            setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+          } else {
+            setStatus("Não foi possível entrar. Verifique seus dados.", "error");
           }
-          setStatus(friendlyMessage, "error");
         } finally {
           setLoading(false);
         }
@@ -243,29 +306,15 @@
 
       resetButton.addEventListener("click", async () => {
         const email = loginForm.email.value.trim();
-        if (!email) {
-          setStatus("Informe seu e-mail para enviarmos o link de redefinição.", "error");
-          return;
-        }
+        const supportLink =
+          "mailto:contato@nailnow.com?subject=Redefini%C3%A7%C3%A3o%20de%20senha%20NailNow&body=Ol%C3%A1%20time%20NailNow,%20preciso%20redefinir%20minha%20senha.%20Meu%20e-mail%20%C3%A9%20" +
+          encodeURIComponent(email || "");
 
-        setStatus("Enviando instruções de redefinição...", "");
-        resetButton.disabled = true;
-
-        try {
-          await sendPasswordResetEmail(auth, email);
-          setStatus("Enviamos um link de redefinição para o seu e-mail.", "success");
-        } catch (error) {
-          console.error("Erro ao enviar redefinição", error);
-          let friendlyMessage = "Não foi possível enviar o e-mail de redefinição.";
-          if (error.code === "auth/invalid-email") {
-            friendlyMessage = "Formato de e-mail inválido.";
-          } else if (error.code === "auth/user-not-found") {
-            friendlyMessage = "Não encontramos uma manicure com esse e-mail.";
-          }
-          setStatus(friendlyMessage, "error");
-        } finally {
-          resetButton.disabled = false;
-        }
+        window.location.href = supportLink;
+        setStatus(
+          "Abrimos um e-mail para o suporte NailNow concluir a redefinição da sua senha.",
+          "success",
+        );
       });
     </script>
   </body>
