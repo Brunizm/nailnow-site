@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Profissionais | NailNow</title>
+    <title>NailNow | Portal da Manicure</title>
     <meta
       name="description"
-      content="Seja uma profissional NailNow: receba convites inteligentes, tenha pagamentos garantidos e suporte completo para crescer na carreira."
+      content="Portal da Manicure NailNow — autonomia, visibilidade e pagamentos seguros. Cadastre-se e conquiste clientes."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,14 +17,15 @@
     <link rel="stylesheet" href="../styles.css" />
   </head>
   <body>
-    <div class="promo-banner">Profissionais NailNow: autonomia, visibilidade e pagamentos garantidos.</div>
-
+    <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
     <header class="site-header">
       <div class="header-inner">
-        <a href="/" class="brand-mark" aria-label="Início da NailNow">NailNow</a>
+        <a href="../index.html" class="brand-mark" aria-label="Início da NailNow">
+          NailNow
+        </a>
         <div class="header-navigation">
           <nav class="primary-nav" aria-label="Principal">
-            <a href="/" class="nav-link">Home</a>
+            <a href="../index.html" class="nav-link">Home</a>
             <a href="../como-funciona.html" class="nav-link">Como funciona</a>
             <a href="../servicos.html" class="nav-link">Serviços</a>
             <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
@@ -32,7 +33,7 @@
           <div class="header-actions">
             <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
             <a href="../profissional/index.html" class="header-cta">Sou Profissional</a>
-            <a href="./portal.html" class="header-cta">Entrar no Portal</a>
+            <a href="./portal.html" class="header-cta" aria-current="page">Entrar no Portal</a>
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -50,6 +51,123 @@
         </div>
       </div>
     </header>
+
+    <main class="page-content">
+      <div id="login-view" class="auth-layout" aria-labelledby="auth-heading">
+        <section class="auth-hero">
+          <p class="auth-kicker">Painel para manicures NailNow</p>
+          <h1 id="auth-heading">Faça login para cuidar da sua agenda</h1>
+          <p class="auth-intro">
+            Acesse seu espaço exclusivo para confirmar atendimentos, organizar horários e acompanhar pagamentos com segurança.
+          </p>
+          <ul class="auth-benefits">
+            <li>Sincronize sua agenda em tempo real com os pedidos das clientes.</li>
+            <li>Confirme reservas com um toque e receba notificações instantâneas.</li>
+            <li>Controle seus ganhos e acompanhe o histórico de atendimentos.</li>
+          </ul>
+        </section>
+
+        <section class="auth-card" aria-labelledby="login-heading">
+          <div class="auth-card__inner">
+            <h2 id="login-heading">Entrar com e-mail e senha</h2>
+            <p class="auth-card__hint">Use o e-mail cadastrado na NailNow para acessar o painel de manicures.</p>
+            <form id="login-form" class="auth-form" novalidate>
+              <div class="auth-form__group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" autocomplete="email" required placeholder="seunome@nailnow.com" />
+              </div>
+              <div class="auth-form__group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="•••••••" />
+              </div>
+              <button type="submit" class="auth-form__submit">Entrar</button>
+            </form>
+            <div id="login-status" class="auth-status" role="alert" aria-live="polite" hidden></div>
+            <div class="auth-actions">
+              <button type="button" id="reset-password" class="auth-link-button">Esqueci minha senha</button>
+              <a href="./cadastro.html" class="auth-secondary-link">Ainda não é parceira? Cadastre-se</a>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div id="dashboard" class="dashboard" hidden aria-labelledby="dashboard-heading">
+        <section class="dashboard-hero">
+          <div class="dashboard-hero__header">
+            <div>
+              <p class="dashboard-kicker">Painel NailNow</p>
+              <h1 id="dashboard-heading">Olá, <span data-profile-name>manicure</span>!</h1>
+              <p class="dashboard-intro">Gerencie sua agenda, acompanhe solicitações e mantenha o relacionamento com suas clientes em um só lugar.</p>
+            </div>
+            <button type="button" id="sign-out" class="dashboard-signout">Sair</button>
+          </div>
+          <div class="dashboard-summary">
+            <article class="profile-card" aria-labelledby="profile-heading">
+              <h2 id="profile-heading">Meu perfil</h2>
+              <dl class="profile-details">
+                <div class="profile-details__item">
+                  <dt>Nome</dt>
+                  <dd id="profile-display">—</dd>
+                </div>
+                <div class="profile-details__item">
+                  <dt>E-mail</dt>
+                  <dd id="profile-email">—</dd>
+                </div>
+                <div class="profile-details__item">
+                  <dt>Especialidades</dt>
+                  <dd id="profile-specialties">Alongamento em fibra · Spa das mãos</dd>
+                </div>
+                <div class="profile-details__item">
+                  <dt>Área de atendimento</dt>
+                  <dd id="profile-area">São Paulo e região metropolitana</dd>
+                </div>
+              </dl>
+            </article>
+            <div class="dashboard-metrics" aria-label="Resumo da agenda">
+              <div class="metric-card">
+                <span class="metric-label">Solicitações</span>
+                <span class="metric-value" id="metric-pending">0</span>
+                <span class="metric-footnote">aguardando resposta</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Confirmados</span>
+                <span class="metric-value" id="metric-confirmed">0</span>
+                <span class="metric-footnote">para os próximos dias</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Últimos 30 dias</span>
+                <span class="metric-value" id="metric-past">0</span>
+                <span class="metric-footnote">atendimentos concluídos</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="schedule-section" aria-labelledby="pending-heading">
+          <div class="schedule-section__head">
+            <h2 id="pending-heading">Solicitações de agendamento</h2>
+            <span class="schedule-count" id="badge-pending">0</span>
+          </div>
+          <div id="pending-list" class="schedule-list" role="list"></div>
+        </section>
+
+        <section class="schedule-section" aria-labelledby="confirmed-heading">
+          <div class="schedule-section__head">
+            <h2 id="confirmed-heading">Agendamentos confirmados</h2>
+            <span class="schedule-count" id="badge-confirmed">0</span>
+          </div>
+          <div id="confirmed-list" class="schedule-list" role="list"></div>
+        </section>
+
+        <section class="schedule-section" aria-labelledby="past-heading">
+          <div class="schedule-section__head">
+            <h2 id="past-heading">Atendimentos realizados</h2>
+            <span class="schedule-count" id="badge-past">0</span>
+          </div>
+          <div id="past-list" class="schedule-list" role="list"></div>
+        </section>
+      </div>
+    </main>
 
     <footer class="site-footer">
       <div class="footer-inner">
