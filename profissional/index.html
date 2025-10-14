@@ -14,10 +14,81 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../styles.css" />
-    <script>
-      function handleLogin(event) {
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.appspot.com",
+        messagingSenderId: "726392294571",
+        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const form = document.getElementById("login-form");
+      const feedback = document.getElementById("login-feedback");
+      const submitButton = form.querySelector("button[type='submit']");
+
+      form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        alert("Login de profissional - integração com Firebase em breve.");
+
+        const email = form.email.value.trim().toLowerCase();
+        const senha = form.senha.value;
+
+        feedback.textContent = "";
+        feedback.style.color = "inherit";
+        submitButton.disabled = true;
+        submitButton.textContent = "Entrando…";
+
+        try {
+          const { user } = await signInWithEmailAndPassword(auth, email, senha);
+          const perfilRef = doc(db, "manicures", user.uid);
+          const perfilSnap = await getDoc(perfilRef);
+
+          if (perfilSnap.exists()) {
+            const dados = perfilSnap.data();
+            const nome = dados.nome || dados.nomeCompleto || user.email;
+            feedback.textContent = `✅ Olá, ${nome}! Login realizado com sucesso.`;
+            feedback.style.color = "#2e7d32";
+          } else {
+            feedback.textContent = "⚠️ Login realizado, mas não encontramos seu cadastro de manicure. Entre em contato com o suporte.";
+            feedback.style.color = "#ed6c02";
+          }
+
+          form.reset();
+        } catch (error) {
+          console.error("Erro ao entrar como manicure", error);
+          feedback.textContent = `❌ ${traduzirErroAuth(error)}`;
+          feedback.style.color = "#c62828";
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = "Entrar";
+        }
+      });
+
+      function traduzirErroAuth(error) {
+        const codigo = error?.code || "erro-desconhecido";
+        switch (codigo) {
+          case "auth/invalid-email":
+            return "E-mail inválido. Confira o endereço digitado.";
+          case "auth/user-disabled":
+            return "Conta desativada. Fale com o suporte da NailNow.";
+          case "auth/user-not-found":
+            return "Nenhuma manicure encontrada com esse e-mail.";
+          case "auth/wrong-password":
+            return "Senha incorreta. Tente novamente.";
+          case "auth/too-many-requests":
+            return "Muitas tentativas. Aguarde alguns instantes e tente de novo.";
+          default:
+            return "Não foi possível fazer login. Tente novamente em instantes.";
+        }
       }
     </script>
   </head>
@@ -65,13 +136,14 @@
         height="333"
       />
       <h1>Área da Profissional</h1>
-      <form onsubmit="handleLogin(event)">
+      <form id="login-form">
         <label for="email">Email</label>
-        <input type="email" id="email" required />
+        <input type="email" id="email" name="email" autocomplete="email" required />
         <label for="senha">Senha</label>
-        <input type="password" id="senha" required />
+        <input type="password" id="senha" name="senha" autocomplete="current-password" required />
         <button type="submit" class="btn">Entrar</button>
       </form>
+      <p id="login-feedback" class="form-feedback" role="status" aria-live="polite"></p>
       <p>Primeira vez por aqui?</p>
       <a href="cadastro.html" class="btn">Cadastrar</a>
     </main>
