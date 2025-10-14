@@ -31,8 +31,8 @@
           </nav>
           <div class="header-actions">
             <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="../profissional/index.html" class="header-cta">Sou Profissional</a>
-            <a href="./portal.html" class="header-cta">Entrar no Portal</a>
+            <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Profissional</a>
+            <a href="#acesso" class="header-cta">Entrar</a>
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -50,6 +50,82 @@
         </div>
       </div>
     </header>
+
+    <main class="page-content">
+      <section class="auth-layout" aria-labelledby="auth-heading" id="acesso">
+        <div class="auth-hero">
+          <p class="auth-kicker">Seja uma manicure NailNow</p>
+          <h1 id="auth-heading">Organize sua agenda com clientes garantidas</h1>
+          <p class="auth-intro">
+            Faça login com seu e-mail cadastrado para acompanhar solicitações, confirmar atendimentos e gerenciar seus ganhos. Ainda
+            não é parceira? Cadastre-se e comece a transformar sua rotina hoje mesmo.
+          </p>
+          <ul class="auth-benefits">
+            <li>Receba pedidos de novas clientes diretamente no seu painel.</li>
+            <li>Controle confirmações, reagendamentos e pagamentos em um só lugar.</li>
+            <li>Conte com o suporte NailNow para crescer como profissional independente.</li>
+          </ul>
+          <div class="auth-actions auth-actions--stacked">
+            <a href="./cadastro.html" class="auth-link-button">Quero me cadastrar</a>
+            <a href="./portal.html" class="auth-secondary-link">Conheça o portal da manicure</a>
+          </div>
+        </div>
+
+        <section class="auth-card" aria-labelledby="login-heading">
+          <div class="auth-card__inner">
+            <h2 id="login-heading">Entre com seu e-mail NailNow</h2>
+            <p class="auth-card__hint">Após o login, redirecionamos você automaticamente para o portal com seus agendamentos.</p>
+            <form id="login-form" class="auth-form" novalidate>
+              <div class="auth-form__group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" autocomplete="email" required placeholder="seunome@nailnow.com" />
+              </div>
+              <div class="auth-form__group">
+                <label for="password">Senha</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  autocomplete="current-password"
+                  required
+                  placeholder="••••••"
+                />
+              </div>
+              <button type="submit" class="auth-form__submit">Entrar</button>
+            </form>
+            <div id="login-status" class="auth-status" role="alert" aria-live="polite" hidden></div>
+            <div class="auth-actions">
+              <button type="button" id="reset-password" class="auth-link-button">Esqueci minha senha</button>
+              <a href="./cadastro.html" class="auth-secondary-link">Cadastre-se como manicure</a>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="portal-preview" aria-labelledby="portal-preview-heading">
+        <div class="portal-preview__inner">
+          <h2 id="portal-preview-heading">Veja o que te espera no portal</h2>
+          <p>
+            Ao acessar o portal, você acompanha solicitações de agendamento em tempo real, confirma atendimentos com um clique e
+            visualiza o histórico completo dos serviços realizados.
+          </p>
+          <div class="portal-preview__grid">
+            <article class="portal-preview__card">
+              <h3>Solicitações</h3>
+              <p>Analise novos pedidos, confirme disponibilidade e personalize respostas para suas clientes.</p>
+            </article>
+            <article class="portal-preview__card">
+              <h3>Confirmados</h3>
+              <p>Gerencie horários, combine deslocamentos e mantenha tudo sincronizado com a sua agenda.</p>
+            </article>
+            <article class="portal-preview__card">
+              <h3>Histórico</h3>
+              <p>Revise atendimentos passados, acompanhe avaliações e planeje ações para fidelizar cada cliente.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
 
     <footer class="site-footer">
       <div class="footer-inner">
@@ -76,6 +152,7 @@
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
+
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import {
@@ -83,7 +160,6 @@
         onAuthStateChanged,
         sendPasswordResetEmail,
         signInWithEmailAndPassword,
-        signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
       const firebaseConfig = {
@@ -102,90 +178,8 @@
       const statusEl = document.getElementById("login-status");
       const submitButton = loginForm.querySelector("button[type='submit']");
       const resetButton = document.getElementById("reset-password");
-      const loginView = document.getElementById("login-view");
-      const dashboard = document.getElementById("dashboard");
-      const signOutButton = document.getElementById("sign-out");
-      const profileNameElements = document.querySelectorAll("[data-profile-name]");
-      const profileDisplay = document.getElementById("profile-display");
-      const profileEmail = document.getElementById("profile-email");
-      const metricPending = document.getElementById("metric-pending");
-      const metricConfirmed = document.getElementById("metric-confirmed");
-      const metricPast = document.getElementById("metric-past");
-      const badgePending = document.getElementById("badge-pending");
-      const badgeConfirmed = document.getElementById("badge-confirmed");
-      const badgePast = document.getElementById("badge-past");
-      const pendingList = document.getElementById("pending-list");
-      const confirmedList = document.getElementById("confirmed-list");
-      const pastList = document.getElementById("past-list");
 
-      const appointmentData = {
-        pending: [
-          {
-            id: "SOL-1842",
-            client: "Bianca Lopes",
-            service: "Alongamento em fibra de vidro",
-            date: "2025-05-08",
-            time: "14:00",
-            location: "Pinheiros, São Paulo",
-            price: "R$ 180,00",
-            note: "Prefere acabamento natural e formato amendoado.",
-          },
-          {
-            id: "SOL-1853",
-            client: "Thais Camargo",
-            service: "Spa das mãos + esmaltação gel",
-            date: "2025-05-09",
-            time: "09:30",
-            location: "Brooklin, São Paulo",
-            price: "R$ 140,00",
-            note: "Levar paleta de tons nudes.",
-          },
-        ],
-        confirmed: [
-          {
-            id: "AGEN-1027",
-            client: "Larissa Monteiro",
-            service: "Blindagem + esmaltação",
-            date: "2025-05-06",
-            time: "18:30",
-            location: "Vila Mariana, São Paulo",
-            price: "R$ 165,00",
-            note: "Cliente indicou preferência por glitter rosé.",
-          },
-          {
-            id: "AGEN-1028",
-            client: "Amanda Reis",
-            service: "Pedicure + spa relaxante",
-            date: "2025-05-07",
-            time: "10:00",
-            location: "Moema, São Paulo",
-            price: "R$ 120,00",
-            note: "Chegar 10 min antes para montagem do espaço.",
-          },
-        ],
-        past: [
-          {
-            id: "HIST-980",
-            client: "Nathalia Cruz",
-            service: "Esmaltação em gel",
-            date: "2025-04-29",
-            time: "16:30",
-            location: "Itaim Bibi, São Paulo",
-            price: "R$ 110,00",
-            note: "Avaliação 5 estrelas enviada.",
-          },
-          {
-            id: "HIST-975",
-            client: "Juliana Prado",
-            service: "Alongamento em fibra",
-            date: "2025-04-25",
-            time: "11:00",
-            location: "Tatuapé, São Paulo",
-            price: "R$ 190,00",
-            note: "Cliente agendou manutenção para daqui 3 semanas.",
-          },
-        ],
-      };
+      let redirecting = false;
 
       const setStatus = (message, type = "") => {
         statusEl.textContent = message;
@@ -200,6 +194,18 @@
         submitButton.disabled = isLoading;
         submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
       };
+
+      const redirectToPortal = () => {
+        if (redirecting) return;
+        redirecting = true;
+        window.location.href = "./portal.html";
+      };
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          redirectToPortal();
+        }
+      });
 
       loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -216,8 +222,9 @@
 
         try {
           await signInWithEmailAndPassword(auth, email, password);
-          setStatus("Login realizado com sucesso! Redirecionando para o painel...", "success");
+          setStatus("Login realizado com sucesso! Redirecionando para o portal...", "success");
           loginForm.reset();
+          setTimeout(redirectToPortal, 900);
         } catch (error) {
           console.error("Erro no login", error);
           let friendlyMessage = "Não foi possível entrar. Verifique seus dados.";
@@ -258,158 +265,6 @@
           setStatus(friendlyMessage, "error");
         } finally {
           resetButton.disabled = false;
-        }
-      });
-
-      const toggleView = (isLoggedIn) => {
-        loginView.hidden = isLoggedIn;
-        dashboard.hidden = !isLoggedIn;
-      };
-
-      const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-        day: "2-digit",
-        month: "short",
-        weekday: "short",
-      });
-
-      const timeFormatter = new Intl.DateTimeFormat("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      const createAppointmentCard = (appointment, status) => {
-        const wrapper = document.createElement("article");
-        wrapper.className = `schedule-card schedule-card--${status}`;
-        wrapper.setAttribute("role", "listitem");
-
-        const appointmentDate = new Date(`${appointment.date}T${appointment.time}`);
-
-        wrapper.innerHTML = `
-          <header class="schedule-card__header">
-            <span class="schedule-card__id">${appointment.id}</span>
-            <span class="schedule-card__status">${
-              status === "pending"
-                ? "Aguardando confirmação"
-                : status === "confirmed"
-                ? "Confirmado"
-                : "Atendimento concluído"
-            }</span>
-          </header>
-          <div class="schedule-card__body">
-            <div class="schedule-card__info">
-              <h3>${appointment.client}</h3>
-              <p class="schedule-card__service">${appointment.service}</p>
-              <p class="schedule-card__note">${appointment.note}</p>
-            </div>
-            <dl class="schedule-card__meta">
-              <div>
-                <dt>Data</dt>
-                <dd>${dateFormatter.format(appointmentDate)}</dd>
-              </div>
-              <div>
-                <dt>Horário</dt>
-                <dd>${timeFormatter.format(appointmentDate)}</dd>
-              </div>
-              <div>
-                <dt>Local</dt>
-                <dd>${appointment.location}</dd>
-              </div>
-              <div>
-                <dt>Valor</dt>
-                <dd>${appointment.price}</dd>
-              </div>
-            </dl>
-          </div>
-        `;
-
-        return wrapper;
-      };
-
-      const renderAppointments = (type, items) => {
-        const listMap = {
-          pending: pendingList,
-          confirmed: confirmedList,
-          past: pastList,
-        };
-
-        const listElement = listMap[type];
-        listElement.innerHTML = "";
-
-        if (!items.length) {
-          const emptyState = document.createElement("p");
-          emptyState.className = "schedule-empty";
-          emptyState.textContent =
-            type === "pending"
-              ? "Nenhuma solicitação aguardando confirmação."
-              : type === "confirmed"
-              ? "Você não possui agendamentos confirmados no momento."
-              : "Sem atendimentos recentes registrados.";
-          listElement.appendChild(emptyState);
-          return;
-        }
-
-        items.forEach((appointment) => {
-          listElement.appendChild(createAppointmentCard(appointment, type));
-        });
-      };
-
-      const updateMetrics = () => {
-        const pendingCount = appointmentData.pending.length;
-        const confirmedCount = appointmentData.confirmed.length;
-        const pastCount = appointmentData.past.length;
-
-        metricPending.textContent = pendingCount;
-        metricConfirmed.textContent = confirmedCount;
-        metricPast.textContent = pastCount;
-
-        badgePending.textContent = pendingCount;
-        badgeConfirmed.textContent = confirmedCount;
-        badgePast.textContent = pastCount;
-      };
-
-      const populateDashboard = (user) => {
-        const fallbackName = user.email.split("@")[0].replace(/[._-]+/g, " ");
-        const displayName = (user.displayName || fallbackName)
-          .split(" ")
-          .filter(Boolean)
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(" ");
-
-        profileNameElements.forEach((element) => {
-          element.textContent = displayName;
-        });
-
-        profileDisplay.textContent = displayName;
-        profileEmail.textContent = user.email;
-
-        updateMetrics();
-        renderAppointments("pending", appointmentData.pending);
-        renderAppointments("confirmed", appointmentData.confirmed);
-        renderAppointments("past", appointmentData.past);
-      };
-
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          populateDashboard(user);
-          toggleView(true);
-        } else {
-          toggleView(false);
-        }
-      });
-
-      signOutButton.addEventListener("click", async () => {
-        signOutButton.disabled = true;
-        signOutButton.textContent = "Saindo...";
-
-        try {
-          await signOut(auth);
-          setStatus("Você saiu do portal. Faça login novamente para acessar.");
-        } catch (error) {
-          console.error("Erro ao sair", error);
-          setStatus("Não foi possível encerrar a sessão. Tente novamente.", "error");
-        } finally {
-          signOutButton.disabled = false;
-          signOutButton.textContent = "Sair";
         }
       });
     </script>
