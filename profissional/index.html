@@ -1,42 +1,484 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NailNow | Portal da Manicure</title>
     <meta
       name="description"
-      content="Área da profissional da NailNow para especialistas acessarem suas contas e atender clientes."
+      content="Portal da Manicure NailNow — autonomia, visibilidade e pagamentos seguros. Cadastre-se e conquiste clientes."
     />
-    <title>Profissional - NailNow</title>
-    <link rel="preconnect" href="https://fonts.gstatic.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Playfair+Display:wght@400;500;700&display=swap"
-      rel="stylesheet"
-    />
+
+    <!-- Google Fonts: Playfair Display (títulos) + Poppins (UI/Corpo) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css" />
-    <script>
-      function handleLogin(event) {
-        event.preventDefault();
-        alert("Login de profissional - integração com Firebase em breve.");
+
+    <style>
+      :root {
+        --pink: #F55BA2;
+        --pink-600: #c61b80;
+        --pink-50: #fff1f6;
+        --nude: #fff5f1;
+        --sand: #faf1ec;
+        --text: #2b1f1a;
+        --muted: #7d6a63;
+        --border: #f0dfd8;
+        --white: #ffffff;
+        --radius-lg: 18px;
+        --radius-md: 14px;
+        --shadow: 0 15px 50px rgba(45, 22, 11, 0.08);
+        --shadow-soft: 0 12px 30px rgba(45, 22, 11, 0.08);
+        --container: 1120px;
       }
-    </script>
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        color: var(--text);
+        background: var(--white);
+        line-height: 1.6;
+      }
+
+      .container {
+        width: 100%;
+        max-width: var(--container);
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-weight: 700;
+        line-height: 1.2;
+        color: #1f1611;
+      }
+
+      h1 {
+        font-size: clamp(32px, 4vw, 48px);
+        letter-spacing: -0.02em;
+        margin: 0 0 16px;
+      }
+
+      h2 {
+        font-size: clamp(24px, 3vw, 36px);
+        margin: 0 0 12px;
+      }
+
+      h3 {
+        font-size: clamp(18px, 2.6vw, 22px);
+        margin: 0 0 8px;
+      }
+
+      p.lead {
+        font-size: clamp(16px, 2.3vw, 18px);
+        color: var(--muted);
+        max-width: 52ch;
+        margin: 0;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        background: rgba(245, 91, 162, 0.12);
+        color: var(--pink-600);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px 24px;
+        border-radius: 14px;
+        border: 2px solid transparent;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 16px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.2s ease, color 0.2s ease;
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+      }
+
+      .btn[disabled] {
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+
+      .btn-pink {
+        background: var(--pink);
+        color: var(--white);
+        box-shadow: 0 12px 30px rgba(245, 91, 162, 0.26);
+      }
+
+      .btn-pink:hover {
+        filter: brightness(0.96);
+      }
+
+      .btn-outline {
+        background: transparent;
+        color: var(--pink);
+        border-color: rgba(245, 91, 162, 0.3);
+      }
+
+      .btn-outline:hover {
+        background: rgba(245, 91, 162, 0.08);
+      }
+
+      .btn-white {
+        background: var(--white);
+        color: var(--pink-600);
+      }
+
+      .btn-white:hover {
+        background: rgba(255, 255, 255, 0.85);
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      /* Hero */
+      .pro-hero {
+        padding: 80px 0 56px;
+        background: linear-gradient(180deg, var(--pink-50), var(--sand) 60%, var(--white));
+      }
+
+      .pro-hero__grid {
+        display: grid;
+        grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+        gap: 56px;
+        align-items: center;
+      }
+
+      .pro-hero__copy {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .pro-hero__actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .pro-hero__media {
+        display: grid;
+        gap: 20px;
+        justify-items: center;
+      }
+
+      .pro-hero__photo {
+        width: min(420px, 100%);
+        aspect-ratio: 4 / 5;
+        border-radius: var(--radius-lg);
+        background: url('https://images.unsplash.com/photo-1616394584738-fc6e612e71ac?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat;
+        box-shadow: var(--shadow);
+      }
+
+      .pro-login-card {
+        width: min(420px, 100%);
+        padding: 28px;
+        border-radius: var(--radius-lg);
+        background: var(--white);
+        box-shadow: var(--shadow-soft);
+        border: 1px solid rgba(234, 219, 213, 0.6);
+      }
+
+      .pro-login-card h3 {
+        margin: 0 0 14px;
+        font-size: 20px;
+      }
+
+      .form-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+
+      .form-field label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+
+      .form-field input {
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1.5px solid var(--border);
+        font-size: 14px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .form-field input:focus {
+        border-color: var(--pink);
+        box-shadow: 0 0 0 4px rgba(245, 91, 162, 0.15);
+        outline: none;
+      }
+
+      .login-feedback {
+        margin-top: 16px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--muted);
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+
+      .login-feedback.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .login-feedback.success {
+        color: #0f8a4b;
+      }
+
+      .login-feedback.warning {
+        color: #b36b00;
+      }
+
+      .login-feedback.error {
+        color: #b42318;
+      }
+
+      .pro-hero__badges {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 12px;
+      }
+
+      .pro-feature {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: var(--radius-md);
+        background: rgba(245, 91, 162, 0.08);
+        color: #4b332d;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .pro-feature__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--white);
+        box-shadow: inset 0 0 0 2px rgba(245, 91, 162, 0.2);
+        font-size: 16px;
+      }
+
+      @media (max-width: 1024px) {
+        .pro-hero__grid {
+          grid-template-columns: 1fr;
+          text-align: center;
+        }
+
+        .pro-hero__copy {
+          align-items: center;
+        }
+
+        .pro-hero__badges {
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          width: 100%;
+        }
+
+        .pro-hero__media {
+          justify-items: center;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .pro-hero {
+          padding: 72px 0 48px;
+        }
+
+        .pro-login-card {
+          padding: 24px;
+        }
+
+        .btn {
+          width: 100%;
+        }
+
+        .pro-hero__actions {
+          width: 100%;
+        }
+      }
+
+      /* Sections */
+      .section {
+        padding: 72px 0;
+      }
+
+      .section__header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 32px;
+        text-align: left;
+      }
+
+      .section__header p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 52ch;
+      }
+
+      .pro-benefits {
+        background: var(--white);
+      }
+
+      .pro-benefits__grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .pro-benefit {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 18px 20px;
+        background: #fffbfa;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .pro-benefit:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 18px 32px rgba(45, 22, 11, 0.06);
+      }
+
+      .pro-benefit__icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: rgba(245, 91, 162, 0.12);
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+        color: var(--pink-600);
+      }
+
+      .pro-benefit p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 900px) {
+        .pro-benefits__grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 560px) {
+        .pro-benefits__grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .pro-how-it-works {
+        background: var(--nude);
+      }
+
+      .pro-steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .pro-step {
+        background: var(--white);
+        border-radius: var(--radius-md);
+        padding: 20px 22px;
+        border: 1px solid rgba(234, 219, 213, 0.7);
+        display: grid;
+        gap: 10px;
+        position: relative;
+      }
+
+      .pro-step::before {
+        content: attr(data-step);
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: var(--pink);
+        color: var(--white);
+        font-weight: 600;
+        display: grid;
+        place-items: center;
+        position: absolute;
+        top: -18px;
+        left: 22px;
+        box-shadow: 0 8px 16px rgba(245, 91, 162, 0.25);
+      }
+
+      .pro-step p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 1024px) {
+        .pro-steps {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 600px) {
+        .pro-steps {
+          grid-template-columns: 1fr;
+        }
+      }
+
+    </style>
+
   </head>
+
   <body>
+    <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
     <header class="site-header">
       <div class="header-inner">
-        <a href="../" class="brand-mark" aria-label="Início da NailNow">
+        <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
           NailNow
         </a>
         <div class="header-navigation">
           <nav class="primary-nav" aria-label="Principal">
-            <a href="../index.html" class="nav-link">Home</a>
-            <a href="../como-funciona.html" class="nav-link">Como funciona</a>
-            <a href="../servicos.html" class="nav-link">Serviços</a>
-            <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
+            <a href="/index.html" class="nav-link">Home</a>
+            <a href="/como-funciona.html" class="nav-link">Como funciona</a>
+            <a href="/servicos.html" class="nav-link">Serviços</a>
+            <a href="/agendamentos.html" class="nav-link">Agendamentos</a>
           </nav>
           <div class="header-actions">
-            <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="../profissional/index.html" class="header-cta">Sou Profissional</a>
+            <a href="/cliente/index.html" class="header-cta">Sou Cliente</a>
+            <a href="/profissional/index.html" class="header-cta" aria-current="page">Sou Profissional</a>
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -55,25 +497,239 @@
       </div>
     </header>
 
-    <main class="page-content">
-      <img
-        src="https://images.unsplash.com/photo-1522336572468-97b06e8ef143?auto=format&fit=crop&w=800&q=80"
-        alt="Profissional cuidando das unhas"
-        class="page-img"
-        loading="lazy"
-        width="500"
-        height="333"
-      />
-      <h1>Área da Profissional</h1>
-      <form onsubmit="handleLogin(event)">
-        <label for="email">Email</label>
-        <input type="email" id="email" required />
-        <label for="senha">Senha</label>
-        <input type="password" id="senha" required />
-        <button type="submit" class="btn">Entrar</button>
-      </form>
-      <p>Primeira vez por aqui?</p>
-      <a href="cadastro.html" class="btn">Cadastrar</a>
+    <main>
+      <section class="pro-hero" id="hero">
+        <div class="container pro-hero__grid">
+          <div class="pro-hero__copy">
+            <span class="chip">Portal da Manicure</span>
+            <h1>Seu talento merece visibilidade.</h1>
+            <p class="lead">Com a NailNow, você tem autonomia, segurança e uma rede inteira de clientes ao seu alcance.</p>
+            <div class="pro-hero__actions">
+              <a href="/login.html" class="btn btn-outline">Entrar</a>
+              <a href="/cadastro.html" class="btn btn-pink">Quero fazer parte</a>
+            </div>
+            <div class="pro-hero__badges" aria-label="Benefícios essenciais">
+              <div class="pro-feature">
+                <span class="pro-feature__icon" aria-hidden="true">💎</span>
+                Mais visibilidade para os seus serviços
+              </div>
+              <div class="pro-feature">
+                <span class="pro-feature__icon" aria-hidden="true">⏰</span>
+                Horários flexíveis que se adaptam a você
+              </div>
+              <div class="pro-feature">
+                <span class="pro-feature__icon" aria-hidden="true">💰</span>
+                Pagamentos seguros e transparentes
+              </div>
+              <div class="pro-feature">
+                <span class="pro-feature__icon" aria-hidden="true">🤝</span>
+                Comunidade e suporte em cada etapa
+              </div>
+            </div>
+          </div>
+
+          <div class="pro-hero__media">
+            <div class="pro-hero__photo" role="img" aria-label="Profissional da beleza atendendo cliente com sorriso"></div>
+            <aside class="pro-login-card" aria-label="Acesso rápido">
+              <h3>Entrar na minha conta</h3>
+              <form id="login-form">
+                <div class="form-field">
+                  <label for="email">E-mail</label>
+                  <input type="email" id="email" name="email" placeholder="voce@email.com" autocomplete="email" required />
+                </div>
+                <div class="form-field">
+                  <label for="senha">Senha</label>
+                  <input type="password" id="senha" name="senha" placeholder="••••••••" autocomplete="current-password" required />
+                </div>
+                <button class="btn btn-pink" type="submit" style="width:100%">Entrar</button>
+                <p class="muted" style="margin-top:10px;">
+                  Primeira vez aqui?
+                  <a href="/cadastro.html" style="color: var(--pink);">Quero me cadastrar</a>
+                </p>
+              </form>
+              <p id="login-feedback" class="login-feedback" role="status" aria-live="polite"></p>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="section pro-benefits" id="beneficios">
+        <div class="container">
+          <div class="section__header">
+            <h2>Por que ser uma manicure NailNow?</h2>
+            <p>Autonomia para organizar sua agenda, visibilidade para encantar novas clientes e suporte real para crescer com segurança.</p>
+          </div>
+          <div class="pro-benefits__grid">
+            <article class="pro-benefit">
+              <div class="pro-benefit__icon" aria-hidden="true">📍</div>
+              <h3>Clientes próximas a você</h3>
+              <p>Apareça nos bairros onde atua e receba solicitações certeiras.</p>
+            </article>
+            <article class="pro-benefit">
+              <div class="pro-benefit__icon" aria-hidden="true">🗓️</div>
+              <h3>Controle da agenda</h3>
+              <p>Defina sua disponibilidade, organize períodos de descanso e mantenha equilíbrio.</p>
+            </article>
+            <article class="pro-benefit">
+              <div class="pro-benefit__icon" aria-hidden="true">🔒</div>
+              <h3>Pagamentos garantidos</h3>
+              <p>Transações protegidas, sem atrasos e com taxa justa para o seu trabalho.</p>
+            </article>
+            <article class="pro-benefit">
+              <div class="pro-benefit__icon" aria-hidden="true">🌟</div>
+              <h3>Reputação em alta</h3>
+              <p>Avaliações reais e vitrine de portfólio para fidelizar clientes.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section pro-how-it-works" id="como-funciona">
+        <div class="container">
+          <div class="section__header">
+            <h2>Como funciona</h2>
+            <p>Do cadastro ao pagamento, o processo é pensado para que você foque na experiência das suas clientes.</p>
+          </div>
+          <div class="pro-steps">
+            <article class="pro-step" data-step="1">
+              <h3>Crie seu perfil</h3>
+              <p>Cadastre-se, conte sua história, adicione fotos e serviços favoritos.</p>
+            </article>
+            <article class="pro-step" data-step="2">
+              <h3>Receba pedidos</h3>
+              <p>Clientes verificadas encontram você pelo app e enviam solicitações.</p>
+            </article>
+            <article class="pro-step" data-step="3">
+              <h3>Atenda com liberdade</h3>
+              <p>Escolha atender em domicílio, no próprio estúdio ou onde preferir.</p>
+            </article>
+            <article class="pro-step" data-step="4">
+              <h3>Receba com segurança</h3>
+              <p>Pagamento direto no app, com acompanhamento em tempo real.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
     </main>
-  </body>
+
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-column footer-column--brand">
+          <h2 class="footer-logo">NailNow</h2>
+          <p>Beleza na sua agenda com profissionais selecionadas, atendimento onde você estiver e suporte humanizado.</p>
+        </div>
+        <div class="footer-column footer-links" aria-label="Links úteis">
+          <h3>FAQ</h3>
+          <a href="../faq.html">Perguntas frequentes</a>
+          <a href="../como-funciona.html">Como funciona</a>
+          <a href="../agendamentos.html">Agendamentos</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Contato e suporte">
+          <h3>Contato & suporte</h3>
+          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Termos e políticas">
+          <h3>Termos & políticas</h3>
+          <a href="#">Termos de uso</a>
+          <a href="#">Política de privacidade</a>
+          <a href="#">Cookies e preferências</a>
+        </div>
+      </div>
+      <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
+    </footer>
+
+    <nav class="bottom-nav" aria-label="Navegação inferior fixa">
+      <a href="../index.html" class="bottom-nav__link" aria-label="Ir para o início">Home</a>
+      <a href="../servicos.html" class="bottom-nav__link" aria-label="Buscar serviços profissionais">Buscar</a>
+      <a href="../cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
+      <a href="../cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
+    </nav>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.appspot.com",
+        messagingSenderId: "726392294571",
+        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const form = document.getElementById('login-form');
+      const feedback = document.getElementById('login-feedback');
+      const submitButton = form.querySelector("button[type='submit']");
+
+      const showFeedback = (message, variant) => {
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.classList.remove('success', 'error', 'warning', 'is-visible');
+        if (message) {
+          if (variant) {
+            feedback.classList.add(variant);
+          }
+          feedback.classList.add('is-visible');
+        }
+      };
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const email = form.email.value.trim().toLowerCase();
+        const senha = form.senha.value;
+
+        showFeedback('', null);
+        submitButton.disabled = true;
+        submitButton.textContent = 'Entrando…';
+
+        try {
+          const { user } = await signInWithEmailAndPassword(auth, email, senha);
+          const perfilRef = doc(db, 'manicures', user.uid);
+          const perfilSnap = await getDoc(perfilRef);
+
+          if (perfilSnap.exists()) {
+            const dados = perfilSnap.data();
+            const nome = dados.nome || dados.nomeCompleto || user.email;
+            showFeedback(`✅ Olá, ${nome}! Login realizado com sucesso.`, 'success');
+            form.reset();
+          } else {
+            showFeedback('⚠️ Login realizado, mas não encontramos seu cadastro de manicure. Entre em contato com o suporte.', 'warning');
+          }
+        } catch (error) {
+          console.error('Erro ao entrar como manicure', error);
+          showFeedback(`❌ ${traduzirErroAuth(error)}`, 'error');
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = 'Entrar';
+        }
+      });
+
+      function traduzirErroAuth(error) {
+        const codigo = error?.code || 'erro-desconhecido';
+        switch (codigo) {
+          case 'auth/invalid-email':
+            return 'E-mail inválido. Confira o endereço digitado.';
+          case 'auth/user-disabled':
+            return 'Conta desativada. Fale com o suporte da NailNow.';
+          case 'auth/user-not-found':
+            return 'Nenhuma manicure encontrada com esse e-mail.';
+          case 'auth/wrong-password':
+            return 'Senha incorreta. Tente novamente.';
+          case 'auth/too-many-requests':
+            return 'Muitas tentativas. Aguarde alguns instantes e tente de novo.';
+          default:
+            return 'Não foi possível fazer login. Tente novamente em instantes.';
+        }
+      }
+    </script>
+</body>
 </html>
