@@ -335,6 +335,63 @@
         return "";
       };
 
+      const buildLookupCandidates = (rawEmail) => {
+        const trimmed = (rawEmail ?? "").trim();
+        if (!trimmed) {
+          return [];
+        }
+
+        const lower = trimmed.toLowerCase();
+        const combinations = [
+          ["email", trimmed],
+          ["email", lower],
+          ["emailLowercase", lower],
+          ["contato.email", trimmed],
+          ["contato.email", lower],
+          ["contato.emailLowercase", lower],
+        ];
+
+        const seen = new Set();
+        return combinations.reduce((list, [field, value]) => {
+          if (!value) {
+            return list;
+          }
+          const key = `${field}|${value}`;
+          if (seen.has(key)) {
+            return list;
+          }
+          seen.add(key);
+          list.push({ field, value });
+          return list;
+        }, []);
+      };
+
+      const fetchProfileByEmail = async (email) => {
+        const manicuresRef = collection(db, "manicures");
+        const lookups = buildLookupCandidates(email);
+
+        for (const { field, value } of lookups) {
+          try {
+            const manicureQuery = query(manicuresRef, where(field, "==", value), limit(1));
+            const snapshot = await getDocs(manicureQuery);
+            if (!snapshot.empty) {
+              const document = snapshot.docs[0];
+              return { id: document.id, ...document.data() };
+            }
+          } catch (error) {
+            console.error(`Erro ao buscar manicure pelo campo ${field}`, error);
+            if (error.code === "permission-denied") {
+              const permissionError = new Error("permission-denied");
+              permissionError.cause = error;
+              throw permissionError;
+            }
+            throw error;
+          }
+        }
+
+        return null;
+      };
+
       const persistSession = (profile) => {
         const sessionPayload = {
           id: profile.id,
@@ -360,36 +417,36 @@
       };
 
       const authenticateManicure = async (email, password) => {
-        const manicuresRef = collection(db, "manicures");
-        const attempts = [email, email.toLowerCase()];
+        const profile = await fetchProfileByEmail(email);
+        if (!profile) {
+          throw new Error("not-found");
+        }
 
-        for (const candidate of attempts) {
-          const manicureQuery = query(manicuresRef, where("email", "==", candidate), limit(1));
-          const snapshot = await getDocs(manicureQuery);
-          if (!snapshot.empty) {
-            const document = snapshot.docs[0];
-            const profile = { id: document.id, ...document.data() };
-            const storedPassword = extractPassword(profile);
-            if (!storedPassword) {
-              throw new Error("missing-password");
-            }
+        const storedPassword = extractPassword(profile);
+        if (!storedPassword) {
+          throw new Error("missing-password");
+        }
 
-            if (toComparable(storedPassword) !== toComparable(password)) {
-              throw new Error("invalid-credentials");
-            }
+        if (toComparable(storedPassword) !== toComparable(password)) {
+          throw new Error("invalid-credentials");
+        }
 
-            const docRef = doc(db, "manicures", profile.id);
-            const latestSnapshot = await getDoc(docRef);
-            if (latestSnapshot.exists()) {
-              Object.assign(profile, latestSnapshot.data());
-            }
-
-            persistSession(profile);
-            return profile;
+        try {
+          const docRef = doc(db, "manicures", profile.id);
+          const latestSnapshot = await getDoc(docRef);
+          if (latestSnapshot.exists()) {
+            Object.assign(profile, latestSnapshot.data());
+          }
+        } catch (refreshError) {
+          if (refreshError.code === "permission-denied") {
+            console.warn("Sem permissão para atualizar o perfil completo no momento.");
+          } else {
+            console.warn("Não foi possível atualizar o perfil completo", refreshError);
           }
         }
 
-        throw new Error("not-found");
+        persistSession(profile);
+        return profile;
       };
 
       const setStatus = (message, type = "") => {
@@ -606,14 +663,23 @@
       };
 
       const fetchManicureProfile = async (profileId) => {
-        const docRef = doc(db, "manicures", profileId);
-        const snapshot = await getDoc(docRef);
-        if (!snapshot.exists()) {
-          throw new Error("not-found");
+        try {
+          const docRef = doc(db, "manicures", profileId);
+          const snapshot = await getDoc(docRef);
+          if (!snapshot.exists()) {
+            throw new Error("not-found");
+          }
+          const profile = { id: profileId, ...snapshot.data() };
+          persistSession(profile);
+          return profile;
+        } catch (error) {
+          if (error.code === "permission-denied") {
+            const permissionError = new Error("permission-denied");
+            permissionError.cause = error;
+            throw permissionError;
+          }
+          throw error;
         }
-        const profile = { id: profileId, ...snapshot.data() };
-        persistSession(profile);
-        return profile;
       };
 
       const startWithSession = async () => {
@@ -633,7 +699,15 @@
           console.error("Não foi possível restaurar a sessão", error);
           clearSession();
           toggleView(false);
-          setStatus("Sua sessão expirou. Faça login novamente para acessar o portal.", "error");
+          const code = error.code || error.message;
+          if (code === "permission-denied") {
+            setStatus(
+              "Não conseguimos validar seus dados agora. Entre em contato com o suporte NailNow.",
+              "error",
+            );
+          } else {
+            setStatus("Sua sessão expirou. Faça login novamente para acessar o portal.", "error");
+          }
         }
       };
 
@@ -658,17 +732,26 @@
           await hydrateDashboard(profile);
         } catch (error) {
           console.error("Erro no login", error);
-          if (error.message === "missing-password") {
+          const code = error.code || error.message;
+          if (code === "missing-password") {
             setStatus(
               "Não encontramos uma senha cadastrada. Fale com o suporte NailNow para concluir o acesso.",
               "error",
             );
-          } else if (error.message === "invalid-credentials") {
+          } else if (code === "invalid-credentials") {
             setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
-          } else if (error.message === "not-found") {
+          } else if (code === "not-found") {
             setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+          } else if (code === "permission-denied") {
+            setStatus(
+              "Não conseguimos validar seus dados agora. Entre em contato com o suporte NailNow.",
+              "error",
+            );
           } else {
-            setStatus("Não foi possível entrar. Verifique seus dados.", "error");
+            setStatus(
+              "Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.",
+              "error",
+            );
           }
         } finally {
           setLoading(false);
