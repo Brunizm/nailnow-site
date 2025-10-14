@@ -366,6 +366,12 @@ main {
   isolation: isolate;
 }
 
+.pro-auth-card {
+  width: min(100%, 460px);
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  gap: clamp(1rem, 2.5vw, 1.5rem);
+}
+
 .pro-signup-card::before {
   content: "";
   position: absolute;
@@ -426,6 +432,25 @@ main {
   font-size: 0.95rem;
 }
 
+.auth-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.auth-card__footer a {
+  color: var(--pink-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-card__footer a:hover,
+.auth-card__footer a:focus {
+  text-decoration: underline;
+}
+
 .form-feedback {
   margin-top: 1rem;
   font-weight: 500;
@@ -484,38 +509,17 @@ main {
   min-width: max(220px, 45%);
 }
 
-.hero-metrics {
-  margin: clamp(2rem, 5vw, 3rem) 0 0;
-  padding: clamp(1.25rem, 4vw, 1.75rem);
-  border-radius: var(--radius-medium);
-  border: 1px solid rgba(244, 92, 162, 0.18);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: var(--shadow-sm);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: clamp(1rem, 3vw, 1.5rem);
-  position: relative;
-  z-index: 1;
-}
-
-.hero-metrics__item {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.hero-metrics__item dt {
-  margin: 0;
-  font-size: clamp(1.35rem, 3vw, 1.8rem);
-  font-weight: 700;
+.hero-login-link {
+  font-weight: 600;
   color: var(--pink-primary);
-  letter-spacing: -0.01em;
+  text-decoration: none;
+  align-self: center;
+  transition: color 0.2s ease;
 }
 
-.hero-metrics__item dd {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  line-height: 1.6;
+.hero-login-link:hover {
+  text-decoration: underline;
+  color: #c2185b;
 }
 
 .client-perks {
@@ -694,6 +698,22 @@ main {
 .signup-checkbox a:hover,
 .signup-checkbox a:focus {
   text-decoration: underline;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--pink-primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.link-button:hover,
+.link-button:focus {
+  color: #c2185b;
 }
 
 .signup-checkbox--terms {
