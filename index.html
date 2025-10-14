@@ -924,8 +924,13 @@
         }
 
         const servicesInCatalog = allowedServices.filter((service) => catalogServices.has(service));
+        const servicesMissing = allowedServices.filter((service) => !catalogServices.has(service));
 
-        return servicesInCatalog.length ? servicesInCatalog : allowedServices.slice();
+        if (!servicesInCatalog.length) {
+          return allowedServices.slice();
+        }
+
+        return servicesInCatalog.concat(servicesMissing);
       }
 
       function populateServiceSelect() {
