@@ -155,13 +155,13 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import {
-        browserLocalPersistence,
-        getAuth,
-        onAuthStateChanged,
-        sendPasswordResetEmail,
-        setPersistence,
-        signInWithEmailAndPassword,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        collection,
+        getDocs,
+        getFirestore,
+        limit,
+        query,
+        where,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyDvMxPKyw7M70fvj-YLwzudfIaquohkDIA",
@@ -172,12 +172,10 @@
         appId: "1:145591976960:web:957f13cd9d61acdfda4dde",
       };
 
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
+      const SESSION_KEY = "nailnowManicureSession";
 
-      setPersistence(auth, browserLocalPersistence).catch((error) => {
-        console.warn("Não foi possível aplicar a persistência local no momento", error);
-      });
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
 
       const loginForm = document.getElementById("login-form");
       const statusEl = document.getElementById("login-status");
@@ -204,21 +202,132 @@
         }, 800);
       };
 
+      const getStoredSession = () => {
+        try {
+          const raw = localStorage.getItem(SESSION_KEY);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed && parsed.id ? parsed : null;
+        } catch (error) {
+          console.warn("Não foi possível ler a sessão salva", error);
+          return null;
+        }
+      };
+
+      const persistSession = (profile) => {
+        const payload = {
+          id: profile.id,
+          email: profile.email || "",
+          nome: profile.nome || profile.name || "",
+          savedAt: Date.now(),
+        };
+        try {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+        } catch (error) {
+          console.warn("Não foi possível salvar a sessão", error);
+        }
+      };
+
+      const buildLookupCandidates = (rawEmail) => {
+        const trimmed = (rawEmail ?? "").trim();
+        if (!trimmed) {
+          return [];
+        }
+
+        const lower = trimmed.toLowerCase();
+        const combinations = [
+          ["email", trimmed],
+          ["email", lower],
+          ["emailLowercase", lower],
+          ["contato.email", trimmed],
+          ["contato.email", lower],
+          ["contato.emailLowercase", lower],
+        ];
+
+        const seen = new Set();
+        return combinations.reduce((list, [field, value]) => {
+          if (!value) {
+            return list;
+          }
+          const key = `${field}|${value}`;
+          if (seen.has(key)) {
+            return list;
+          }
+          seen.add(key);
+          list.push({ field, value });
+          return list;
+        }, []);
+      };
+
+      const getNestedValue = (data, path) => {
+        return path.split(".").reduce((acc, key) => {
+          if (acc && Object.prototype.hasOwnProperty.call(acc, key)) {
+            return acc[key];
+          }
+          return undefined;
+        }, data);
+      };
+
+      const resolveStoredPassword = (data) => {
+        const candidates = ["senha", "password", "senhaPortal", "credenciais.senha"];
+        for (const field of candidates) {
+          const value = getNestedValue(data, field);
+          if (typeof value === "string" && value.trim()) {
+            return value.trim();
+          }
+        }
+        return null;
+      };
+
+      const findManicureByEmail = async (email) => {
+        const lookups = buildLookupCandidates(email);
+        for (const { field, value } of lookups) {
+          try {
+            const manicureQuery = query(collection(db, "manicures"), where(field, "==", value), limit(1));
+            const snapshot = await getDocs(manicureQuery);
+            if (!snapshot.empty) {
+              const document = snapshot.docs[0];
+              return { id: document.id, data: document.data() };
+            }
+          } catch (error) {
+            console.warn(`Falha ao buscar manicure pelo campo ${field}`, error);
+          }
+        }
+        return null;
+      };
+
+      const authenticateManicure = async (email, password) => {
+        const record = await findManicureByEmail(email);
+        if (!record) {
+          const notFound = new Error("manicure-not-found");
+          notFound.code = "manicure-not-found";
+          throw notFound;
+        }
+
+        const storedPassword = resolveStoredPassword(record.data);
+        if (!storedPassword) {
+          const missing = new Error("missing-password");
+          missing.code = "missing-password";
+          throw missing;
+        }
+
+        if (storedPassword !== password) {
+          const mismatch = new Error("wrong-password");
+          mismatch.code = "wrong-password";
+          throw mismatch;
+        }
+
+        return { id: record.id, ...record.data };
+      };
+
       const handleAuthError = (error) => {
         const code = error.code || error.message;
-        if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+        if (code === "manicure-not-found") {
           setStatus("Não localizamos uma manicure com esse e-mail.", "error");
-        } else if (code === "auth/wrong-password") {
+        } else if (code === "wrong-password") {
           setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
-        } else if (code === "auth/invalid-email") {
-          setStatus("Informe um e-mail válido para continuar.", "error");
-        } else if (code === "auth/too-many-requests") {
-          setStatus(
-            "Detectamos muitas tentativas. Aguarde alguns instantes antes de tentar novamente.",
-            "error",
-          );
-        } else if (code === "auth/network-request-failed") {
-          setStatus("Sem conexão no momento. Verifique sua internet e tente novamente.", "error");
+        } else if (code === "missing-password") {
+          setStatus("Seu cadastro está sem senha ativa. Fale com o suporte NailNow.", "error");
         } else {
           console.error("Erro inesperado no login", error);
           setStatus(
@@ -242,7 +351,8 @@
         setLoading(true);
 
         try {
-          await signInWithEmailAndPassword(auth, email, password);
+          const profile = await authenticateManicure(email, password);
+          persistSession(profile);
           setStatus("Login realizado com sucesso! Redirecionando para o portal...", "success");
           loginForm.reset();
           redirectToPortal();
@@ -253,36 +363,19 @@
         }
       });
 
-      resetButton.addEventListener("click", async () => {
-        const email = loginForm.email.value.trim();
-        if (!email) {
-          setStatus("Informe seu e-mail para receber o link de redefinição.", "error");
-          return;
-        }
-
-        try {
-          await sendPasswordResetEmail(auth, email);
-          setStatus("Enviamos um e-mail com as instruções para redefinir sua senha.", "success");
-        } catch (error) {
-          const code = error.code || error.message;
-          if (code === "auth/user-not-found") {
-            setStatus("Não localizamos uma manicure com esse e-mail.", "error");
-          } else if (code === "auth/invalid-email") {
-            setStatus("Informe um e-mail válido para continuar.", "error");
-          } else {
-            console.error("Erro ao enviar redefinição de senha", error);
-            setStatus("Não foi possível iniciar a redefinição agora. Tente novamente em instantes.", "error");
-          }
-        }
+      resetButton.addEventListener("click", () => {
+        setStatus(
+          "Entre em contato com o suporte NailNow para redefinir ou atualizar sua senha.",
+          "error",
+        );
       });
 
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          setStatus("Você já está conectada! Redirecionando para o portal...", "success");
-          submitButton.disabled = true;
-          redirectToPortal();
-        }
-      });
+      const existingSession = getStoredSession();
+      if (existingSession) {
+        setStatus("Você já está conectada! Redirecionando para o portal...", "success");
+        submitButton.disabled = true;
+        redirectToPortal();
+      }
     </script>
   </body>
 </html>
