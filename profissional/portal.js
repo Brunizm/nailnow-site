@@ -10,13 +10,7 @@ import {
   query,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signOut,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -34,11 +28,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const loginForm = document.getElementById("login-form");
-const statusEl = document.getElementById("login-status");
-const submitButton = loginForm.querySelector("button[type='submit']");
-const resetButton = document.getElementById("reset-password");
-const loginView = document.getElementById("login-view");
+const statusEl = document.getElementById("dashboard-status");
 const dashboard = document.getElementById("dashboard");
 const signOutButton = document.getElementById("sign-out");
 const profileNameElements = document.querySelectorAll("[data-profile-name]");
@@ -131,25 +121,16 @@ const appointmentCollections = {
   past: "historico",
 };
 
-let lastLoginEmail = "";
-
 const setStatus = (message, type = "") => {
+  if (!statusEl) {
+    return;
+  }
   statusEl.textContent = message;
   statusEl.classList.remove("auth-status--error", "auth-status--success");
   statusEl.hidden = !message;
   if (type) {
     statusEl.classList.add(`auth-status--${type}`);
   }
-};
-
-const setLoading = (isLoading) => {
-  submitButton.disabled = isLoading;
-  submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
-};
-
-const toggleView = (isLoggedIn) => {
-  loginView.hidden = isLoggedIn;
-  dashboard.hidden = !isLoggedIn;
 };
 
 const resetDashboard = () => {
@@ -584,13 +565,13 @@ const handleAuthError = (error) => {
       "error",
     );
   } else {
-    console.error("Erro inesperado no login", error);
-    setStatus("Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.", "error");
+    console.error("Erro inesperado no portal", error);
+    setStatus("Não foi possível carregar o portal agora. Tente novamente em instantes ou fale com o suporte.", "error");
   }
 };
 
 const ensureDashboardForUser = async (user, emailHint = "") => {
-  toggleView(true);
+  dashboard.hidden = false;
   setStatus("Carregando seu painel...");
 
   const profile = await resolveProfileForUser(user, emailHint);
@@ -607,85 +588,41 @@ const ensureDashboardForUser = async (user, emailHint = "") => {
   }
 };
 
-loginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const email = loginForm.email.value.trim();
-  const password = loginForm.password.value;
-
-  if (!email || !password) {
-    setStatus("Preencha e-mail e senha para continuar.", "error");
-    return;
-  }
-
-  setStatus("");
-  setLoading(true);
-  lastLoginEmail = email;
-
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    setStatus("Validando seu acesso...");
-  } catch (error) {
-    handleAuthError(error);
-    lastLoginEmail = "";
-    setLoading(false);
-  }
-});
-
-resetButton.addEventListener("click", async () => {
-  const email = loginForm.email.value.trim();
-  if (!email) {
-    setStatus("Informe seu e-mail para receber as instruções de redefinição.", "error");
-    return;
-  }
-  setStatus("Enviando instruções para redefinir sua senha...");
-  try {
-    await sendPasswordResetEmail(auth, email);
-    setStatus("Enviamos um e-mail com as instruções para redefinir sua senha.", "success");
-  } catch (error) {
-    handleAuthError(error);
-  }
-});
-
 signOutButton.addEventListener("click", async () => {
+  if (!signOutButton) {
+    return;
+  }
+  signOutButton.disabled = true;
   setStatus("Encerrando sua sessão...");
-  setLoading(true);
   try {
     await signOut(auth);
-    clearSession();
-    resetDashboard();
-    toggleView(false);
-    loginForm.reset();
-    setStatus("Você saiu do portal com segurança.", "success");
   } catch (error) {
     console.error("Não foi possível encerrar a sessão", error);
     handleAuthError(error);
-  } finally {
-    setLoading(false);
+    signOutButton.disabled = false;
+    return;
   }
-});
 
-const storedSession = getStoredSession();
-if (storedSession?.email && !loginForm.email.value) {
-  loginForm.email.value = storedSession.email;
-}
+  clearSession();
+  dashboard.hidden = true;
+  resetDashboard();
+  window.location.href = "/profissional/index.html";
+});
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    setLoading(false);
-    toggleView(false);
-    resetDashboard();
-    if (!statusEl.textContent || statusEl.classList.contains("auth-status--success")) {
-      setStatus("");
-    }
     clearSession();
+    dashboard.hidden = true;
+    resetDashboard();
+    setStatus("");
+    window.location.replace("/profissional/index.html");
     return;
   }
 
   try {
     const session = getStoredSession();
-    const emailHint = lastLoginEmail || session?.email || user.email || "";
+    const emailHint = session?.email || user.email || "";
     await ensureDashboardForUser(user, emailHint);
-    loginForm.reset();
   } catch (error) {
     console.error("Não foi possível carregar o painel autenticado", error);
     handleAuthError(error);
@@ -695,7 +632,8 @@ onAuthStateChanged(auth, async (user) => {
       console.warn("Falha ao encerrar sessão após erro", signOutError);
     }
   } finally {
-    setLoading(false);
-    lastLoginEmail = "";
+    if (signOutButton) {
+      signOutButton.disabled = false;
+    }
   }
 });
