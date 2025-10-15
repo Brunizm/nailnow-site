@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
@@ -14,14 +14,8 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-
-    <!-- Google Fonts: Playfair Display (títulos) + Poppins (UI/Corpo) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css" />
   </head>
-
   <body>
     <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
     <header class="site-header">
@@ -37,8 +31,8 @@
             <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
           </nav>
           <div class="header-actions">
-            <a href="/cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="/profissional/index.html" class="header-cta" aria-current="page">Sou Profissional</a>
+            <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
+            <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Profissional</a>
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -53,54 +47,85 @@
               </svg>
             </a>
           </div>
-          <p>“A NailNow me devolveu a confiança. Trabalho com liberdade e ganho mais.”</p>
-        </article>
-        <article class="dep">
-          <div class="person">
-            <div class="avatar" aria-hidden="true"></div>
-            <div>
-              <strong>Joyce</strong>
-              <div class="muted">Curitiba</div>
-            </div>
-          </div>
-          <p>“Além de clientes novas, encontrei uma comunidade de mulheres incríveis.”</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- TRANSPARÊNCIA E CONFIANÇA -->
-  <section class="trust reveal" id="transparencia">
-    <div class="container">
-      <h2>Transparência e confiança</h2>
-      <p class="lead">Segurança para você focar no que faz de melhor.</p>
-
-      <div class="trust-grid" style="margin-top:18px;">
-        <div class="trust-item">
-          <h4>Segurança em primeiro lugar</h4>
-          <p>Documentos verificados, avaliações reais e suporte dedicado.</p>
         </div>
-        <div class="trust-item">
-          <h4>Pagamentos garantidos</h4>
-          <p>Tudo dentro do app, sem risco e sem atraso.</p>
-        </div>
-        <div class="trust-item">
-          <h4>Política justa</h4>
-          <p>Taxas transparentes, cancelamentos com aviso prévio e sem pegadinhas.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA FINAL -->
-  <section class="cta reveal" id="convite">
-    <div class="container">
-      <h2>Faça parte da revolução do autocuidado.</h2>
-      <p>Na NailNow, você cresce, conquista clientes e vive daquilo que ama.</p>
-      <div style="margin-top:12px;">
-        <a class="btn btn-white" href="/cadastro.html">Quero ser uma manicure NailNow</a>
       </div>
     </header>
+
+    <main class="page-content">
+      <section class="auth-layout" aria-labelledby="auth-heading" id="acesso">
+        <div class="auth-hero">
+          <p class="auth-kicker">Seja uma manicure NailNow</p>
+          <h1 id="auth-heading">Organize sua agenda com clientes garantidas</h1>
+          <p class="auth-intro">
+            Faça login com seu e-mail cadastrado para acompanhar solicitações, confirmar atendimentos e gerenciar seus ganhos. Ainda
+            não é parceira? Cadastre-se e comece a transformar sua rotina hoje mesmo.
+          </p>
+          <ul class="auth-benefits">
+            <li>Receba pedidos de novas clientes diretamente no seu painel.</li>
+            <li>Controle confirmações, reagendamentos e pagamentos em um só lugar.</li>
+            <li>Conte com o suporte NailNow para crescer como profissional independente.</li>
+          </ul>
+          <div class="auth-actions auth-actions--stacked">
+            <a href="./cadastro.html" class="auth-link-button">Quero me cadastrar</a>
+            <a href="./portal.html" class="auth-secondary-link">Conheça o portal da manicure</a>
+          </div>
+        </div>
+
+        <section class="auth-card" aria-labelledby="login-heading">
+          <div class="auth-card__inner">
+            <h2 id="login-heading">Entre com seu e-mail NailNow</h2>
+            <p class="auth-card__hint">Após o login, redirecionamos você automaticamente para o portal com seus agendamentos.</p>
+            <form id="login-form" class="auth-form" novalidate>
+              <div class="auth-form__group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" autocomplete="email" required placeholder="seunome@nailnow.com" />
+              </div>
+              <div class="auth-form__group">
+                <label for="password">Senha</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  autocomplete="current-password"
+                  required
+                  placeholder="••••••"
+                />
+              </div>
+              <button type="submit" class="auth-form__submit">Entrar</button>
+            </form>
+            <div id="login-status" class="auth-status" role="alert" aria-live="polite" hidden></div>
+            <div class="auth-actions">
+              <button type="button" id="reset-password" class="auth-link-button">Esqueci minha senha</button>
+              <a href="./cadastro.html" class="auth-secondary-link">Cadastre-se como manicure</a>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="portal-preview" aria-labelledby="portal-preview-heading">
+        <div class="portal-preview__inner">
+          <h2 id="portal-preview-heading">Veja o que te espera no portal</h2>
+          <p>
+            Ao acessar o portal, você acompanha solicitações de agendamento em tempo real, confirma atendimentos com um clique e
+            visualiza o histórico completo dos serviços realizados.
+          </p>
+          <div class="portal-preview__grid">
+            <article class="portal-preview__card">
+              <h3>Solicitações</h3>
+              <p>Analise novos pedidos, confirme disponibilidade e personalize respostas para suas clientes.</p>
+            </article>
+            <article class="portal-preview__card">
+              <h3>Confirmados</h3>
+              <p>Gerencie horários, combine deslocamentos e mantenha tudo sincronizado com a sua agenda.</p>
+            </article>
+            <article class="portal-preview__card">
+              <h3>Histórico</h3>
+              <p>Revise atendimentos passados, acompanhe avaliações e planeje ações para fidelizar cada cliente.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
 
     <footer class="site-footer">
       <div class="footer-inner">
@@ -127,5 +152,241 @@
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        collection,
+        getDocs,
+        getFirestore,
+        limit,
+        query,
+        where,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDvMxPKyw7M70fvj-YLwzudfIaquohkDIA",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.appspot.com",
+        messagingSenderId: "145591976960",
+        appId: "1:145591976960:web:957f13cd9d61acdfda4dde",
+      };
+
+      const SESSION_KEY = "nailnowManicureSession";
+      const PROFILE_COLLECTIONS = ["manicures", "profissionais"];
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const loginForm = document.getElementById("login-form");
+      const statusEl = document.getElementById("login-status");
+      const submitButton = loginForm.querySelector("button[type='submit']");
+      const resetButton = document.getElementById("reset-password");
+
+      const setStatus = (message, type = "") => {
+        statusEl.textContent = message;
+        statusEl.classList.remove("auth-status--error", "auth-status--success");
+        statusEl.hidden = !message;
+        if (type) {
+          statusEl.classList.add(`auth-status--${type}`);
+        }
+      };
+
+      const setLoading = (isLoading) => {
+        submitButton.disabled = isLoading;
+        submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
+      };
+
+      const redirectToPortal = () => {
+        setTimeout(() => {
+          window.location.href = "./portal.html";
+        }, 800);
+      };
+
+      const getStoredSession = () => {
+        try {
+          const raw = localStorage.getItem(SESSION_KEY);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.id) {
+            if (!parsed.collection) {
+              parsed.collection = PROFILE_COLLECTIONS[0];
+            }
+            return parsed;
+          }
+          return null;
+        } catch (error) {
+          console.warn("Não foi possível ler a sessão salva", error);
+          return null;
+        }
+      };
+
+      const persistSession = (profile) => {
+        const payload = {
+          id: profile.id,
+          email: profile.email || "",
+          nome: profile.nome || profile.name || "",
+          collection: profile.collection || PROFILE_COLLECTIONS[0],
+          savedAt: Date.now(),
+        };
+        try {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+        } catch (error) {
+          console.warn("Não foi possível salvar a sessão", error);
+        }
+      };
+
+      const buildLookupCandidates = (rawEmail) => {
+        const trimmed = (rawEmail ?? "").trim();
+        if (!trimmed) {
+          return [];
+        }
+
+        const lower = trimmed.toLowerCase();
+        const combinations = [
+          ["email", trimmed],
+          ["email", lower],
+          ["emailLowercase", lower],
+          ["contato.email", trimmed],
+          ["contato.email", lower],
+          ["contato.emailLowercase", lower],
+        ];
+
+        const seen = new Set();
+        return combinations.reduce((list, [field, value]) => {
+          if (!value) {
+            return list;
+          }
+          const key = `${field}|${value}`;
+          if (seen.has(key)) {
+            return list;
+          }
+          seen.add(key);
+          list.push({ field, value });
+          return list;
+        }, []);
+      };
+
+      const getNestedValue = (data, path) => {
+        return path.split(".").reduce((acc, key) => {
+          if (acc && Object.prototype.hasOwnProperty.call(acc, key)) {
+            return acc[key];
+          }
+          return undefined;
+        }, data);
+      };
+
+      const resolveStoredPassword = (data) => {
+        const candidates = ["senha", "password", "senhaPortal", "credenciais.senha"];
+        for (const field of candidates) {
+          const value = getNestedValue(data, field);
+          if (typeof value === "string" && value.trim()) {
+            return value.trim();
+          }
+        }
+        return null;
+      };
+
+      const findManicureByEmail = async (email) => {
+        const lookups = buildLookupCandidates(email);
+        for (const { field, value } of lookups) {
+          for (const collectionName of PROFILE_COLLECTIONS) {
+            try {
+              const manicureQuery = query(collection(db, collectionName), where(field, "==", value), limit(1));
+              const snapshot = await getDocs(manicureQuery);
+              if (!snapshot.empty) {
+                const document = snapshot.docs[0];
+                return { id: document.id, data: document.data(), collection: collectionName };
+              }
+            } catch (error) {
+              console.warn(`Falha ao buscar manicure pelo campo ${field} na coleção ${collectionName}`, error);
+            }
+          }
+        }
+        return null;
+      };
+
+      const authenticateManicure = async (email, password) => {
+        const record = await findManicureByEmail(email);
+        if (!record) {
+          const notFound = new Error("manicure-not-found");
+          notFound.code = "manicure-not-found";
+          throw notFound;
+        }
+
+        const storedPassword = resolveStoredPassword(record.data);
+        if (!storedPassword) {
+          const missing = new Error("missing-password");
+          missing.code = "missing-password";
+          throw missing;
+        }
+
+        if (storedPassword !== password) {
+          const mismatch = new Error("wrong-password");
+          mismatch.code = "wrong-password";
+          throw mismatch;
+        }
+
+        return { id: record.id, collection: record.collection, ...record.data };
+      };
+
+      const handleAuthError = (error) => {
+        const code = error.code || error.message;
+        if (code === "manicure-not-found") {
+          setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+        } else if (code === "wrong-password") {
+          setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
+        } else if (code === "missing-password") {
+          setStatus("Seu cadastro está sem senha ativa. Fale com o suporte NailNow.", "error");
+        } else {
+          console.error("Erro inesperado no login", error);
+          setStatus(
+            "Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.",
+            "error",
+          );
+        }
+      };
+
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = loginForm.email.value.trim();
+        const password = loginForm.password.value;
+
+        if (!email || !password) {
+          setStatus("Preencha e-mail e senha para continuar.", "error");
+          return;
+        }
+
+        setStatus("");
+        setLoading(true);
+
+        try {
+          const profile = await authenticateManicure(email, password);
+          persistSession(profile);
+          setStatus("Login realizado com sucesso! Redirecionando para o portal...", "success");
+          loginForm.reset();
+          redirectToPortal();
+        } catch (error) {
+          handleAuthError(error);
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      resetButton.addEventListener("click", () => {
+        setStatus(
+          "Entre em contato com o suporte NailNow para redefinir ou atualizar sua senha.",
+          "error",
+        );
+      });
+
+      const existingSession = getStoredSession();
+      if (existingSession) {
+        setStatus("Você já está conectada! Redirecionando para o portal...", "success");
+        submitButton.disabled = true;
+        redirectToPortal();
+      }
+    </script>
   </body>
 </html>
