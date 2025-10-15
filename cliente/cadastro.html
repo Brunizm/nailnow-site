@@ -133,7 +133,6 @@
             <a href="/" class="nav-link">Home</a>
             <a href="../como-funciona.html" class="nav-link">Como funciona</a>
             <a href="../servicos.html" class="nav-link">Serviços</a>
-            <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
           </nav>
           <div class="header-actions">
             <a href="../cliente/index.html" class="header-cta" aria-current="page">Sou Cliente</a>
@@ -195,11 +194,41 @@
               <div class="signup-row">
                 <div class="signup-field">
                   <label for="senha">Senha *</label>
-                  <input id="senha" name="senha" type="password" minlength="6" required />
+                  <div class="password-input-wrapper">
+                    <input id="senha" name="senha" type="password" minlength="6" required />
+                    <button
+                      type="button"
+                      class="password-toggle"
+                      data-password-target="senha"
+                      aria-pressed="false"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M12 5c-4.13 0-7.5 2.86-9.42 7 1.92 4.14 5.29 7 9.42 7s7.5-2.86 9.42-7C19.5 7.86 16.13 5 12 5Zm0 11c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+                        />
+                      </svg>
+                      <span class="password-toggle__label">Mostrar senha</span>
+                    </button>
+                  </div>
                 </div>
                 <div class="signup-field">
                   <label for="confirmarSenha">Confirmar senha *</label>
-                  <input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required />
+                  <div class="password-input-wrapper">
+                    <input id="confirmarSenha" name="confirmarSenha" type="password" minlength="6" required />
+                    <button
+                      type="button"
+                      class="password-toggle"
+                      data-password-target="confirmarSenha"
+                      aria-pressed="false"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M12 5c-4.13 0-7.5 2.86-9.42 7 1.92 4.14 5.29 7 9.42 7s7.5-2.86 9.42-7C19.5 7.86 16.13 5 12 5Zm0 11c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+                        />
+                      </svg>
+                      <span class="password-toggle__label">Mostrar senha</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -324,6 +353,7 @@
       <a href="../cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
     </nav>
 
+    <script src="/assets/js/password-toggle.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script>
       window.initEnderecoAutocomplete = function () {

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
@@ -14,14 +14,8 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-
-    <!-- Google Fonts: Playfair Display (títulos) + Poppins (UI/Corpo) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css" />
   </head>
-
   <body>
     <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
     <header class="site-header">
@@ -34,11 +28,10 @@
             <a href="../index.html" class="nav-link" aria-current="page">Home</a>
             <a href="../como-funciona.html" class="nav-link">Como funciona</a>
             <a href="../servicos.html" class="nav-link">Serviços</a>
-            <a href="../agendamentos.html" class="nav-link">Agendamentos</a>
           </nav>
           <div class="header-actions">
-            <a href="/cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="/profissional/index.html" class="header-cta" aria-current="page">Sou Profissional</a>
+            <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
+            <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Profissional</a>
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -53,54 +46,100 @@
               </svg>
             </a>
           </div>
-          <p>“A NailNow me devolveu a confiança. Trabalho com liberdade e ganho mais.”</p>
-        </article>
-        <article class="dep">
-          <div class="person">
-            <div class="avatar" aria-hidden="true"></div>
-            <div>
-              <strong>Joyce</strong>
-              <div class="muted">Curitiba</div>
-            </div>
-          </div>
-          <p>“Além de clientes novas, encontrei uma comunidade de mulheres incríveis.”</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- TRANSPARÊNCIA E CONFIANÇA -->
-  <section class="trust reveal" id="transparencia">
-    <div class="container">
-      <h2>Transparência e confiança</h2>
-      <p class="lead">Segurança para você focar no que faz de melhor.</p>
-
-      <div class="trust-grid" style="margin-top:18px;">
-        <div class="trust-item">
-          <h4>Segurança em primeiro lugar</h4>
-          <p>Documentos verificados, avaliações reais e suporte dedicado.</p>
         </div>
-        <div class="trust-item">
-          <h4>Pagamentos garantidos</h4>
-          <p>Tudo dentro do app, sem risco e sem atraso.</p>
-        </div>
-        <div class="trust-item">
-          <h4>Política justa</h4>
-          <p>Taxas transparentes, cancelamentos com aviso prévio e sem pegadinhas.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA FINAL -->
-  <section class="cta reveal" id="convite">
-    <div class="container">
-      <h2>Faça parte da revolução do autocuidado.</h2>
-      <p>Na NailNow, você cresce, conquista clientes e vive daquilo que ama.</p>
-      <div style="margin-top:12px;">
-        <a class="btn btn-white" href="/cadastro.html">Quero ser uma manicure NailNow</a>
       </div>
     </header>
+
+    <main class="page-content">
+      <section class="auth-layout" aria-labelledby="auth-heading" id="acesso">
+        <div class="auth-hero">
+          <p class="auth-kicker">Seja uma manicure NailNow</p>
+          <h1 id="auth-heading">Organize sua agenda com clientes garantidas</h1>
+          <p class="auth-intro">
+            Faça login com seu e-mail cadastrado para acompanhar solicitações, confirmar atendimentos e gerenciar seus ganhos. Ainda
+            não é parceira? Cadastre-se e comece a transformar sua rotina hoje mesmo.
+          </p>
+          <ul class="auth-benefits">
+            <li>Receba pedidos de novas clientes diretamente no seu painel.</li>
+            <li>Controle confirmações, reagendamentos e pagamentos em um só lugar.</li>
+            <li>Conte com o suporte NailNow para crescer como profissional independente.</li>
+          </ul>
+          <div class="auth-actions auth-actions--stacked">
+            <a href="./cadastro.html" class="auth-link-button auth-link-button--primary">Quero me cadastrar</a>
+            <a href="./portal.html" class="auth-secondary-link">Conheça o portal da manicure</a>
+          </div>
+        </div>
+
+        <section class="auth-card" aria-labelledby="login-heading">
+          <div class="auth-card__inner">
+            <h2 id="login-heading">Entre com seu e-mail NailNow</h2>
+            <p class="auth-card__hint">Após o login, redirecionamos você automaticamente para o portal com seus agendamentos.</p>
+            <form id="login-form" class="auth-form" novalidate>
+              <div class="auth-form__group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" autocomplete="email" required placeholder="seunome@nailnow.com" />
+              </div>
+              <div class="auth-form__group">
+                <label for="password">Senha</label>
+                <div class="password-input-wrapper">
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    autocomplete="current-password"
+                    required
+                    placeholder="••••••"
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    data-password-target="password"
+                    aria-pressed="false"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M12 5c-4.13 0-7.5 2.86-9.42 7 1.92 4.14 5.29 7 9.42 7s7.5-2.86 9.42-7C19.5 7.86 16.13 5 12 5Zm0 11c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+                      />
+                    </svg>
+                    <span class="password-toggle__label">Mostrar senha</span>
+                  </button>
+                </div>
+              </div>
+              <button type="submit" class="auth-form__submit">Entrar</button>
+            </form>
+            <div id="login-status" class="auth-status" role="alert" aria-live="polite" hidden></div>
+            <div class="auth-actions">
+              <button type="button" id="reset-password" class="auth-link-button">Esqueci minha senha</button>
+              <a href="./cadastro.html" class="auth-secondary-link">Cadastre-se como manicure</a>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="portal-preview" aria-labelledby="portal-preview-heading">
+        <div class="portal-preview__inner">
+          <h2 id="portal-preview-heading">Veja o que te espera no portal</h2>
+          <p>
+            Ao acessar o portal, você acompanha solicitações de agendamento em tempo real, confirma atendimentos com um clique e
+            visualiza o histórico completo dos serviços realizados.
+          </p>
+          <div class="portal-preview__grid">
+            <article class="portal-preview__card">
+              <h3>Solicitações</h3>
+              <p>Analise novos pedidos, confirme disponibilidade e personalize respostas para suas clientes.</p>
+            </article>
+            <article class="portal-preview__card">
+              <h3>Confirmados</h3>
+              <p>Gerencie horários, combine deslocamentos e mantenha tudo sincronizado com a sua agenda.</p>
+            </article>
+            <article class="portal-preview__card">
+              <h3>Histórico</h3>
+              <p>Revise atendimentos passados, acompanhe avaliações e planeje ações para fidelizar cada cliente.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
 
     <footer class="site-footer">
       <div class="footer-inner">
@@ -127,5 +166,383 @@
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
+
+    <script src="/assets/js/password-toggle.js"></script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        collection,
+        doc,
+        getDoc,
+        getDocs,
+        getFirestore,
+        limit,
+        query,
+        where,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        sendPasswordResetEmail,
+        signInWithEmailAndPassword,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.appspot.com",
+        messagingSenderId: "726392294571",
+        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+      };
+
+      const SESSION_KEY = "nailnowManicureSession";
+      const PROFILE_COLLECTIONS = ["profissionais"];
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+
+      const loginForm = document.getElementById("login-form");
+      const statusEl = document.getElementById("login-status");
+      const submitButton = loginForm.querySelector("button[type='submit']");
+      const resetButton = document.getElementById("reset-password");
+
+      const setStatus = (message, type = "") => {
+        statusEl.textContent = message;
+        statusEl.classList.remove("auth-status--error", "auth-status--success");
+        statusEl.hidden = !message;
+        if (type) {
+          statusEl.classList.add(`auth-status--${type}`);
+        }
+      };
+
+      const setLoading = (isLoading) => {
+        submitButton.disabled = isLoading;
+        submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
+      };
+
+      let redirectScheduled = false;
+      const redirectToPortal = () => {
+        if (redirectScheduled) {
+          return;
+        }
+        redirectScheduled = true;
+        setTimeout(() => {
+          window.location.href = "./portal.html";
+        }, 700);
+      };
+
+      const getStoredSession = () => {
+        try {
+          const raw = localStorage.getItem(SESSION_KEY);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.id) {
+            if (!parsed.collection) {
+              parsed.collection = PROFILE_COLLECTIONS[0];
+            }
+            return parsed;
+          }
+          return null;
+        } catch (error) {
+          console.warn("Não foi possível ler a sessão salva", error);
+          return null;
+        }
+      };
+
+      const resolveStatusValue = (data) => {
+        const fields = ["status", "situacao", "workflow.status", "approval.status"];
+        for (const field of fields) {
+          const value = getNestedValue(data, field);
+          if (typeof value === "string" && value.trim()) {
+            return value.trim();
+          }
+        }
+        return "";
+      };
+
+      const persistSession = (profile, user) => {
+        const payload = {
+          uid: user?.uid || profile.uid || "",
+          id: profile.id,
+          email: profile.email || profile.emailLowercase || user?.email || "",
+          nome: profile.nome || profile.name || user?.displayName || "",
+          collection: profile.collection || PROFILE_COLLECTIONS[0],
+          status: resolveStatusValue(profile) || "",
+          savedAt: Date.now(),
+        };
+        try {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+        } catch (error) {
+          console.warn("Não foi possível salvar a sessão", error);
+        }
+      };
+
+      const clearSession = () => {
+        try {
+          localStorage.removeItem(SESSION_KEY);
+        } catch (error) {
+          console.warn("Não foi possível limpar a sessão", error);
+        }
+      };
+
+      const buildLookupCandidates = (rawEmail) => {
+        const trimmed = (rawEmail ?? "").trim();
+        if (!trimmed) {
+          return [];
+        }
+
+        const lower = trimmed.toLowerCase();
+        const combinations = [
+          ["email", trimmed],
+          ["email", lower],
+          ["emailLowercase", lower],
+          ["contato.email", trimmed],
+          ["contato.email", lower],
+          ["contato.emailLowercase", lower],
+        ];
+
+        const seen = new Set();
+        return combinations.reduce((list, [field, value]) => {
+          if (!value) {
+            return list;
+          }
+          const key = `${field}|${value}`;
+          if (seen.has(key)) {
+            return list;
+          }
+          seen.add(key);
+          list.push({ field, value });
+          return list;
+        }, []);
+      };
+
+      const getNestedValue = (data, path) => {
+        return path.split(".").reduce((acc, key) => {
+          if (acc && Object.prototype.hasOwnProperty.call(acc, key)) {
+            return acc[key];
+          }
+          return undefined;
+        }, data);
+      };
+
+      const lookupProfilesByEmail = async (email) => {
+        const lookups = buildLookupCandidates(email);
+        const matches = [];
+        const seen = new Set();
+        let permissionDenied = false;
+
+        for (const { field, value } of lookups) {
+          for (const collectionName of PROFILE_COLLECTIONS) {
+            try {
+              const manicureQuery = query(collection(db, collectionName), where(field, "==", value), limit(1));
+              const snapshot = await getDocs(manicureQuery);
+              if (!snapshot.empty) {
+                const document = snapshot.docs[0];
+                const key = `${collectionName}|${document.id}`;
+                if (seen.has(key)) {
+                  continue;
+                }
+                seen.add(key);
+                matches.push({ id: document.id, data: document.data(), collection: collectionName });
+              }
+            } catch (error) {
+              if (error.code === "permission-denied") {
+                permissionDenied = true;
+              }
+              console.warn(`Falha ao buscar manicure pelo campo ${field} na coleção ${collectionName}`, error);
+            }
+          }
+        }
+
+        if (permissionDenied) {
+          const permError = new Error("firestore-permission-denied");
+          permError.code = "firestore-permission-denied";
+          throw permError;
+        }
+
+        return matches;
+      };
+
+      const fetchProfileByUid = async (uid) => {
+        if (!uid) {
+          return null;
+        }
+
+        for (const collectionName of PROFILE_COLLECTIONS) {
+          try {
+            const snapshot = await getDoc(doc(db, collectionName, uid));
+            if (snapshot.exists()) {
+              return { id: snapshot.id, collection: collectionName, ...snapshot.data() };
+            }
+          } catch (error) {
+            if (error.code === "permission-denied") {
+              const permError = new Error("firestore-permission-denied");
+              permError.code = "firestore-permission-denied";
+              permError.cause = error;
+              throw permError;
+            }
+            console.warn(`Falha ao buscar manicure pelo UID na coleção ${collectionName}`, error);
+          }
+        }
+
+        return null;
+      };
+
+      const resolveProfileForUser = async (user, emailHint = "") => {
+        if (!user) {
+          const missing = new Error("profile-not-found");
+          missing.code = "profile-not-found";
+          throw missing;
+        }
+
+        const byUid = await fetchProfileByUid(user.uid);
+        if (byUid) {
+          return byUid;
+        }
+
+        const emailCandidates = [emailHint, user.email].filter((value, index, array) => {
+          return value && array.findIndex((item) => item && item.toLowerCase() === value.toLowerCase()) === index;
+        });
+
+        for (const candidate of emailCandidates) {
+          if (!candidate) continue;
+          const matches = await lookupProfilesByEmail(candidate);
+          if (matches.length) {
+            const match = matches[0];
+            return { id: match.id, collection: match.collection, ...match.data };
+          }
+        }
+
+        const notFound = new Error("profile-not-found");
+        notFound.code = "profile-not-found";
+        throw notFound;
+      };
+
+      const handleAuthError = (error) => {
+        const code = error.code || error.message;
+        if (code === "auth/invalid-email") {
+          setStatus("O e-mail informado é inválido. Verifique e tente novamente.", "error");
+        } else if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+          setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
+        } else if (code === "auth/user-not-found" || code === "profile-not-found") {
+          setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+        } else if (code === "auth/user-disabled") {
+          setStatus("Este acesso foi desativado. Fale com o suporte NailNow.", "error");
+        } else if (code === "auth/too-many-requests") {
+          setStatus("Muitas tentativas de acesso. Aguarde alguns instantes e tente novamente.", "error");
+        } else if (code === "firestore-permission-denied" || code === "permission-denied") {
+          setStatus(
+            "Não foi possível acessar seus dados agora. Atualize a página ou fale com o suporte NailNow.",
+            "error",
+          );
+        } else if (code === "auth/admin-restricted-operation") {
+          setStatus(
+            "O acesso seguro ao portal está temporariamente indisponível. Avise o suporte NailNow para regularizar.",
+            "error",
+          );
+        } else {
+          console.error("Erro inesperado no login", error);
+          setStatus(
+            "Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.",
+            "error",
+          );
+        }
+      };
+
+      const authenticateWithEmail = async (email, password) => {
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        return credential.user;
+      };
+
+      const attemptPasswordReset = async (email) => {
+        try {
+          await sendPasswordResetEmail(auth, email);
+          setStatus("Enviamos um e-mail com as instruções para redefinir sua senha.", "success");
+        } catch (error) {
+          handleAuthError(error);
+        }
+      };
+
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = loginForm.email.value.trim();
+        const password = loginForm.password.value;
+
+        if (!email || !password) {
+          setStatus("Preencha e-mail e senha para continuar.", "error");
+          return;
+        }
+
+        setStatus("");
+        setLoading(true);
+
+        try {
+          const user = await authenticateWithEmail(email, password);
+          const profile = await resolveProfileForUser(user, email);
+          persistSession(profile, user);
+          setStatus("Login realizado com sucesso! Redirecionando para o portal...", "success");
+          loginForm.reset();
+          redirectToPortal();
+        } catch (error) {
+          handleAuthError(error);
+          try {
+            await signOut(auth);
+          } catch (signOutError) {
+            console.warn("Não foi possível encerrar a sessão após falha de login", signOutError);
+          }
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      resetButton.addEventListener("click", async () => {
+        const email = loginForm.email.value.trim();
+        if (!email) {
+          setStatus("Informe seu e-mail para receber as instruções de redefinição.", "error");
+          return;
+        }
+        setStatus("Enviando instruções para redefinir sua senha...");
+        await attemptPasswordReset(email);
+      });
+
+      const existingSession = getStoredSession();
+      if (existingSession?.email && !loginForm.email.value) {
+        loginForm.email.value = existingSession.email;
+      }
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          redirectScheduled = false;
+          submitButton.disabled = false;
+          if (!statusEl.textContent || statusEl.classList.contains("auth-status--success")) {
+            setStatus("");
+          }
+          return;
+        }
+
+        try {
+          const session = getStoredSession();
+          if (!session || session.uid !== user.uid) {
+            const profile = await resolveProfileForUser(user, session?.email || user.email || "");
+            persistSession(profile, user);
+          }
+          setStatus("Você já está conectada! Redirecionando para o portal...", "success");
+          submitButton.disabled = true;
+          redirectToPortal();
+        } catch (error) {
+          console.error("Falha ao restaurar sessão autenticada", error);
+          handleAuthError(error);
+          clearSession();
+          try {
+            await signOut(auth);
+          } catch (signOutError) {
+            console.warn("Não foi possível encerrar a sessão com erro", signOutError);
+          }
+        }
+      });
+    </script>
   </body>
 </html>
