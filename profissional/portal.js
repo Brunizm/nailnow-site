@@ -19,12 +19,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDvMxPKyw7M70fvj-YLwzudfIaquohkDIA",
+  apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
   authDomain: "nailnow-site.firebaseapp.com",
   projectId: "nailnow-site",
   storageBucket: "nailnow-site.appspot.com",
-  messagingSenderId: "145591976960",
-  appId: "1:145591976960:web:957f13cd9d61acdfda4dde",
+  messagingSenderId: "726392294571",
+  appId: "1:726392294571:web:a363a40231f7ac162e7bee",
 };
 
 const SESSION_KEY = "nailnowManicureSession";
