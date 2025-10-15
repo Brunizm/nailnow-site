@@ -21,7 +21,7 @@ const firebaseConfig = {
 };
 
 const SESSION_KEY = "nailnowManicureSession";
-const PROFILE_COLLECTIONS = ["manicures", "profissionais"];
+const PROFILE_COLLECTIONS = ["profissionais"];
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -329,6 +329,9 @@ const resolveStoredPassword = (data) => {
     if (typeof value === "string" && value.trim()) {
       return value.trim();
     }
+    if (typeof value === "number") {
+      return String(value);
+    }
   }
   return null;
 };
@@ -374,8 +377,11 @@ const clearSession = () => {
   }
 };
 
-const findManicureByEmail = async (email) => {
+const lookupManicuresByEmail = async (email) => {
   const lookups = buildLookupCandidates(email);
+  const matches = [];
+  const seen = new Set();
+
   for (const { field, value } of lookups) {
     for (const collectionName of PROFILE_COLLECTIONS) {
       try {
@@ -383,38 +389,67 @@ const findManicureByEmail = async (email) => {
         const snapshot = await getDocs(manicureQuery);
         if (!snapshot.empty) {
           const document = snapshot.docs[0];
-          return { id: document.id, data: document.data(), collection: collectionName };
+          const key = `${collectionName}|${document.id}`;
+          if (seen.has(key)) {
+            continue;
+          }
+          seen.add(key);
+          matches.push({ id: document.id, data: document.data(), collection: collectionName });
         }
       } catch (error) {
         console.warn(`Falha ao buscar manicure pelo campo ${field} na coleção ${collectionName}`, error);
       }
     }
   }
-  return null;
+
+  return matches;
+};
+
+const findManicureByEmail = async (email) => {
+  const matches = await lookupManicuresByEmail(email);
+  return matches.length ? matches[0] : null;
 };
 
 const authenticateManicure = async (email, password) => {
-  const record = await findManicureByEmail(email);
-  if (!record) {
+  const records = await lookupManicuresByEmail(email);
+  if (!records.length) {
     const notFound = new Error("manicure-not-found");
     notFound.code = "manicure-not-found";
     throw notFound;
   }
 
-  const storedPassword = resolveStoredPassword(record.data);
-  if (!storedPassword) {
-    const missing = new Error("missing-password");
-    missing.code = "missing-password";
-    throw missing;
+  let foundPassword = false;
+  let missingPassword = false;
+
+  for (const record of records) {
+    const storedPassword = resolveStoredPassword(record.data);
+    if (!storedPassword) {
+      missingPassword = true;
+      continue;
+    }
+
+    foundPassword = true;
+
+    if (storedPassword === password) {
+      return { id: record.id, collection: record.collection, ...record.data };
+    }
   }
 
-  if (storedPassword !== password) {
+  if (foundPassword) {
     const mismatch = new Error("wrong-password");
     mismatch.code = "wrong-password";
     throw mismatch;
   }
 
-  return { id: record.id, collection: record.collection, ...record.data };
+  if (missingPassword) {
+    const missing = new Error("missing-password");
+    missing.code = "missing-password";
+    throw missing;
+  }
+
+  const fallback = new Error("manicure-not-found");
+  fallback.code = "manicure-not-found";
+  throw fallback;
 };
 
 const fetchProfileById = async (id, preferredCollection) => {
