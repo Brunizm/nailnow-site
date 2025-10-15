@@ -10,6 +10,12 @@ import {
   query,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInAnonymously,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDvMxPKyw7M70fvj-YLwzudfIaquohkDIA",
@@ -25,6 +31,59 @@ const PROFILE_COLLECTIONS = ["profissionais"];
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+
+const firebaseAccessManager = (() => {
+  let authPromise = null;
+
+  const ensure = () => {
+    if (authPromise) {
+      return authPromise;
+    }
+
+    authPromise = new Promise((resolve, reject) => {
+      let resolved = false;
+      const unsubscribe = onAuthStateChanged(
+        auth,
+        (user) => {
+          if (user && !resolved) {
+            resolved = true;
+            unsubscribe();
+            resolve(user);
+          }
+        },
+        (error) => {
+          unsubscribe();
+          reject(error);
+        },
+      );
+
+      if (!auth.currentUser) {
+        signInAnonymously(auth).catch((error) => {
+          console.error("Falha ao autenticar anonimamente no Firebase", error);
+          unsubscribe();
+          const authError = new Error("anonymous-auth-failed");
+          authError.code = error.code || "anonymous-auth-failed";
+          reject(authError);
+        });
+      }
+    }).catch((error) => {
+      authPromise = null;
+      throw error;
+    });
+
+    return authPromise;
+  };
+
+  const reset = () => {
+    authPromise = null;
+  };
+
+  return { ensure, reset };
+})();
+
+const ensureFirebaseAccess = () => firebaseAccessManager.ensure();
+const resetFirebaseAccess = () => firebaseAccessManager.reset();
 
 const loginForm = document.getElementById("login-form");
 const statusEl = document.getElementById("login-status");
@@ -393,6 +452,7 @@ const lookupManicuresByEmail = async (email) => {
   const lookups = buildLookupCandidates(email);
   const matches = [];
   const seen = new Set();
+  let permissionDenied = false;
 
   for (const { field, value } of lookups) {
     for (const collectionName of PROFILE_COLLECTIONS) {
@@ -409,9 +469,18 @@ const lookupManicuresByEmail = async (email) => {
           matches.push({ id: document.id, data: document.data(), collection: collectionName });
         }
       } catch (error) {
+        if (error.code === "permission-denied") {
+          permissionDenied = true;
+        }
         console.warn(`Falha ao buscar manicure pelo campo ${field} na coleção ${collectionName}`, error);
       }
     }
+  }
+
+  if (permissionDenied) {
+    const permError = new Error("firestore-permission-denied");
+    permError.code = "firestore-permission-denied";
+    throw permError;
   }
 
   return matches;
@@ -423,6 +492,7 @@ const findManicureByEmail = async (email) => {
 };
 
 const authenticateManicure = async (email, password) => {
+  await ensureFirebaseAccess();
   const records = await lookupManicuresByEmail(email);
   if (!records.length) {
     const notFound = new Error("manicure-not-found");
@@ -479,6 +549,12 @@ const fetchProfileById = async (id, preferredCollection) => {
         return profile;
       }
     } catch (error) {
+      if (error.code === "permission-denied") {
+        const permError = new Error("firestore-permission-denied");
+        permError.code = "firestore-permission-denied";
+        permError.cause = error;
+        throw permError;
+      }
       console.warn(`Falha ao buscar manicure pelo ID na coleção ${collectionName}`, error);
     }
   }
@@ -603,6 +679,16 @@ const handleAuthError = (error) => {
     setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
   } else if (code === "missing-password") {
     setStatus("Seu cadastro está sem senha ativa. Fale com o suporte NailNow.", "error");
+  } else if (code === "firestore-permission-denied" || code === "permission-denied") {
+    setStatus(
+      "Não foi possível acessar seus dados agora. Atualize a página ou fale com o suporte NailNow.",
+      "error",
+    );
+  } else if (code === "auth/operation-not-allowed" || code === "anonymous-auth-failed") {
+    setStatus(
+      "O acesso seguro ao portal está temporariamente indisponível. Avise o suporte NailNow para regularizar.",
+      "error",
+    );
   } else {
     console.error("Erro inesperado no login", error);
     setStatus("Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.", "error");
@@ -612,13 +698,18 @@ const handleAuthError = (error) => {
 const loadDashboardForProfile = async (profile, emailForFallback = "") => {
   toggleView(true);
   try {
+    await ensureFirebaseAccess();
     await hydrateDashboard(profile, emailForFallback);
     if (!statusEl.classList.contains("auth-status--error")) {
       setStatus("Bem-vinda de volta!", "success");
     }
   } catch (error) {
     console.error("Não foi possível carregar o painel", error);
-    if (error.code === "permission-denied" || error.message === "permission-denied") {
+    if (
+      error.code === "permission-denied" ||
+      error.message === "permission-denied" ||
+      error.code === "firestore-permission-denied"
+    ) {
       setStatus(
         "Seu acesso foi confirmado, mas não conseguimos carregar as informações agora. Tente novamente em instantes.",
         "error",
@@ -643,6 +734,7 @@ loginForm.addEventListener("submit", async (event) => {
   setLoading(true);
 
   try {
+    await ensureFirebaseAccess();
     const profile = await authenticateManicure(email, password);
     persistSession(profile);
     loginForm.reset();
@@ -664,6 +756,17 @@ signOutButton.addEventListener("click", () => {
   toggleView(false);
   loginForm.reset();
   setStatus("Você saiu do portal com segurança.", "success");
+  if (auth.currentUser) {
+    signOut(auth)
+      .catch((error) => {
+        console.warn("Não foi possível encerrar a sessão anônima", error);
+      })
+      .finally(() => {
+        resetFirebaseAccess();
+      });
+  } else {
+    resetFirebaseAccess();
+  }
 });
 
 const bootstrap = async () => {
@@ -676,6 +779,7 @@ const bootstrap = async () => {
   toggleView(true);
 
   try {
+    await ensureFirebaseAccess();
     const profile = await fetchProfileFromSession(session);
     if (!profile) {
       throw new Error("session-expired");
@@ -689,7 +793,15 @@ const bootstrap = async () => {
     clearSession();
     resetDashboard();
     toggleView(false);
-    setStatus("Não encontramos sua sessão. Faça login novamente para continuar.", "error");
+    resetFirebaseAccess();
+    if (error.code === "firestore-permission-denied") {
+      setStatus(
+        "Seu acesso foi confirmado, mas não conseguimos carregar seus dados agora. Faça login novamente ou fale com o suporte.",
+        "error",
+      );
+    } else {
+      setStatus("Não encontramos sua sessão. Faça login novamente para continuar.", "error");
+    }
   }
 };
 

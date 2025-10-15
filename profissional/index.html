@@ -162,6 +162,11 @@
         query,
         where,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        signInAnonymously,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyDvMxPKyw7M70fvj-YLwzudfIaquohkDIA",
@@ -177,6 +182,49 @@
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
+      const auth = getAuth(app);
+
+      const ensureFirebaseAccess = (() => {
+        let authPromise = null;
+        return () => {
+          if (authPromise) {
+            return authPromise;
+          }
+
+          authPromise = new Promise((resolve, reject) => {
+            let resolved = false;
+            const unsubscribe = onAuthStateChanged(
+              auth,
+              (user) => {
+                if (user && !resolved) {
+                  resolved = true;
+                  unsubscribe();
+                  resolve(user);
+                }
+              },
+              (error) => {
+                unsubscribe();
+                reject(error);
+              },
+            );
+
+            if (!auth.currentUser) {
+              signInAnonymously(auth).catch((error) => {
+                console.error("Falha ao autenticar anonimamente no Firebase", error);
+                unsubscribe();
+                const authError = new Error("anonymous-auth-failed");
+                authError.code = error.code || "anonymous-auth-failed";
+                reject(authError);
+              });
+            }
+          }).catch((error) => {
+            authPromise = null;
+            throw error;
+          });
+
+          return authPromise;
+        };
+      })();
 
       const loginForm = document.getElementById("login-form");
       const statusEl = document.getElementById("login-status");
@@ -306,6 +354,7 @@
         const lookups = buildLookupCandidates(email);
         const matches = [];
         const seen = new Set();
+        let permissionDenied = false;
 
         for (const { field, value } of lookups) {
           for (const collectionName of PROFILE_COLLECTIONS) {
@@ -322,15 +371,25 @@
                 matches.push({ id: document.id, data: document.data(), collection: collectionName });
               }
             } catch (error) {
+              if (error.code === "permission-denied") {
+                permissionDenied = true;
+              }
               console.warn(`Falha ao buscar manicure pelo campo ${field} na coleção ${collectionName}`, error);
             }
           }
+        }
+
+        if (permissionDenied) {
+          const permError = new Error("firestore-permission-denied");
+          permError.code = "firestore-permission-denied";
+          throw permError;
         }
 
         return matches;
       };
 
       const authenticateManicure = async (email, password) => {
+        await ensureFirebaseAccess();
         const records = await lookupManicuresByEmail(email);
         if (!records.length) {
           const notFound = new Error("manicure-not-found");
@@ -381,6 +440,16 @@
           setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
         } else if (code === "missing-password") {
           setStatus("Seu cadastro está sem senha ativa. Fale com o suporte NailNow.", "error");
+        } else if (code === "firestore-permission-denied" || code === "permission-denied") {
+          setStatus(
+            "Não foi possível acessar seus dados agora. Atualize a página ou fale com o suporte NailNow.",
+            "error",
+          );
+        } else if (code === "auth/operation-not-allowed" || code === "anonymous-auth-failed") {
+          setStatus(
+            "O acesso seguro ao portal está temporariamente indisponível. Avise o suporte NailNow para regularizar.",
+            "error",
+          );
         } else {
           console.error("Erro inesperado no login", error);
           setStatus(
@@ -404,6 +473,7 @@
         setLoading(true);
 
         try {
+          await ensureFirebaseAccess();
           const profile = await authenticateManicure(email, password);
           persistSession(profile);
           setStatus("Login realizado com sucesso! Redirecionando para o portal...", "success");
@@ -425,9 +495,21 @@
 
       const existingSession = getStoredSession();
       if (existingSession) {
-        setStatus("Você já está conectada! Redirecionando para o portal...", "success");
-        submitButton.disabled = true;
-        redirectToPortal();
+        (async () => {
+          try {
+            await ensureFirebaseAccess();
+            setStatus("Você já está conectada! Redirecionando para o portal...", "success");
+            submitButton.disabled = true;
+            redirectToPortal();
+          } catch (error) {
+            console.error("Falha ao restaurar sessão salva", error);
+            localStorage.removeItem(SESSION_KEY);
+            setStatus(
+              "Não conseguimos validar sua sessão automática. Informe seus dados novamente para continuar.",
+              "error",
+            );
+          }
+        })();
       }
     </script>
   </body>
