@@ -24,14 +24,10 @@ Caso precise migrar cadastros antigos da coleção `manicures`:
 > Observação: enquanto apenas `profissionais` permanecer em `PROFILE_COLLECTIONS`, nenhuma remoção adicional é necessária no Firestore para evitar
 > duplicidade — basta manter o cadastro desejado ativo nessa coleção.
 
-## Aprovar novas profissionais
+## Atualizar o status das profissionais
 
-Os logins exibem uma mensagem de bloqueio sempre que o campo `status` da manicure estiver com valores como `pendente`, `aguardando` ou `em análise`.
-Para liberar o acesso ao portal:
+O campo `status` permanece disponível para indicar se uma profissional está aprovada, pendente ou inativa, mas **não** bloqueia mais o acesso ao portal.
+O login será concluído desde que o e-mail e a senha estejam corretos.
 
-1. Localize o documento da profissional na coleção `profissionais`.
-2. Edite o campo `status` e defina como `aprovado`, `confirmado` ou `ativo` (qualquer uma dessas grafias libera o acesso).
-3. Clique em **Publicar** para salvar a alteração.
-
-Assim que o status for atualizado, a manicure conseguirá entrar no portal com o mesmo e-mail e senha cadastrados. Caso prefira restringir o acesso,
-retorne o status para `pendente` — a interface exibirá a mensagem de aprovação pendente e impedirá o login até que seja liberado novamente.
+Ainda assim, recomendamos manter o status atualizado para organização interna e comunicação com a equipe de suporte. Se for necessário restringir o acesso de alguém,
+remova ou atualize manualmente a senha do cadastro em `profissionais` em vez de confiar apenas nesse campo.
