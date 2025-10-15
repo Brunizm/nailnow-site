@@ -8,6 +8,7 @@ import {
   getFirestore,
   limit,
   query,
+  updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -45,6 +46,16 @@ const badgePast = document.getElementById("badge-past");
 const pendingList = document.getElementById("pending-list");
 const confirmedList = document.getElementById("confirmed-list");
 const pastList = document.getElementById("past-list");
+const profileCard = document.querySelector(".profile-card");
+const profileEditToggle = document.getElementById("edit-profile");
+const profileForm = document.getElementById("profile-form");
+const profileNameInput = document.getElementById("profile-name-input");
+const profilePhoneInput = document.getElementById("profile-phone-input");
+const profileAddressInput = document.getElementById("profile-address-input");
+const profileCancelButton = document.getElementById("cancel-profile");
+
+let currentProfile = null;
+let fallbackProfileEmail = "";
 
 const defaultAppointmentData = {
   pending: [
@@ -91,6 +102,52 @@ const appointmentCollections = {
   past: "historico",
 };
 
+const setProfileFormDisabled = (disabled) => {
+  if (!profileForm) {
+    return;
+  }
+  const controls = profileForm.querySelectorAll("input, textarea, button");
+  controls.forEach((control) => {
+    control.disabled = disabled;
+  });
+};
+
+const setProfileFormValues = (profile = {}) => {
+  if (!profileForm) {
+    return;
+  }
+  if (profileNameInput) {
+    profileNameInput.value = profile.nome || profile.name || "";
+  }
+  if (profilePhoneInput) {
+    profilePhoneInput.value = profile.telefone || profile.celular || profile.phone || "";
+  }
+  if (profileAddressInput) {
+    profileAddressInput.value =
+      profile.endereco || profile.address || profile.endereco_formatado || "";
+  }
+};
+
+const toggleProfileEditing = (editing) => {
+  if (!profileForm) {
+    return;
+  }
+
+  profileForm.hidden = !editing;
+  if (!editing) {
+    setProfileFormDisabled(false);
+  }
+
+  if (profileEditToggle) {
+    profileEditToggle.hidden = editing;
+    profileEditToggle.setAttribute("aria-expanded", editing ? "true" : "false");
+  }
+
+  if (profileCard) {
+    profileCard.classList.toggle("profile-card--editing", editing);
+  }
+};
+
 const setStatus = (message, type = "") => {
   if (!statusEl) {
     return;
@@ -108,6 +165,36 @@ const resetDashboard = () => {
   confirmedList.innerHTML = "";
   pastList.innerHTML = "";
   updateMetrics([], [], []);
+  currentProfile = null;
+  fallbackProfileEmail = "";
+  setProfileFormDisabled(false);
+  if (profileForm) {
+    profileForm.reset();
+    profileForm.hidden = true;
+  }
+  if (profileEditToggle) {
+    profileEditToggle.hidden = false;
+    profileEditToggle.setAttribute("aria-expanded", "false");
+  }
+  if (profileCard) {
+    profileCard.classList.remove("profile-card--editing");
+  }
+  if (profileNameInput) {
+    profileNameInput.value = "";
+  }
+  if (profilePhoneInput) {
+    profilePhoneInput.value = "";
+  }
+  if (profileAddressInput) {
+    profileAddressInput.value = "";
+  }
+  profileNameElements.forEach((element) => {
+    element.textContent = "cliente";
+  });
+  profileDisplay.textContent = "—";
+  profileEmail.textContent = "—";
+  profilePhone.textContent = "—";
+  profileAddress.textContent = "—";
 };
 
 const formatCurrency = (value) => {
@@ -462,20 +549,47 @@ const fetchAppointments = async (status, profileId, profileCollection) => {
   }
 };
 
-const hydrateDashboard = async (profile, fallbackEmail = "") => {
-  const displayName = profile.nome || profile.name || fallbackEmail || "cliente";
+const updateProfileDisplay = (profile, fallbackEmail = "") => {
+  if (!profile) {
+    return;
+  }
+
+  const emailForDisplay =
+    profile.email || profile.emailLowercase || fallbackEmail || fallbackProfileEmail || "";
+  const displayName = profile.nome || profile.name || emailForDisplay || "cliente";
+  const phoneForDisplay = profile.telefone || profile.celular || profile.phone || "";
+  const addressForDisplay = profile.endereco || profile.address || profile.endereco_formatado || "";
+
   profileNameElements.forEach((element) => {
     element.textContent = displayName;
   });
   profileDisplay.textContent = displayName;
-  profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
-  profilePhone.textContent = profile.telefone || profile.celular || profile.phone || "Atualize seu telefone";
-  profileAddress.textContent =
-    profile.endereco || profile.address || profile.endereco_formatado || "Atualize seu endereço preferido";
+  profileEmail.textContent = emailForDisplay || "—";
+  profilePhone.textContent = phoneForDisplay || "Atualize seu telefone";
+  profileAddress.textContent = addressForDisplay || "Atualize seu endereço preferido";
+
+  setProfileFormValues(profile);
+};
+
+const hydrateDashboard = async (profile, fallbackEmail = "") => {
+  fallbackProfileEmail =
+    fallbackEmail || profile.email || profile.emailLowercase || fallbackProfileEmail || "";
+  currentProfile = {
+    ...profile,
+    collection: profile.collection || PROFILE_COLLECTIONS[0],
+  };
+  if (!currentProfile.email && fallbackProfileEmail) {
+    currentProfile.email = fallbackProfileEmail;
+  }
+
+  updateProfileDisplay(currentProfile, fallbackEmail);
+  toggleProfileEditing(false);
 
   const keys = ["pending", "confirmed", "past"];
-  const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
-  const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id, profileCollection)));
+  const profileCollection = currentProfile.collection || PROFILE_COLLECTIONS[0];
+  const results = await Promise.allSettled(
+    keys.map((key) => fetchAppointments(key, currentProfile.id, profileCollection)),
+  );
 
   let permissionIssue = false;
   const usedFallback = {};
@@ -514,6 +628,80 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
 
   return { permissionIssue };
 };
+
+profileEditToggle?.addEventListener("click", () => {
+  if (!currentProfile) {
+    setStatus("Carregando seus dados. Tente novamente em instantes.");
+    return;
+  }
+  setProfileFormValues(currentProfile);
+  toggleProfileEditing(true);
+  requestAnimationFrame(() => {
+    profileNameInput?.focus();
+  });
+});
+
+profileCancelButton?.addEventListener("click", () => {
+  setProfileFormValues(currentProfile || {});
+  toggleProfileEditing(false);
+  profileEditToggle?.focus();
+});
+
+profileForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!currentProfile || !currentProfile.id) {
+    setStatus("Não encontramos seu cadastro para atualizar agora.", "error");
+    return;
+  }
+
+  const nome = (profileNameInput?.value || "").trim();
+  const telefone = (profilePhoneInput?.value || "").trim();
+  const endereco = (profileAddressInput?.value || "").trim();
+
+  if (!nome) {
+    setStatus("Informe seu nome para atualizar o cadastro.", "error");
+    profileNameInput?.focus();
+    return;
+  }
+
+  const profileCollection = currentProfile.collection || PROFILE_COLLECTIONS[0];
+  const docRef = doc(db, profileCollection, currentProfile.id);
+
+  setStatus("Salvando seus dados...");
+  setProfileFormDisabled(true);
+
+  try {
+    const updates = {
+      nome,
+      name: nome,
+      telefone,
+      celular: telefone,
+      phone: telefone,
+      endereco,
+      address: endereco,
+      endereco_formatado: endereco,
+    };
+
+    await updateDoc(docRef, updates);
+
+    Object.assign(currentProfile, updates);
+    updateProfileDisplay(currentProfile);
+    persistSession(currentProfile, auth.currentUser);
+
+    setStatus("Dados atualizados com sucesso!", "success");
+    toggleProfileEditing(false);
+    profileEditToggle?.focus();
+  } catch (error) {
+    console.error("Não foi possível atualizar os dados do perfil", error);
+    if (error.code === "permission-denied") {
+      setStatus("Não temos permissão para atualizar seus dados agora. Fale com o suporte NailNow.", "error");
+    } else {
+      setStatus("Não foi possível salvar suas alterações agora. Tente novamente em instantes.", "error");
+    }
+  } finally {
+    setProfileFormDisabled(false);
+  }
+});
 
 const handleAuthError = (error) => {
   const code = error.code || error.message;
