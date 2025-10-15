@@ -52,7 +52,7 @@
           const endereco = form.endereco_text.value.trim();
           const complemento = form.complemento.value.trim();
           const preferencias = Array.from(form.querySelectorAll('input[name="preferencias"]:checked')).map((el) => el.value);
-          const newsletter = form.newsletter.checked;
+          const newsletter = false;
           const aceiteTermos = form.aceiteTermos.checked;
 
           const endereco_formatado = form.endereco_formatado.value || "";
@@ -107,7 +107,6 @@
           feedback.style.color = "#2e7d32";
           form.reset();
           form.querySelector("[name='aceiteTermos']").checked = false;
-          form.querySelector("[name='newsletter']").checked = true;
         } catch (error) {
           console.error(error);
           feedback.textContent = `❌ Erro: ${error.code || "erro-desconhecido"}`;
@@ -274,11 +273,6 @@
                   <label><input type="checkbox" name="preferencias" value="Alongamento" /> Alongamento</label>
                 </div>
               </div>
-
-              <label class="signup-checkbox">
-                <input type="checkbox" name="newsletter" checked />
-                Quero receber novidades, combos e cupons exclusivos por e-mail ou WhatsApp.
-              </label>
 
               <label class="signup-checkbox signup-checkbox--terms">
                 <input type="checkbox" name="aceiteTermos" required />
