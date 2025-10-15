@@ -336,6 +336,53 @@ const resolveStoredPassword = (data) => {
   return null;
 };
 
+const resolveStatusValue = (data) => {
+  const fields = ["status", "situacao", "workflow.status", "approval.status"];
+  for (const field of fields) {
+    const value = getNestedValue(data, field);
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+};
+
+const normalizeStatus = (status) => (status || "").trim().toLowerCase();
+
+const isBlockedStatus = (status) => {
+  const normalized = normalizeStatus(status);
+  if (!normalized) return false;
+  const blockedValues = [
+    "pendente",
+    "pendente de aprovação",
+    "aguardando",
+    "aguardando aprovação",
+    "em análise",
+    "em analise",
+    "bloqueado",
+    "inativo",
+    "desativado",
+  ];
+  return blockedValues.includes(normalized);
+};
+
+const formatStatusLabel = (status) => {
+  const trimmed = (status || "").trim();
+  if (!trimmed) return "pendente";
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+};
+
+const assertApprovedStatus = (profile) => {
+  const statusValue = resolveStatusValue(profile);
+  if (isBlockedStatus(statusValue)) {
+    const statusError = new Error("status-not-approved");
+    statusError.code = "status-not-approved";
+    statusError.status = statusValue;
+    throw statusError;
+  }
+  return statusValue;
+};
+
 const getStoredSession = () => {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
@@ -360,6 +407,7 @@ const persistSession = (profile) => {
     email: profile.email || profile.emailLowercase || "",
     nome: profile.nome || profile.name || "",
     collection: profile.collection || PROFILE_COLLECTIONS[0],
+    status: resolveStatusValue(profile) || "",
     savedAt: Date.now(),
   };
   try {
@@ -420,8 +468,15 @@ const authenticateManicure = async (email, password) => {
 
   let foundPassword = false;
   let missingPassword = false;
+  let blockedStatus = null;
 
   for (const record of records) {
+    const statusValue = resolveStatusValue(record.data);
+    if (isBlockedStatus(statusValue)) {
+      blockedStatus = statusValue || blockedStatus;
+      continue;
+    }
+
     const storedPassword = resolveStoredPassword(record.data);
     if (!storedPassword) {
       missingPassword = true;
@@ -431,8 +486,15 @@ const authenticateManicure = async (email, password) => {
     foundPassword = true;
 
     if (storedPassword === password) {
-      return { id: record.id, collection: record.collection, ...record.data };
+      return { id: record.id, collection: record.collection, ...record.data, status: statusValue };
     }
+  }
+
+  if (blockedStatus) {
+    const statusError = new Error("status-not-approved");
+    statusError.code = "status-not-approved";
+    statusError.status = blockedStatus;
+    throw statusError;
   }
 
   if (foundPassword) {
@@ -462,7 +524,9 @@ const fetchProfileById = async (id, preferredCollection) => {
     try {
       const snapshot = await getDoc(doc(db, collectionName, id));
       if (snapshot.exists()) {
-        return { id: snapshot.id, collection: collectionName, ...snapshot.data() };
+        const profile = { id: snapshot.id, collection: collectionName, ...snapshot.data() };
+        assertApprovedStatus(profile);
+        return profile;
       }
     } catch (error) {
       console.warn(`Falha ao buscar manicure pelo ID na coleção ${collectionName}`, error);
@@ -481,7 +545,9 @@ const fetchProfileFromSession = async (session) => {
   if (session.email) {
     const record = await findManicureByEmail(session.email);
     if (record) {
-      return { id: record.id, collection: record.collection, ...record.data };
+      const profile = { id: record.id, collection: record.collection, ...record.data };
+      assertApprovedStatus(profile);
+      return profile;
     }
   }
   return null;
@@ -589,6 +655,12 @@ const handleAuthError = (error) => {
     setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
   } else if (code === "missing-password") {
     setStatus("Seu cadastro está sem senha ativa. Fale com o suporte NailNow.", "error");
+  } else if (code === "status-not-approved") {
+    const label = formatStatusLabel(error.status);
+    setStatus(
+      `Seu cadastro ainda está com status "${label}". Confirme a profissional no Firestore para liberar o acesso.`,
+      "error",
+    );
   } else {
     console.error("Erro inesperado no login", error);
     setStatus("Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.", "error");
@@ -598,6 +670,7 @@ const handleAuthError = (error) => {
 const loadDashboardForProfile = async (profile, emailForFallback = "") => {
   toggleView(true);
   try {
+    assertApprovedStatus(profile);
     await hydrateDashboard(profile, emailForFallback);
     if (!statusEl.classList.contains("auth-status--error")) {
       setStatus("Bem-vinda de volta!", "success");
@@ -666,6 +739,7 @@ const bootstrap = async () => {
     if (!profile) {
       throw new Error("session-expired");
     }
+    assertApprovedStatus(profile);
     await hydrateDashboard(profile, session.email || "");
     if (!statusEl.classList.contains("auth-status--error")) {
       setStatus("Sessão restaurada com sucesso!", "success");
@@ -675,7 +749,15 @@ const bootstrap = async () => {
     clearSession();
     resetDashboard();
     toggleView(false);
-    setStatus("Não encontramos sua sessão. Faça login novamente para continuar.", "error");
+    if (error.code === "status-not-approved") {
+      const label = formatStatusLabel(error.status);
+      setStatus(
+        `Seu cadastro ainda está com status "${label}". Confirme a profissional no Firestore para liberar o acesso.`,
+        "error",
+      );
+    } else {
+      setStatus("Não encontramos sua sessão. Faça login novamente para continuar.", "error");
+    }
   }
 };
 

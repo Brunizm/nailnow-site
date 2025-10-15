@@ -221,12 +221,49 @@
         }
       };
 
+      const resolveStatusValue = (data) => {
+        const fields = ["status", "situacao", "workflow.status", "approval.status"];
+        for (const field of fields) {
+          const value = getNestedValue(data, field);
+          if (typeof value === "string" && value.trim()) {
+            return value.trim();
+          }
+        }
+        return "";
+      };
+
+      const normalizeStatus = (status) => (status || "").trim().toLowerCase();
+
+      const isBlockedStatus = (status) => {
+        const normalized = normalizeStatus(status);
+        if (!normalized) return false;
+        const blockedValues = [
+          "pendente",
+          "pendente de aprovação",
+          "aguardando",
+          "aguardando aprovação",
+          "em análise",
+          "em analise",
+          "bloqueado",
+          "inativo",
+          "desativado",
+        ];
+        return blockedValues.includes(normalized);
+      };
+
+      const formatStatusLabel = (status) => {
+        const trimmed = (status || "").trim();
+        if (!trimmed) return "pendente";
+        return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+      };
+
       const persistSession = (profile) => {
         const payload = {
           id: profile.id,
           email: profile.email || "",
           nome: profile.nome || profile.name || "",
           collection: profile.collection || PROFILE_COLLECTIONS[0],
+          status: resolveStatusValue(profile) || "",
           savedAt: Date.now(),
         };
         try {
@@ -328,8 +365,15 @@
 
         let foundPassword = false;
         let missingPassword = false;
+        let blockedStatus = null;
 
         for (const record of records) {
+          const statusValue = resolveStatusValue(record.data);
+          if (isBlockedStatus(statusValue)) {
+            blockedStatus = statusValue || blockedStatus;
+            continue;
+          }
+
           const storedPassword = resolveStoredPassword(record.data);
           if (!storedPassword) {
             missingPassword = true;
@@ -341,6 +385,13 @@
           if (storedPassword === password) {
             return { id: record.id, collection: record.collection, ...record.data };
           }
+        }
+
+        if (blockedStatus) {
+          const statusError = new Error("status-not-approved");
+          statusError.code = "status-not-approved";
+          statusError.status = blockedStatus;
+          throw statusError;
         }
 
         if (foundPassword) {
@@ -368,6 +419,12 @@
           setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
         } else if (code === "missing-password") {
           setStatus("Seu cadastro está sem senha ativa. Fale com o suporte NailNow.", "error");
+        } else if (code === "status-not-approved") {
+          const label = formatStatusLabel(error.status);
+          setStatus(
+            `Seu cadastro ainda está com status "${label}". Confirme a profissional no Firestore para liberar o acesso.`,
+            "error",
+          );
         } else {
           console.error("Erro inesperado no login", error);
           setStatus(
