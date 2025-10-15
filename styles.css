@@ -194,6 +194,49 @@ main {
   box-shadow: 0 0 0 4px rgba(244, 92, 162, 0.12);
 }
 
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  flex: 1;
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.password-toggle svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: currentColor;
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--pink-primary);
+  outline-offset: 2px;
+}
+
+.password-toggle--visible {
+  color: var(--pink-primary);
+}
+
 .auth-form__submit {
   display: inline-flex;
   align-items: center;
@@ -1199,6 +1242,11 @@ main {
   font-family: "Inter", sans-serif;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   color: var(--text-main);
+}
+
+.signup-field .password-input-wrapper input,
+.signup-row .password-input-wrapper input {
+  padding-right: 3rem;
 }
 
 .signup-field textarea {
