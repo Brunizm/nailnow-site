@@ -2,6 +2,7 @@
   --pink-primary: #f45ca2;
   --pink-secondary: #ffe4f2;
   --pink-accent: #ff70ba;
+  --pink-dark: #d81b60;
   --border-soft: #f7c7df;
   --border-strong: #e5a8c7;
   --text-main: #121212;
@@ -301,6 +302,36 @@ main {
 .auth-link-button:hover,
 .auth-link-button:focus-visible {
   text-decoration: underline;
+}
+
+.auth-link-button--primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2.5rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--pink-primary), var(--pink-dark));
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  box-shadow: 0 12px 24px rgba(233, 30, 99, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.auth-link-button--primary:hover,
+.auth-link-button--primary:focus-visible {
+  text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(233, 30, 99, 0.3);
+  filter: brightness(1.05);
+}
+
+.auth-link-button--primary:active {
+  transform: translateY(0);
+  box-shadow: 0 10px 20px rgba(233, 30, 99, 0.22);
 }
 
 .auth-secondary-link {
