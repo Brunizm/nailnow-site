@@ -21,6 +21,7 @@ const firebaseConfig = {
 };
 
 const SESSION_KEY = "nailnowManicureSession";
+const PROFILE_COLLECTIONS = ["manicures", "profissionais"];
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -337,7 +338,13 @@ const getStoredSession = () => {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed && parsed.id ? parsed : null;
+    if (parsed && parsed.id) {
+      if (!parsed.collection) {
+        parsed.collection = PROFILE_COLLECTIONS[0];
+      }
+      return parsed;
+    }
+    return null;
   } catch (error) {
     console.warn("Não foi possível ler a sessão salva", error);
     return null;
@@ -349,6 +356,7 @@ const persistSession = (profile) => {
     id: profile.id,
     email: profile.email || profile.emailLowercase || "",
     nome: profile.nome || profile.name || "",
+    collection: profile.collection || PROFILE_COLLECTIONS[0],
     savedAt: Date.now(),
   };
   try {
@@ -369,15 +377,17 @@ const clearSession = () => {
 const findManicureByEmail = async (email) => {
   const lookups = buildLookupCandidates(email);
   for (const { field, value } of lookups) {
-    try {
-      const manicureQuery = query(collection(db, "manicures"), where(field, "==", value), limit(1));
-      const snapshot = await getDocs(manicureQuery);
-      if (!snapshot.empty) {
-        const document = snapshot.docs[0];
-        return { id: document.id, data: document.data() };
+    for (const collectionName of PROFILE_COLLECTIONS) {
+      try {
+        const manicureQuery = query(collection(db, collectionName), where(field, "==", value), limit(1));
+        const snapshot = await getDocs(manicureQuery);
+        if (!snapshot.empty) {
+          const document = snapshot.docs[0];
+          return { id: document.id, data: document.data(), collection: collectionName };
+        }
+      } catch (error) {
+        console.warn(`Falha ao buscar manicure pelo campo ${field} na coleção ${collectionName}`, error);
       }
-    } catch (error) {
-      console.warn(`Falha ao buscar manicure pelo campo ${field}`, error);
     }
   }
   return null;
@@ -404,49 +414,56 @@ const authenticateManicure = async (email, password) => {
     throw mismatch;
   }
 
-  return { id: record.id, ...record.data };
+  return { id: record.id, collection: record.collection, ...record.data };
 };
 
-const fetchProfileById = async (id) => {
+const fetchProfileById = async (id, preferredCollection) => {
   if (!id) return null;
-  try {
-    const snapshot = await getDoc(doc(db, "manicures", id));
-    if (snapshot.exists()) {
-      return { id: snapshot.id, ...snapshot.data() };
+  const collections = preferredCollection
+    ? [preferredCollection, ...PROFILE_COLLECTIONS.filter((name) => name !== preferredCollection)]
+    : PROFILE_COLLECTIONS;
+
+  for (const collectionName of collections) {
+    try {
+      const snapshot = await getDoc(doc(db, collectionName, id));
+      if (snapshot.exists()) {
+        return { id: snapshot.id, collection: collectionName, ...snapshot.data() };
+      }
+    } catch (error) {
+      console.warn(`Falha ao buscar manicure pelo ID na coleção ${collectionName}`, error);
     }
-  } catch (error) {
-    console.warn("Falha ao buscar manicure pelo ID", error);
   }
+
   return null;
 };
 
 const fetchProfileFromSession = async (session) => {
   if (!session) return null;
-  const byId = await fetchProfileById(session.id);
+  const byId = await fetchProfileById(session.id, session.collection);
   if (byId) {
     return byId;
   }
   if (session.email) {
     const record = await findManicureByEmail(session.email);
     if (record) {
-      return { id: record.id, ...record.data };
+      return { id: record.id, collection: record.collection, ...record.data };
     }
   }
   return null;
 };
 
-const fetchAppointments = async (status, profileId) => {
-  if (!profileId) {
+const fetchAppointments = async (status, profileId, profileCollection) => {
+  if (!profileId || !profileCollection) {
     return [];
   }
 
   try {
-    const parentRef = doc(db, "manicures", profileId);
-    const collectionName = appointmentCollections[status];
-    if (!collectionName) {
+    const parentRef = doc(db, profileCollection, profileId);
+    const appointmentsCollection = appointmentCollections[status];
+    if (!appointmentsCollection) {
       return [];
     }
-    const appointmentsRef = collection(parentRef, collectionName);
+    const appointmentsRef = collection(parentRef, appointmentsCollection);
     const snapshot = await getDocs(appointmentsRef);
     if (snapshot.empty) {
       return [];
@@ -479,7 +496,10 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
     profile.atendimento || profile.area || profile.cidade || "São Paulo e região metropolitana";
 
   const keys = ["pending", "confirmed", "past"];
-  const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id)));
+  const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
+  const results = await Promise.allSettled(
+    keys.map((key) => fetchAppointments(key, profile.id, profileCollection)),
+  );
 
   let permissionIssue = false;
   const usedFallback = {};

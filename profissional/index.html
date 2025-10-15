@@ -173,6 +173,7 @@
       };
 
       const SESSION_KEY = "nailnowManicureSession";
+      const PROFILE_COLLECTIONS = ["manicures", "profissionais"];
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
@@ -207,7 +208,13 @@
           const raw = localStorage.getItem(SESSION_KEY);
           if (!raw) return null;
           const parsed = JSON.parse(raw);
-          return parsed && parsed.id ? parsed : null;
+          if (parsed && parsed.id) {
+            if (!parsed.collection) {
+              parsed.collection = PROFILE_COLLECTIONS[0];
+            }
+            return parsed;
+          }
+          return null;
         } catch (error) {
           console.warn("Não foi possível ler a sessão salva", error);
           return null;
@@ -219,6 +226,7 @@
           id: profile.id,
           email: profile.email || "",
           nome: profile.nome || profile.name || "",
+          collection: profile.collection || PROFILE_COLLECTIONS[0],
           savedAt: Date.now(),
         };
         try {
@@ -282,15 +290,17 @@
       const findManicureByEmail = async (email) => {
         const lookups = buildLookupCandidates(email);
         for (const { field, value } of lookups) {
-          try {
-            const manicureQuery = query(collection(db, "manicures"), where(field, "==", value), limit(1));
-            const snapshot = await getDocs(manicureQuery);
-            if (!snapshot.empty) {
-              const document = snapshot.docs[0];
-              return { id: document.id, data: document.data() };
+          for (const collectionName of PROFILE_COLLECTIONS) {
+            try {
+              const manicureQuery = query(collection(db, collectionName), where(field, "==", value), limit(1));
+              const snapshot = await getDocs(manicureQuery);
+              if (!snapshot.empty) {
+                const document = snapshot.docs[0];
+                return { id: document.id, data: document.data(), collection: collectionName };
+              }
+            } catch (error) {
+              console.warn(`Falha ao buscar manicure pelo campo ${field} na coleção ${collectionName}`, error);
             }
-          } catch (error) {
-            console.warn(`Falha ao buscar manicure pelo campo ${field}`, error);
           }
         }
         return null;
@@ -317,7 +327,7 @@
           throw mismatch;
         }
 
-        return { id: record.id, ...record.data };
+        return { id: record.id, collection: record.collection, ...record.data };
       };
 
       const handleAuthError = (error) => {
