@@ -156,6 +156,8 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import {
         collection,
+        doc,
+        getDoc,
         getDocs,
         getFirestore,
         limit,
@@ -165,7 +167,9 @@
       import {
         getAuth,
         onAuthStateChanged,
-        signInAnonymously,
+        sendPasswordResetEmail,
+        signInWithEmailAndPassword,
+        signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
       const firebaseConfig = {
@@ -183,48 +187,6 @@
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
-
-      const ensureFirebaseAccess = (() => {
-        let authPromise = null;
-        return () => {
-          if (authPromise) {
-            return authPromise;
-          }
-
-          authPromise = new Promise((resolve, reject) => {
-            let resolved = false;
-            const unsubscribe = onAuthStateChanged(
-              auth,
-              (user) => {
-                if (user && !resolved) {
-                  resolved = true;
-                  unsubscribe();
-                  resolve(user);
-                }
-              },
-              (error) => {
-                unsubscribe();
-                reject(error);
-              },
-            );
-
-            if (!auth.currentUser) {
-              signInAnonymously(auth).catch((error) => {
-                console.error("Falha ao autenticar anonimamente no Firebase", error);
-                unsubscribe();
-                const authError = new Error("anonymous-auth-failed");
-                authError.code = error.code || "anonymous-auth-failed";
-                reject(authError);
-              });
-            }
-          }).catch((error) => {
-            authPromise = null;
-            throw error;
-          });
-
-          return authPromise;
-        };
-      })();
 
       const loginForm = document.getElementById("login-form");
       const statusEl = document.getElementById("login-status");
@@ -245,10 +207,15 @@
         submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
       };
 
+      let redirectScheduled = false;
       const redirectToPortal = () => {
+        if (redirectScheduled) {
+          return;
+        }
+        redirectScheduled = true;
         setTimeout(() => {
           window.location.href = "./portal.html";
-        }, 800);
+        }, 700);
       };
 
       const getStoredSession = () => {
@@ -280,11 +247,12 @@
         return "";
       };
 
-      const persistSession = (profile) => {
+      const persistSession = (profile, user) => {
         const payload = {
+          uid: user?.uid || profile.uid || "",
           id: profile.id,
-          email: profile.email || "",
-          nome: profile.nome || profile.name || "",
+          email: profile.email || profile.emailLowercase || user?.email || "",
+          nome: profile.nome || profile.name || user?.displayName || "",
           collection: profile.collection || PROFILE_COLLECTIONS[0],
           status: resolveStatusValue(profile) || "",
           savedAt: Date.now(),
@@ -293,6 +261,14 @@
           localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
         } catch (error) {
           console.warn("Não foi possível salvar a sessão", error);
+        }
+      };
+
+      const clearSession = () => {
+        try {
+          localStorage.removeItem(SESSION_KEY);
+        } catch (error) {
+          console.warn("Não foi possível limpar a sessão", error);
         }
       };
 
@@ -336,21 +312,7 @@
         }, data);
       };
 
-      const resolveStoredPassword = (data) => {
-        const candidates = ["senha", "password", "senhaPortal", "credenciais.senha"];
-        for (const field of candidates) {
-          const value = getNestedValue(data, field);
-          if (typeof value === "string" && value.trim()) {
-            return value.trim();
-          }
-          if (typeof value === "number") {
-            return String(value);
-          }
-        }
-        return null;
-      };
-
-      const lookupManicuresByEmail = async (email) => {
+      const lookupProfilesByEmail = async (email) => {
         const lookups = buildLookupCandidates(email);
         const matches = [];
         const seen = new Set();
@@ -388,64 +350,79 @@
         return matches;
       };
 
-      const authenticateManicure = async (email, password) => {
-        await ensureFirebaseAccess();
-        const records = await lookupManicuresByEmail(email);
-        if (!records.length) {
-          const notFound = new Error("manicure-not-found");
-          notFound.code = "manicure-not-found";
-          throw notFound;
+      const fetchProfileByUid = async (uid) => {
+        if (!uid) {
+          return null;
         }
 
-        let foundPassword = false;
-        let missingPassword = false;
-
-        for (const record of records) {
-          const statusValue = resolveStatusValue(record.data);
-          const storedPassword = resolveStoredPassword(record.data);
-          if (!storedPassword) {
-            missingPassword = true;
-            continue;
-          }
-
-          foundPassword = true;
-
-          if (storedPassword === password) {
-            return { id: record.id, collection: record.collection, ...record.data, status: statusValue };
+        for (const collectionName of PROFILE_COLLECTIONS) {
+          try {
+            const snapshot = await getDoc(doc(db, collectionName, uid));
+            if (snapshot.exists()) {
+              return { id: snapshot.id, collection: collectionName, ...snapshot.data() };
+            }
+          } catch (error) {
+            if (error.code === "permission-denied") {
+              const permError = new Error("firestore-permission-denied");
+              permError.code = "firestore-permission-denied";
+              permError.cause = error;
+              throw permError;
+            }
+            console.warn(`Falha ao buscar manicure pelo UID na coleção ${collectionName}`, error);
           }
         }
 
-        if (foundPassword) {
-          const mismatch = new Error("wrong-password");
-          mismatch.code = "wrong-password";
-          throw mismatch;
-        }
+        return null;
+      };
 
-        if (missingPassword) {
-          const missing = new Error("missing-password");
-          missing.code = "missing-password";
+      const resolveProfileForUser = async (user, emailHint = "") => {
+        if (!user) {
+          const missing = new Error("profile-not-found");
+          missing.code = "profile-not-found";
           throw missing;
         }
 
-        const fallback = new Error("manicure-not-found");
-        fallback.code = "manicure-not-found";
-        throw fallback;
+        const byUid = await fetchProfileByUid(user.uid);
+        if (byUid) {
+          return byUid;
+        }
+
+        const emailCandidates = [emailHint, user.email].filter((value, index, array) => {
+          return value && array.findIndex((item) => item && item.toLowerCase() === value.toLowerCase()) === index;
+        });
+
+        for (const candidate of emailCandidates) {
+          if (!candidate) continue;
+          const matches = await lookupProfilesByEmail(candidate);
+          if (matches.length) {
+            const match = matches[0];
+            return { id: match.id, collection: match.collection, ...match.data };
+          }
+        }
+
+        const notFound = new Error("profile-not-found");
+        notFound.code = "profile-not-found";
+        throw notFound;
       };
 
       const handleAuthError = (error) => {
         const code = error.code || error.message;
-        if (code === "manicure-not-found") {
-          setStatus("Não localizamos uma manicure com esse e-mail.", "error");
-        } else if (code === "wrong-password") {
+        if (code === "auth/invalid-email") {
+          setStatus("O e-mail informado é inválido. Verifique e tente novamente.", "error");
+        } else if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
           setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
-        } else if (code === "missing-password") {
-          setStatus("Seu cadastro está sem senha ativa. Fale com o suporte NailNow.", "error");
+        } else if (code === "auth/user-not-found" || code === "profile-not-found") {
+          setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+        } else if (code === "auth/user-disabled") {
+          setStatus("Este acesso foi desativado. Fale com o suporte NailNow.", "error");
+        } else if (code === "auth/too-many-requests") {
+          setStatus("Muitas tentativas de acesso. Aguarde alguns instantes e tente novamente.", "error");
         } else if (code === "firestore-permission-denied" || code === "permission-denied") {
           setStatus(
             "Não foi possível acessar seus dados agora. Atualize a página ou fale com o suporte NailNow.",
             "error",
           );
-        } else if (code === "auth/operation-not-allowed" || code === "anonymous-auth-failed") {
+        } else if (code === "auth/admin-restricted-operation") {
           setStatus(
             "O acesso seguro ao portal está temporariamente indisponível. Avise o suporte NailNow para regularizar.",
             "error",
@@ -456,6 +433,20 @@
             "Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.",
             "error",
           );
+        }
+      };
+
+      const authenticateWithEmail = async (email, password) => {
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        return credential.user;
+      };
+
+      const attemptPasswordReset = async (email) => {
+        try {
+          await sendPasswordResetEmail(auth, email);
+          setStatus("Enviamos um e-mail com as instruções para redefinir sua senha.", "success");
+        } catch (error) {
+          handleAuthError(error);
         }
       };
 
@@ -473,44 +464,69 @@
         setLoading(true);
 
         try {
-          await ensureFirebaseAccess();
-          const profile = await authenticateManicure(email, password);
-          persistSession(profile);
+          const user = await authenticateWithEmail(email, password);
+          const profile = await resolveProfileForUser(user, email);
+          persistSession(profile, user);
           setStatus("Login realizado com sucesso! Redirecionando para o portal...", "success");
           loginForm.reset();
           redirectToPortal();
         } catch (error) {
           handleAuthError(error);
+          try {
+            await signOut(auth);
+          } catch (signOutError) {
+            console.warn("Não foi possível encerrar a sessão após falha de login", signOutError);
+          }
         } finally {
           setLoading(false);
         }
       });
 
-      resetButton.addEventListener("click", () => {
-        setStatus(
-          "Entre em contato com o suporte NailNow para redefinir ou atualizar sua senha.",
-          "error",
-        );
+      resetButton.addEventListener("click", async () => {
+        const email = loginForm.email.value.trim();
+        if (!email) {
+          setStatus("Informe seu e-mail para receber as instruções de redefinição.", "error");
+          return;
+        }
+        setStatus("Enviando instruções para redefinir sua senha...");
+        await attemptPasswordReset(email);
       });
 
       const existingSession = getStoredSession();
-      if (existingSession) {
-        (async () => {
-          try {
-            await ensureFirebaseAccess();
-            setStatus("Você já está conectada! Redirecionando para o portal...", "success");
-            submitButton.disabled = true;
-            redirectToPortal();
-          } catch (error) {
-            console.error("Falha ao restaurar sessão salva", error);
-            localStorage.removeItem(SESSION_KEY);
-            setStatus(
-              "Não conseguimos validar sua sessão automática. Informe seus dados novamente para continuar.",
-              "error",
-            );
-          }
-        })();
+      if (existingSession?.email && !loginForm.email.value) {
+        loginForm.email.value = existingSession.email;
       }
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          redirectScheduled = false;
+          submitButton.disabled = false;
+          if (!statusEl.textContent || statusEl.classList.contains("auth-status--success")) {
+            setStatus("");
+          }
+          return;
+        }
+
+        try {
+          const session = getStoredSession();
+          if (!session || session.uid !== user.uid) {
+            const profile = await resolveProfileForUser(user, session?.email || user.email || "");
+            persistSession(profile, user);
+          }
+          setStatus("Você já está conectada! Redirecionando para o portal...", "success");
+          submitButton.disabled = true;
+          redirectToPortal();
+        } catch (error) {
+          console.error("Falha ao restaurar sessão autenticada", error);
+          handleAuthError(error);
+          clearSession();
+          try {
+            await signOut(auth);
+          } catch (signOutError) {
+            console.warn("Não foi possível encerrar a sessão com erro", signOutError);
+          }
+        }
+      });
     </script>
   </body>
 </html>

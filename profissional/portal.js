@@ -13,7 +13,8 @@ import {
 import {
   getAuth,
   onAuthStateChanged,
-  signInAnonymously,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
@@ -32,58 +33,6 @@ const PROFILE_COLLECTIONS = ["profissionais"];
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-
-const firebaseAccessManager = (() => {
-  let authPromise = null;
-
-  const ensure = () => {
-    if (authPromise) {
-      return authPromise;
-    }
-
-    authPromise = new Promise((resolve, reject) => {
-      let resolved = false;
-      const unsubscribe = onAuthStateChanged(
-        auth,
-        (user) => {
-          if (user && !resolved) {
-            resolved = true;
-            unsubscribe();
-            resolve(user);
-          }
-        },
-        (error) => {
-          unsubscribe();
-          reject(error);
-        },
-      );
-
-      if (!auth.currentUser) {
-        signInAnonymously(auth).catch((error) => {
-          console.error("Falha ao autenticar anonimamente no Firebase", error);
-          unsubscribe();
-          const authError = new Error("anonymous-auth-failed");
-          authError.code = error.code || "anonymous-auth-failed";
-          reject(authError);
-        });
-      }
-    }).catch((error) => {
-      authPromise = null;
-      throw error;
-    });
-
-    return authPromise;
-  };
-
-  const reset = () => {
-    authPromise = null;
-  };
-
-  return { ensure, reset };
-})();
-
-const ensureFirebaseAccess = () => firebaseAccessManager.ensure();
-const resetFirebaseAccess = () => firebaseAccessManager.reset();
 
 const loginForm = document.getElementById("login-form");
 const statusEl = document.getElementById("login-status");
@@ -181,6 +130,8 @@ const appointmentCollections = {
   confirmed: "confirmados",
   past: "historico",
 };
+
+let lastLoginEmail = "";
 
 const setStatus = (message, type = "") => {
   statusEl.textContent = message;
@@ -381,20 +332,6 @@ const getNestedValue = (data, path) => {
   }, data);
 };
 
-const resolveStoredPassword = (data) => {
-  const candidates = ["senha", "password", "senhaPortal", "credenciais.senha"];
-  for (const field of candidates) {
-    const value = getNestedValue(data, field);
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-    if (typeof value === "number") {
-      return String(value);
-    }
-  }
-  return null;
-};
-
 const resolveStatusValue = (data) => {
   const fields = ["status", "situacao", "workflow.status", "approval.status"];
   for (const field of fields) {
@@ -424,11 +361,12 @@ const getStoredSession = () => {
   }
 };
 
-const persistSession = (profile) => {
+const persistSession = (profile, user) => {
   const payload = {
+    uid: user?.uid || profile.uid || "",
     id: profile.id,
-    email: profile.email || profile.emailLowercase || "",
-    nome: profile.nome || profile.name || "",
+    email: profile.email || profile.emailLowercase || user?.email || "",
+    nome: profile.nome || profile.name || user?.displayName || "",
     collection: profile.collection || PROFILE_COLLECTIONS[0],
     status: resolveStatusValue(profile) || "",
     savedAt: Date.now(),
@@ -448,7 +386,7 @@ const clearSession = () => {
   }
 };
 
-const lookupManicuresByEmail = async (email) => {
+const lookupProfilesByEmail = async (email) => {
   const lookups = buildLookupCandidates(email);
   const matches = [];
   const seen = new Set();
@@ -486,67 +424,16 @@ const lookupManicuresByEmail = async (email) => {
   return matches;
 };
 
-const findManicureByEmail = async (email) => {
-  const matches = await lookupManicuresByEmail(email);
-  return matches.length ? matches[0] : null;
-};
-
-const authenticateManicure = async (email, password) => {
-  await ensureFirebaseAccess();
-  const records = await lookupManicuresByEmail(email);
-  if (!records.length) {
-    const notFound = new Error("manicure-not-found");
-    notFound.code = "manicure-not-found";
-    throw notFound;
+const fetchProfileByUid = async (uid) => {
+  if (!uid) {
+    return null;
   }
 
-  let foundPassword = false;
-  let missingPassword = false;
-
-  for (const record of records) {
-    const statusValue = resolveStatusValue(record.data);
-    const storedPassword = resolveStoredPassword(record.data);
-    if (!storedPassword) {
-      missingPassword = true;
-      continue;
-    }
-
-    foundPassword = true;
-
-    if (storedPassword === password) {
-      return { id: record.id, collection: record.collection, ...record.data, status: statusValue };
-    }
-  }
-
-  if (foundPassword) {
-    const mismatch = new Error("wrong-password");
-    mismatch.code = "wrong-password";
-    throw mismatch;
-  }
-
-  if (missingPassword) {
-    const missing = new Error("missing-password");
-    missing.code = "missing-password";
-    throw missing;
-  }
-
-  const fallback = new Error("manicure-not-found");
-  fallback.code = "manicure-not-found";
-  throw fallback;
-};
-
-const fetchProfileById = async (id, preferredCollection) => {
-  if (!id) return null;
-  const collections = preferredCollection
-    ? [preferredCollection, ...PROFILE_COLLECTIONS.filter((name) => name !== preferredCollection)]
-    : PROFILE_COLLECTIONS;
-
-  for (const collectionName of collections) {
+  for (const collectionName of PROFILE_COLLECTIONS) {
     try {
-      const snapshot = await getDoc(doc(db, collectionName, id));
+      const snapshot = await getDoc(doc(db, collectionName, uid));
       if (snapshot.exists()) {
-        const profile = { id: snapshot.id, collection: collectionName, ...snapshot.data() };
-        return profile;
+        return { id: snapshot.id, collection: collectionName, ...snapshot.data() };
       }
     } catch (error) {
       if (error.code === "permission-denied") {
@@ -555,26 +442,41 @@ const fetchProfileById = async (id, preferredCollection) => {
         permError.cause = error;
         throw permError;
       }
-      console.warn(`Falha ao buscar manicure pelo ID na coleção ${collectionName}`, error);
+      console.warn(`Falha ao buscar manicure pelo UID na coleção ${collectionName}`, error);
     }
   }
 
   return null;
 };
 
-const fetchProfileFromSession = async (session) => {
-  if (!session) return null;
-  const byId = await fetchProfileById(session.id, session.collection);
-  if (byId) {
-    return byId;
+const resolveProfileForUser = async (user, emailHint = "") => {
+  if (!user) {
+    const missing = new Error("profile-not-found");
+    missing.code = "profile-not-found";
+    throw missing;
   }
-  if (session.email) {
-    const record = await findManicureByEmail(session.email);
-    if (record) {
-      return { id: record.id, collection: record.collection, ...record.data };
+
+  const byUid = await fetchProfileByUid(user.uid);
+  if (byUid) {
+    return byUid;
+  }
+
+  const emailCandidates = [emailHint, user.email].filter((value, index, array) => {
+    return value && array.findIndex((item) => item && item.toLowerCase() === value.toLowerCase()) === index;
+  });
+
+  for (const candidate of emailCandidates) {
+    if (!candidate) continue;
+    const matches = await lookupProfilesByEmail(candidate);
+    if (matches.length) {
+      const match = matches[0];
+      return { id: match.id, collection: match.collection, ...match.data };
     }
   }
-  return null;
+
+  const notFound = new Error("profile-not-found");
+  notFound.code = "profile-not-found";
+  throw notFound;
 };
 
 const fetchAppointments = async (status, profileId, profileCollection) => {
@@ -606,10 +508,7 @@ const fetchAppointments = async (status, profileId, profileCollection) => {
 };
 
 const hydrateDashboard = async (profile, fallbackEmail = "") => {
-  setStatus("Carregando seu painel...");
-
-  const displayName =
-    profile.nome || profile.name || profile.displayName || profile.email || fallbackEmail || "manicure";
+  const displayName = profile.nome || profile.name || profile.displayName || profile.email || fallbackEmail || "manicure";
   profileNameElements.forEach((element) => {
     element.textContent = displayName;
   });
@@ -622,9 +521,7 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
 
   const keys = ["pending", "confirmed", "past"];
   const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
-  const results = await Promise.allSettled(
-    keys.map((key) => fetchAppointments(key, profile.id, profileCollection)),
-  );
+  const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id, profileCollection)));
 
   let permissionIssue = false;
   const usedFallback = {};
@@ -661,30 +558,27 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
     }
   });
 
-  if (permissionIssue) {
-    setStatus(
-      "Seu acesso foi confirmado, mas não conseguimos carregar todas as informações da agenda agora.",
-      "error",
-    );
-  } else {
-    setStatus("");
-  }
+  return { permissionIssue };
 };
 
 const handleAuthError = (error) => {
   const code = error.code || error.message;
-  if (code === "manicure-not-found") {
-    setStatus("Não localizamos uma manicure com esse e-mail.", "error");
-  } else if (code === "wrong-password") {
+  if (code === "auth/invalid-email") {
+    setStatus("O e-mail informado é inválido. Verifique e tente novamente.", "error");
+  } else if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
     setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
-  } else if (code === "missing-password") {
-    setStatus("Seu cadastro está sem senha ativa. Fale com o suporte NailNow.", "error");
+  } else if (code === "auth/user-not-found" || code === "profile-not-found") {
+    setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+  } else if (code === "auth/user-disabled") {
+    setStatus("Este acesso foi desativado. Fale com o suporte NailNow.", "error");
+  } else if (code === "auth/too-many-requests") {
+    setStatus("Muitas tentativas de acesso. Aguarde alguns instantes e tente novamente.", "error");
   } else if (code === "firestore-permission-denied" || code === "permission-denied") {
     setStatus(
       "Não foi possível acessar seus dados agora. Atualize a página ou fale com o suporte NailNow.",
       "error",
     );
-  } else if (code === "auth/operation-not-allowed" || code === "anonymous-auth-failed") {
+  } else if (code === "auth/admin-restricted-operation") {
     setStatus(
       "O acesso seguro ao portal está temporariamente indisponível. Avise o suporte NailNow para regularizar.",
       "error",
@@ -695,28 +589,21 @@ const handleAuthError = (error) => {
   }
 };
 
-const loadDashboardForProfile = async (profile, emailForFallback = "") => {
+const ensureDashboardForUser = async (user, emailHint = "") => {
   toggleView(true);
-  try {
-    await ensureFirebaseAccess();
-    await hydrateDashboard(profile, emailForFallback);
-    if (!statusEl.classList.contains("auth-status--error")) {
-      setStatus("Bem-vinda de volta!", "success");
-    }
-  } catch (error) {
-    console.error("Não foi possível carregar o painel", error);
-    if (
-      error.code === "permission-denied" ||
-      error.message === "permission-denied" ||
-      error.code === "firestore-permission-denied"
-    ) {
-      setStatus(
-        "Seu acesso foi confirmado, mas não conseguimos carregar as informações agora. Tente novamente em instantes.",
-        "error",
-      );
-    } else {
-      setStatus("Não foi possível carregar seu painel. Tente novamente mais tarde.", "error");
-    }
+  setStatus("Carregando seu painel...");
+
+  const profile = await resolveProfileForUser(user, emailHint);
+  persistSession(profile, user);
+  const { permissionIssue } = await hydrateDashboard(profile, emailHint || user.email || "");
+
+  if (permissionIssue) {
+    setStatus(
+      "Seu acesso foi confirmado, mas não conseguimos carregar todas as informações da agenda agora.",
+      "error",
+    );
+  } else {
+    setStatus("Bem-vinda de volta!", "success");
   }
 };
 
@@ -732,77 +619,83 @@ loginForm.addEventListener("submit", async (event) => {
 
   setStatus("");
   setLoading(true);
+  lastLoginEmail = email;
 
   try {
-    await ensureFirebaseAccess();
-    const profile = await authenticateManicure(email, password);
-    persistSession(profile);
-    loginForm.reset();
-    await loadDashboardForProfile(profile, email);
+    await signInWithEmailAndPassword(auth, email, password);
+    setStatus("Validando seu acesso...");
   } catch (error) {
+    handleAuthError(error);
+    lastLoginEmail = "";
+    setLoading(false);
+  }
+});
+
+resetButton.addEventListener("click", async () => {
+  const email = loginForm.email.value.trim();
+  if (!email) {
+    setStatus("Informe seu e-mail para receber as instruções de redefinição.", "error");
+    return;
+  }
+  setStatus("Enviando instruções para redefinir sua senha...");
+  try {
+    await sendPasswordResetEmail(auth, email);
+    setStatus("Enviamos um e-mail com as instruções para redefinir sua senha.", "success");
+  } catch (error) {
+    handleAuthError(error);
+  }
+});
+
+signOutButton.addEventListener("click", async () => {
+  setStatus("Encerrando sua sessão...");
+  setLoading(true);
+  try {
+    await signOut(auth);
+    clearSession();
+    resetDashboard();
+    toggleView(false);
+    loginForm.reset();
+    setStatus("Você saiu do portal com segurança.", "success");
+  } catch (error) {
+    console.error("Não foi possível encerrar a sessão", error);
     handleAuthError(error);
   } finally {
     setLoading(false);
   }
 });
 
-resetButton.addEventListener("click", () => {
-  setStatus("Entre em contato com o suporte NailNow para redefinir ou atualizar sua senha.", "error");
-});
+const storedSession = getStoredSession();
+if (storedSession?.email && !loginForm.email.value) {
+  loginForm.email.value = storedSession.email;
+}
 
-signOutButton.addEventListener("click", () => {
-  clearSession();
-  resetDashboard();
-  toggleView(false);
-  loginForm.reset();
-  setStatus("Você saiu do portal com segurança.", "success");
-  if (auth.currentUser) {
-    signOut(auth)
-      .catch((error) => {
-        console.warn("Não foi possível encerrar a sessão anônima", error);
-      })
-      .finally(() => {
-        resetFirebaseAccess();
-      });
-  } else {
-    resetFirebaseAccess();
-  }
-});
-
-const bootstrap = async () => {
-  const session = getStoredSession();
-  if (!session) {
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    setLoading(false);
+    toggleView(false);
+    resetDashboard();
+    if (!statusEl.textContent || statusEl.classList.contains("auth-status--success")) {
+      setStatus("");
+    }
+    clearSession();
     return;
   }
 
-  setStatus("Carregando seu painel...");
-  toggleView(true);
-
   try {
-    await ensureFirebaseAccess();
-    const profile = await fetchProfileFromSession(session);
-    if (!profile) {
-      throw new Error("session-expired");
-    }
-    await hydrateDashboard(profile, session.email || "");
-    if (!statusEl.classList.contains("auth-status--error")) {
-      setStatus("Sessão restaurada com sucesso!", "success");
-    }
+    const session = getStoredSession();
+    const emailHint = lastLoginEmail || session?.email || user.email || "";
+    await ensureDashboardForUser(user, emailHint);
+    loginForm.reset();
   } catch (error) {
-    console.error("Falha ao restaurar sessão", error);
-    clearSession();
-    resetDashboard();
-    toggleView(false);
-    resetFirebaseAccess();
-    if (error.code === "firestore-permission-denied") {
-      setStatus(
-        "Seu acesso foi confirmado, mas não conseguimos carregar seus dados agora. Faça login novamente ou fale com o suporte.",
-        "error",
-      );
-    } else {
-      setStatus("Não encontramos sua sessão. Faça login novamente para continuar.", "error");
+    console.error("Não foi possível carregar o painel autenticado", error);
+    handleAuthError(error);
+    try {
+      await signOut(auth);
+    } catch (signOutError) {
+      console.warn("Falha ao encerrar sessão após erro", signOutError);
     }
+  } finally {
+    setLoading(false);
+    lastLoginEmail = "";
   }
-};
-
-bootstrap();
+});
