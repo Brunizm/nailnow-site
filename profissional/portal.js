@@ -1,0 +1,701 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  Timestamp,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  getFirestore,
+  limit,
+  query,
+  where,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+  authDomain: "nailnow-site.firebaseapp.com",
+  projectId: "nailnow-site",
+  storageBucket: "nailnow-site.appspot.com",
+  messagingSenderId: "726392294571",
+  appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+};
+
+const SESSION_KEY = "nailnowManicureSession";
+const PROFILE_COLLECTIONS = ["profissionais"];
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const loginForm = document.getElementById("login-form");
+const statusEl = document.getElementById("login-status");
+const submitButton = loginForm.querySelector("button[type='submit']");
+const resetButton = document.getElementById("reset-password");
+const loginView = document.getElementById("login-view");
+const dashboard = document.getElementById("dashboard");
+const signOutButton = document.getElementById("sign-out");
+const profileNameElements = document.querySelectorAll("[data-profile-name]");
+const profileDisplay = document.getElementById("profile-display");
+const profileEmail = document.getElementById("profile-email");
+const profileSpecialties = document.getElementById("profile-specialties");
+const profileArea = document.getElementById("profile-area");
+const metricPending = document.getElementById("metric-pending");
+const metricConfirmed = document.getElementById("metric-confirmed");
+const metricPast = document.getElementById("metric-past");
+const badgePending = document.getElementById("badge-pending");
+const badgeConfirmed = document.getElementById("badge-confirmed");
+const badgePast = document.getElementById("badge-past");
+const pendingList = document.getElementById("pending-list");
+const confirmedList = document.getElementById("confirmed-list");
+const pastList = document.getElementById("past-list");
+
+const defaultAppointmentData = {
+  pending: [
+    {
+      id: "SOL-1842",
+      client: "Bianca Lopes",
+      service: "Alongamento em fibra de vidro",
+      date: "2025-05-08",
+      time: "14:00",
+      location: "Pinheiros, São Paulo",
+      price: "R$ 180,00",
+      note: "Prefere acabamento natural e formato amendoado.",
+    },
+    {
+      id: "SOL-1853",
+      client: "Thais Camargo",
+      service: "Spa das mãos + esmaltação gel",
+      date: "2025-05-09",
+      time: "09:30",
+      location: "Brooklin, São Paulo",
+      price: "R$ 140,00",
+      note: "Levar paleta de tons nudes.",
+    },
+  ],
+  confirmed: [
+    {
+      id: "AGEN-1027",
+      client: "Larissa Monteiro",
+      service: "Blindagem + esmaltação",
+      date: "2025-05-06",
+      time: "18:30",
+      location: "Vila Mariana, São Paulo",
+      price: "R$ 165,00",
+      note: "Cliente indicou preferência por glitter rosé.",
+    },
+    {
+      id: "AGEN-1028",
+      client: "Amanda Reis",
+      service: "Pedicure + spa relaxante",
+      date: "2025-05-07",
+      time: "10:00",
+      location: "Moema, São Paulo",
+      price: "R$ 120,00",
+      note: "Chegar 10 min antes para montagem do espaço.",
+    },
+  ],
+  past: [
+    {
+      id: "HIST-980",
+      client: "Nathalia Cruz",
+      service: "Esmaltação em gel",
+      date: "2025-04-29",
+      time: "16:30",
+      location: "Itaim Bibi, São Paulo",
+      price: "R$ 110,00",
+      note: "Avaliação 5 estrelas enviada.",
+    },
+    {
+      id: "HIST-975",
+      client: "Juliana Prado",
+      service: "Alongamento em fibra",
+      date: "2025-04-25",
+      time: "11:00",
+      location: "Tatuapé, São Paulo",
+      price: "R$ 190,00",
+      note: "Cliente agendou manutenção para daqui 3 semanas.",
+    },
+  ],
+};
+
+const appointmentCollections = {
+  pending: "solicitacoes",
+  confirmed: "confirmados",
+  past: "historico",
+};
+
+let lastLoginEmail = "";
+
+const setStatus = (message, type = "") => {
+  statusEl.textContent = message;
+  statusEl.classList.remove("auth-status--error", "auth-status--success");
+  statusEl.hidden = !message;
+  if (type) {
+    statusEl.classList.add(`auth-status--${type}`);
+  }
+};
+
+const setLoading = (isLoading) => {
+  submitButton.disabled = isLoading;
+  submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
+};
+
+const toggleView = (isLoggedIn) => {
+  loginView.hidden = isLoggedIn;
+  dashboard.hidden = !isLoggedIn;
+};
+
+const resetDashboard = () => {
+  pendingList.innerHTML = "";
+  confirmedList.innerHTML = "";
+  pastList.innerHTML = "";
+  updateMetrics([], [], []);
+};
+
+const formatCurrency = (value) => {
+  if (typeof value === "number") {
+    return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+  if (!value) return "—";
+  return value;
+};
+
+const parseDateValue = (rawDate, rawTime) => {
+  if (!rawDate && !rawTime) return null;
+  if (rawDate instanceof Timestamp) {
+    return rawDate.toDate();
+  }
+  if (rawDate && typeof rawDate.toDate === "function") {
+    return rawDate.toDate();
+  }
+  if (typeof rawDate === "string" && rawDate.includes("T")) {
+    return new Date(rawDate);
+  }
+  if (typeof rawDate === "string") {
+    return new Date(`${rawDate}T${rawTime || "00:00"}`);
+  }
+  if (rawTime instanceof Timestamp) {
+    return rawTime.toDate();
+  }
+  return null;
+};
+
+const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  weekday: "short",
+});
+
+const timeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const createAppointmentCard = (appointment, status) => {
+  const wrapper = document.createElement("article");
+  wrapper.className = `schedule-card schedule-card--${status}`;
+  wrapper.setAttribute("role", "listitem");
+
+  const heading = document.createElement("header");
+  heading.className = "schedule-card__header";
+  heading.innerHTML = `
+    <div>
+      <p class="schedule-card__service">${appointment.service}</p>
+      <h3 class="schedule-card__client">${appointment.client}</h3>
+    </div>
+    <span class="schedule-card__id">${appointment.id}</span>
+  `;
+  wrapper.appendChild(heading);
+
+  const details = document.createElement("div");
+  details.className = "schedule-card__details";
+
+  const eventDate = parseDateValue(appointment.date, appointment.time);
+  const formattedDate = eventDate ? dateFormatter.format(eventDate) : appointment.date || "—";
+  const formattedTime = eventDate ? timeFormatter.format(eventDate) : appointment.time || "—";
+
+  details.innerHTML = `
+    <dl>
+      <div>
+        <dt>Data</dt>
+        <dd>${formattedDate}</dd>
+      </div>
+      <div>
+        <dt>Horário</dt>
+        <dd>${formattedTime}</dd>
+      </div>
+      <div>
+        <dt>Local</dt>
+        <dd>${appointment.location || "A combinar"}</dd>
+      </div>
+      <div>
+        <dt>Valor</dt>
+        <dd>${formatCurrency(appointment.price)}</dd>
+      </div>
+    </dl>
+  `;
+
+  if (appointment.note) {
+    const note = document.createElement("p");
+    note.className = "schedule-card__note";
+    note.textContent = appointment.note;
+    details.appendChild(note);
+  }
+
+  wrapper.appendChild(details);
+
+  return wrapper;
+};
+
+const renderAppointments = (status, appointments, options = {}) => {
+  const mapping = {
+    pending: pendingList,
+    confirmed: confirmedList,
+    past: pastList,
+  };
+  const target = mapping[status];
+  target.innerHTML = "";
+
+  if (options.notice) {
+    const notice = document.createElement("p");
+    notice.className = "schedule-empty";
+    notice.textContent = options.notice;
+    target.appendChild(notice);
+  }
+
+  if (!appointments.length) {
+    const empty = document.createElement("p");
+    empty.className = "schedule-empty";
+    empty.textContent = "Nenhum agendamento disponível no momento.";
+    target.appendChild(empty);
+    return;
+  }
+
+  appointments.forEach((appointment) => {
+    target.appendChild(createAppointmentCard(appointment, status));
+  });
+};
+
+const updateMetrics = (pending, confirmed, past) => {
+  metricPending.textContent = pending.length;
+  badgePending.textContent = pending.length;
+  metricConfirmed.textContent = confirmed.length;
+  badgeConfirmed.textContent = confirmed.length;
+  metricPast.textContent = past.length;
+  badgePast.textContent = past.length;
+};
+
+const buildLookupCandidates = (rawEmail) => {
+  const trimmed = (rawEmail ?? "").trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const lower = trimmed.toLowerCase();
+  const combinations = [
+    ["email", trimmed],
+    ["email", lower],
+    ["emailLowercase", lower],
+    ["contato.email", trimmed],
+    ["contato.email", lower],
+    ["contato.emailLowercase", lower],
+  ];
+
+  const seen = new Set();
+  return combinations.reduce((list, [field, value]) => {
+    if (!value) {
+      return list;
+    }
+    const key = `${field}|${value}`;
+    if (seen.has(key)) {
+      return list;
+    }
+    seen.add(key);
+    list.push({ field, value });
+    return list;
+  }, []);
+};
+
+const getNestedValue = (data, path) => {
+  return path.split(".").reduce((acc, key) => {
+    if (acc && Object.prototype.hasOwnProperty.call(acc, key)) {
+      return acc[key];
+    }
+    return undefined;
+  }, data);
+};
+
+const resolveStatusValue = (data) => {
+  const fields = ["status", "situacao", "workflow.status", "approval.status"];
+  for (const field of fields) {
+    const value = getNestedValue(data, field);
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+};
+
+const getStoredSession = () => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.id) {
+      if (!parsed.collection) {
+        parsed.collection = PROFILE_COLLECTIONS[0];
+      }
+      return parsed;
+    }
+    return null;
+  } catch (error) {
+    console.warn("Não foi possível ler a sessão salva", error);
+    return null;
+  }
+};
+
+const persistSession = (profile, user) => {
+  const payload = {
+    uid: user?.uid || profile.uid || "",
+    id: profile.id,
+    email: profile.email || profile.emailLowercase || user?.email || "",
+    nome: profile.nome || profile.name || user?.displayName || "",
+    collection: profile.collection || PROFILE_COLLECTIONS[0],
+    status: resolveStatusValue(profile) || "",
+    savedAt: Date.now(),
+  };
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn("Não foi possível salvar a sessão", error);
+  }
+};
+
+const clearSession = () => {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch (error) {
+    console.warn("Não foi possível limpar a sessão", error);
+  }
+};
+
+const lookupProfilesByEmail = async (email) => {
+  const lookups = buildLookupCandidates(email);
+  const matches = [];
+  const seen = new Set();
+  let permissionDenied = false;
+
+  for (const { field, value } of lookups) {
+    for (const collectionName of PROFILE_COLLECTIONS) {
+      try {
+        const manicureQuery = query(collection(db, collectionName), where(field, "==", value), limit(1));
+        const snapshot = await getDocs(manicureQuery);
+        if (!snapshot.empty) {
+          const document = snapshot.docs[0];
+          const key = `${collectionName}|${document.id}`;
+          if (seen.has(key)) {
+            continue;
+          }
+          seen.add(key);
+          matches.push({ id: document.id, data: document.data(), collection: collectionName });
+        }
+      } catch (error) {
+        if (error.code === "permission-denied") {
+          permissionDenied = true;
+        }
+        console.warn(`Falha ao buscar manicure pelo campo ${field} na coleção ${collectionName}`, error);
+      }
+    }
+  }
+
+  if (permissionDenied) {
+    const permError = new Error("firestore-permission-denied");
+    permError.code = "firestore-permission-denied";
+    throw permError;
+  }
+
+  return matches;
+};
+
+const fetchProfileByUid = async (uid) => {
+  if (!uid) {
+    return null;
+  }
+
+  for (const collectionName of PROFILE_COLLECTIONS) {
+    try {
+      const snapshot = await getDoc(doc(db, collectionName, uid));
+      if (snapshot.exists()) {
+        return { id: snapshot.id, collection: collectionName, ...snapshot.data() };
+      }
+    } catch (error) {
+      if (error.code === "permission-denied") {
+        const permError = new Error("firestore-permission-denied");
+        permError.code = "firestore-permission-denied";
+        permError.cause = error;
+        throw permError;
+      }
+      console.warn(`Falha ao buscar manicure pelo UID na coleção ${collectionName}`, error);
+    }
+  }
+
+  return null;
+};
+
+const resolveProfileForUser = async (user, emailHint = "") => {
+  if (!user) {
+    const missing = new Error("profile-not-found");
+    missing.code = "profile-not-found";
+    throw missing;
+  }
+
+  const byUid = await fetchProfileByUid(user.uid);
+  if (byUid) {
+    return byUid;
+  }
+
+  const emailCandidates = [emailHint, user.email].filter((value, index, array) => {
+    return value && array.findIndex((item) => item && item.toLowerCase() === value.toLowerCase()) === index;
+  });
+
+  for (const candidate of emailCandidates) {
+    if (!candidate) continue;
+    const matches = await lookupProfilesByEmail(candidate);
+    if (matches.length) {
+      const match = matches[0];
+      return { id: match.id, collection: match.collection, ...match.data };
+    }
+  }
+
+  const notFound = new Error("profile-not-found");
+  notFound.code = "profile-not-found";
+  throw notFound;
+};
+
+const fetchAppointments = async (status, profileId, profileCollection) => {
+  if (!profileId || !profileCollection) {
+    return [];
+  }
+
+  try {
+    const parentRef = doc(db, profileCollection, profileId);
+    const appointmentsCollection = appointmentCollections[status];
+    if (!appointmentsCollection) {
+      return [];
+    }
+    const appointmentsRef = collection(parentRef, appointmentsCollection);
+    const snapshot = await getDocs(appointmentsRef);
+    if (snapshot.empty) {
+      return [];
+    }
+    return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  } catch (error) {
+    if (error.code === "permission-denied") {
+      const permissionError = new Error("permission-denied");
+      permissionError.cause = error;
+      throw permissionError;
+    }
+    console.warn(`Não foi possível carregar agendamentos ${status}`, error);
+    return [];
+  }
+};
+
+const hydrateDashboard = async (profile, fallbackEmail = "") => {
+  const displayName = profile.nome || profile.name || profile.displayName || profile.email || fallbackEmail || "manicure";
+  profileNameElements.forEach((element) => {
+    element.textContent = displayName;
+  });
+  profileDisplay.textContent = displayName;
+  profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
+  profileSpecialties.textContent =
+    profile.especialidades || profile.specialties || "Alongamento em fibra · Spa das mãos";
+  profileArea.textContent =
+    profile.atendimento || profile.area || profile.cidade || "São Paulo e região metropolitana";
+
+  const keys = ["pending", "confirmed", "past"];
+  const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
+  const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id, profileCollection)));
+
+  let permissionIssue = false;
+  const usedFallback = {};
+  const datasets = keys.map((key, index) => {
+    const result = results[index];
+    if (result.status === "fulfilled") {
+      const value = Array.isArray(result.value) ? result.value : [];
+      if (value.length) {
+        return value;
+      }
+    } else if (result.reason?.message === "permission-denied") {
+      permissionIssue = true;
+    }
+    usedFallback[key] = true;
+    return defaultAppointmentData[key];
+  });
+
+  const [pendingAppointments, confirmedAppointments, pastAppointments] = datasets;
+  updateMetrics(pendingAppointments, confirmedAppointments, pastAppointments);
+
+  const fallbackNotice = permissionIssue
+    ? "Não conseguimos carregar toda a agenda agora. Mostramos um exemplo enquanto sincronizamos seus dados."
+    : "";
+  let noticeDisplayed = false;
+
+  keys.forEach((key, index) => {
+    const data = datasets[index];
+    const shouldShowNotice = fallbackNotice && usedFallback[key] && !noticeDisplayed;
+    renderAppointments(key, data, {
+      notice: shouldShowNotice ? fallbackNotice : "",
+    });
+    if (shouldShowNotice) {
+      noticeDisplayed = true;
+    }
+  });
+
+  return { permissionIssue };
+};
+
+const handleAuthError = (error) => {
+  const code = error.code || error.message;
+  if (code === "auth/invalid-email") {
+    setStatus("O e-mail informado é inválido. Verifique e tente novamente.", "error");
+  } else if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+    setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
+  } else if (code === "auth/user-not-found" || code === "profile-not-found") {
+    setStatus("Não localizamos uma manicure com esse e-mail.", "error");
+  } else if (code === "auth/user-disabled") {
+    setStatus("Este acesso foi desativado. Fale com o suporte NailNow.", "error");
+  } else if (code === "auth/too-many-requests") {
+    setStatus("Muitas tentativas de acesso. Aguarde alguns instantes e tente novamente.", "error");
+  } else if (code === "firestore-permission-denied" || code === "permission-denied") {
+    setStatus(
+      "Não foi possível acessar seus dados agora. Atualize a página ou fale com o suporte NailNow.",
+      "error",
+    );
+  } else if (code === "auth/admin-restricted-operation") {
+    setStatus(
+      "O acesso seguro ao portal está temporariamente indisponível. Avise o suporte NailNow para regularizar.",
+      "error",
+    );
+  } else {
+    console.error("Erro inesperado no login", error);
+    setStatus("Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.", "error");
+  }
+};
+
+const ensureDashboardForUser = async (user, emailHint = "") => {
+  toggleView(true);
+  setStatus("Carregando seu painel...");
+
+  const profile = await resolveProfileForUser(user, emailHint);
+  persistSession(profile, user);
+  const { permissionIssue } = await hydrateDashboard(profile, emailHint || user.email || "");
+
+  if (permissionIssue) {
+    setStatus(
+      "Seu acesso foi confirmado, mas não conseguimos carregar todas as informações da agenda agora.",
+      "error",
+    );
+  } else {
+    setStatus("Bem-vinda de volta!", "success");
+  }
+};
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = loginForm.email.value.trim();
+  const password = loginForm.password.value;
+
+  if (!email || !password) {
+    setStatus("Preencha e-mail e senha para continuar.", "error");
+    return;
+  }
+
+  setStatus("");
+  setLoading(true);
+  lastLoginEmail = email;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    setStatus("Validando seu acesso...");
+  } catch (error) {
+    handleAuthError(error);
+    lastLoginEmail = "";
+    setLoading(false);
+  }
+});
+
+resetButton.addEventListener("click", async () => {
+  const email = loginForm.email.value.trim();
+  if (!email) {
+    setStatus("Informe seu e-mail para receber as instruções de redefinição.", "error");
+    return;
+  }
+  setStatus("Enviando instruções para redefinir sua senha...");
+  try {
+    await sendPasswordResetEmail(auth, email);
+    setStatus("Enviamos um e-mail com as instruções para redefinir sua senha.", "success");
+  } catch (error) {
+    handleAuthError(error);
+  }
+});
+
+signOutButton.addEventListener("click", async () => {
+  setStatus("Encerrando sua sessão...");
+  setLoading(true);
+  try {
+    await signOut(auth);
+    clearSession();
+    resetDashboard();
+    toggleView(false);
+    loginForm.reset();
+    setStatus("Você saiu do portal com segurança.", "success");
+  } catch (error) {
+    console.error("Não foi possível encerrar a sessão", error);
+    handleAuthError(error);
+  } finally {
+    setLoading(false);
+  }
+});
+
+const storedSession = getStoredSession();
+if (storedSession?.email && !loginForm.email.value) {
+  loginForm.email.value = storedSession.email;
+}
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    setLoading(false);
+    toggleView(false);
+    resetDashboard();
+    if (!statusEl.textContent || statusEl.classList.contains("auth-status--success")) {
+      setStatus("");
+    }
+    clearSession();
+    return;
+  }
+
+  try {
+    const session = getStoredSession();
+    const emailHint = lastLoginEmail || session?.email || user.email || "";
+    await ensureDashboardForUser(user, emailHint);
+    loginForm.reset();
+  } catch (error) {
+    console.error("Não foi possível carregar o painel autenticado", error);
+    handleAuthError(error);
+    try {
+      await signOut(auth);
+    } catch (signOutError) {
+      console.warn("Falha ao encerrar sessão após erro", signOutError);
+    }
+  } finally {
+    setLoading(false);
+    lastLoginEmail = "";
+  }
+});
