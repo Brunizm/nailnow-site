@@ -19,7 +19,12 @@
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import {
+        getAuth,
+        createUserWithEmailAndPassword,
+        signInWithEmailAndPassword,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
       import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
       import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
@@ -36,6 +41,29 @@
       const auth = getAuth(app);
       const db = getFirestore(app);
       const storage = getStorage(app);
+
+      async function ensureAuthAccount(email, senha) {
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, email, senha);
+          return { user: cred.user, isNew: true };
+        } catch (error) {
+          if (error.code === "auth/email-already-in-use") {
+            const cred = await signInWithEmailAndPassword(auth, email, senha);
+            return { user: cred.user, isNew: false };
+          }
+          throw error;
+        }
+      }
+
+      async function safeSignOut() {
+        try {
+          if (auth.currentUser) {
+            await signOut(auth);
+          }
+        } catch (error) {
+          console.warn("Não foi possível encerrar a sessão após o cadastro", error);
+        }
+      }
 
       async function enviarCadastro(e) {
         e.preventDefault();
@@ -77,8 +105,8 @@
           btn.disabled = true;
           btn.textContent = "Criando conta…";
 
-          const cred = await createUserWithEmailAndPassword(auth, email, senha);
-          const uid = cred.user.uid;
+          const { user, isNew } = await ensureAuthAccount(email, senha);
+          const uid = user.uid;
 
           let fotoUrl = null;
           if (foto) {
@@ -88,7 +116,7 @@
             fotoUrl = await getDownloadURL(fileRef);
           }
 
-          await setDoc(doc(db, "profissionais", uid), {
+          const payload = {
             uid,
             nome,
             cpf,
@@ -103,19 +131,40 @@
             cidade,
             bio,
             servicos,
-            fotoUrl,
-            status: "pendente",
-            criadoEm: serverTimestamp(),
-          });
+            atualizadoEm: serverTimestamp(),
+          };
 
-          feedback.textContent = "✅ Cadastro criado com sucesso!";
+          if (fotoUrl) {
+            payload.fotoUrl = fotoUrl;
+          }
+
+          if (isNew) {
+            payload.status = "pendente";
+            payload.criadoEm = serverTimestamp();
+          }
+
+          await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
+
+          feedback.textContent = isNew
+            ? "✅ Cadastro criado com sucesso!"
+            : "✅ Perfil profissional atualizado!";
           feedback.style.color = "#2e7d32";
           form.reset();
         } catch (err) {
           console.error(err);
-          feedback.textContent = `❌ Erro: ${err.code || "erro-desconhecido"}`;
+          let message = err.code || "erro-desconhecido";
+          if (err.code === "auth/wrong-password") {
+            message = "auth/senha-incorreta";
+            feedback.textContent = "❌ Erro: A senha informada não confere com a conta existente.";
+          } else if (err.code === "auth/invalid-login-credentials") {
+            message = "auth/invalid-login-credentials";
+            feedback.textContent = "❌ Erro: Não foi possível confirmar seus dados de acesso.";
+          } else {
+            feedback.textContent = `❌ Erro: ${message}`;
+          }
           feedback.style.color = "#c62828";
         } finally {
+          await safeSignOut();
           btn.disabled = false;
           btn.textContent = "Cadastrar profissional";
         }

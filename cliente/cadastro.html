@@ -19,7 +19,12 @@
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import {
+        getAuth,
+        createUserWithEmailAndPassword,
+        signInWithEmailAndPassword,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
       import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -34,6 +39,29 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+
+      async function ensureAuthAccount(email, senha) {
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, email, senha);
+          return { user: cred.user, isNew: true };
+        } catch (error) {
+          if (error.code === "auth/email-already-in-use") {
+            const cred = await signInWithEmailAndPassword(auth, email, senha);
+            return { user: cred.user, isNew: false };
+          }
+          throw error;
+        }
+      }
+
+      async function safeSignOut() {
+        try {
+          if (auth.currentUser) {
+            await signOut(auth);
+          }
+        } catch (error) {
+          console.warn("Não foi possível encerrar a sessão após o cadastro", error);
+        }
+      }
 
       async function cadastrarCliente(event) {
         event.preventDefault();
@@ -82,10 +110,10 @@
           btn.disabled = true;
           btn.textContent = "Criando conta…";
 
-          const cred = await createUserWithEmailAndPassword(auth, email, senha);
-          const uid = cred.user.uid;
+          const { user, isNew } = await ensureAuthAccount(email, senha);
+          const uid = user.uid;
 
-          await setDoc(doc(db, "clientes", uid), {
+          const payload = {
             uid,
             nome,
             email,
@@ -101,18 +129,33 @@
             preferencias,
             newsletter,
             aceiteTermos,
-            criadoEm: serverTimestamp(),
-          });
+            atualizadoEm: serverTimestamp(),
+          };
 
-          feedback.textContent = "✅ Conta criada com sucesso!";
+          if (isNew) {
+            payload.criadoEm = serverTimestamp();
+          }
+
+          await setDoc(doc(db, "clientes", uid), payload, { merge: true });
+
+          feedback.textContent = isNew
+            ? "✅ Conta criada com sucesso!"
+            : "✅ Dados atualizados!";
           feedback.style.color = "#2e7d32";
           form.reset();
           form.querySelector("[name='aceiteTermos']").checked = false;
         } catch (error) {
           console.error(error);
-          feedback.textContent = `❌ Erro: ${error.code || "erro-desconhecido"}`;
+          if (error.code === "auth/wrong-password") {
+            feedback.textContent = "❌ Erro: A senha informada não confere com a conta existente.";
+          } else if (error.code === "auth/invalid-login-credentials") {
+            feedback.textContent = "❌ Erro: Não foi possível confirmar seus dados de acesso.";
+          } else {
+            feedback.textContent = `❌ Erro: ${error.code || "erro-desconhecido"}`;
+          }
           feedback.style.color = "#c62828";
         } finally {
+          await safeSignOut();
           btn.disabled = false;
           btn.textContent = "Criar conta cliente";
         }

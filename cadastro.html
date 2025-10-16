@@ -9,7 +9,12 @@
   <script type="module">
     // SDKs Firebase (v10 modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
@@ -56,6 +61,19 @@
       Array.from(document.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
 
     // ---------- Submit ----------
+    async function ensureAuthAccount(email, senha) {
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, senha);
+        return { user: cred.user, isNew: true };
+      } catch (error) {
+        if (error.code === "auth/email-already-in-use") {
+          const cred = await signInWithEmailAndPassword(auth, email, senha);
+          return { user: cred.user, isNew: false };
+        }
+        throw error;
+      }
+    }
+
     async function enviarCadastro(event) {
       event.preventDefault();
       console.log(">> enviarCadastro DISPAROU");
@@ -95,8 +113,8 @@
 
         // 1) Auth
         console.log(">> Criando usuário no Auth…");
-        const cred = await createUserWithEmailAndPassword(auth, email, senha);
-        const uid = cred.user.uid;
+        const { user, isNew } = await ensureAuthAccount(email, senha);
+        const uid = user.uid;
         console.log(">> Auth OK, uid:", uid);
 
         // 2) Foto (opcional)
@@ -112,29 +130,41 @@
 
         // 3) Firestore
         console.log(">> Gravando no Firestore…");
-        await setDoc(doc(db, "profissionais", uid), {
+        const payload = {
           nome,
           email,
           telefone,
           cidade,
           bio,
           servicos: servicosSelecionados(),
-          fotoUrl,
-          createdAt: serverTimestamp(),
-          status: "pendente",
-        });
+          updatedAt: serverTimestamp(),
+        };
+
+        if (isNew) {
+          payload.createdAt = serverTimestamp();
+          payload.status = "pendente";
+          payload.fotoUrl = fotoUrl || null;
+        } else if (fotoUrl) {
+          payload.fotoUrl = fotoUrl;
+        }
+
+        await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
         console.log(">> Firestore OK");
 
         // 4) Sair (opcional)
         await signOut(auth);
 
-        alert("✅ Cadastro enviado com sucesso!");
+        alert(isNew ? "✅ Cadastro enviado com sucesso!" : "✅ Dados profissionais atualizados!");
         $("cadastroForm").reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
-        alert(`❌ Erro ao cadastrar:
-${error.code || ""}
-${error.message || ""}`);
+        if (error.code === "auth/wrong-password") {
+          alert("❌ Erro: A senha informada não confere com a conta existente.");
+        } else if (error.code === "auth/invalid-login-credentials") {
+          alert("❌ Erro: Não foi possível confirmar seus dados de acesso.");
+        } else {
+          alert(`❌ Erro ao cadastrar: ${error.code || error.message || "erro-desconhecido"}`);
+        }
       } finally {
         if (botao) { botao.disabled = false; botao.innerText = "Cadastrar profissional"; }
       }
