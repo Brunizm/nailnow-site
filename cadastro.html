@@ -162,6 +162,12 @@ ${error.message || ""}`);
     button { background-color: #e91e63; color: white; border: none; padding: 12px 20px; border-radius: 10px;
              cursor: pointer; font-size: 16px; margin-top: 15px; width: 100%; }
     button:hover { background-color: #d81b60; }
+    .password-input-wrapper { position: relative; display: flex; align-items: center; }
+    .password-input-wrapper input { flex: 1; padding-right: 3rem; }
+    .password-toggle { position: absolute; right: 1rem; display: inline-flex; align-items: center; gap: 0.25rem; border: none; background: transparent; color: #777; cursor: pointer; font-size: 0.85rem; }
+    .password-toggle svg { width: 1.2rem; height: 1.2rem; fill: currentColor; }
+    .password-toggle:focus-visible { outline: 2px solid #e91e63; outline-offset: 2px; }
+    .password-toggle--visible { color: #e91e63; }
     .servicos { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
     .hint { font-size: 12px; color: #777; margin-top: 4px; }
   </style>
@@ -178,10 +184,30 @@ ${error.message || ""}`);
       <input id="email" type="email" required />
 
       <label for="senha">Senha *</label>
-      <input id="senha" type="password" required />
+      <div class="password-input-wrapper">
+        <input id="senha" type="password" required />
+        <button type="button" class="password-toggle" data-password-target="senha" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 5c-4.13 0-7.5 2.86-9.42 7 1.92 4.14 5.29 7 9.42 7s7.5-2.86 9.42-7C19.5 7.86 16.13 5 12 5Zm0 11c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+            />
+          </svg>
+          <span class="password-toggle__label">Mostrar senha</span>
+        </button>
+      </div>
 
       <label for="confirmarSenha">Confirmar senha *</label>
-      <input id="confirmarSenha" type="password" required />
+      <div class="password-input-wrapper">
+        <input id="confirmarSenha" type="password" required />
+        <button type="button" class="password-toggle" data-password-target="confirmarSenha" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 5c-4.13 0-7.5 2.86-9.42 7 1.92 4.14 5.29 7 9.42 7s7.5-2.86 9.42-7C19.5 7.86 16.13 5 12 5Zm0 11c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+            />
+          </svg>
+          <span class="password-toggle__label">Mostrar senha</span>
+        </button>
+      </div>
 
       <label for="telefone">Telefone / WhatsApp</label>
       <input id="telefone" type="text" />
@@ -211,5 +237,6 @@ ${error.message || ""}`);
       <button id="enviar" type="submit">Cadastrar profissional</button>
     </form>
   </div>
+  <script src="assets/js/password-toggle.js"></script>
 </body>
 </html>
