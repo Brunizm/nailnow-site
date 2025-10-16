@@ -491,8 +491,6 @@ const updateProfileDisplay = (profile, fallbackEmail = "") => {
   profileEmail.textContent = emailForDisplay || "—";
   profilePhone.textContent = phoneForDisplay || "Atualize seu telefone";
   profileAddress.textContent = addressForDisplay || "Atualize seu endereço preferido";
-
-  setProfileFormValues(profile);
 };
 
 const hydrateDashboard = async (profile, fallbackEmail = "") => {
@@ -507,7 +505,6 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
   }
 
   updateProfileDisplay(currentProfile, fallbackEmail);
-  toggleProfileEditing(false);
 
   const keys = ["pending", "confirmed", "past"];
   const profileCollection = currentProfile.collection || PROFILE_COLLECTIONS[0];
