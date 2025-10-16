@@ -2,12 +2,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   Timestamp,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
   getFirestore,
   limit,
   query,
+  serverTimestamp,
+  setDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -36,6 +39,8 @@ const profileDisplay = document.getElementById("profile-display");
 const profileEmail = document.getElementById("profile-email");
 const profileSpecialties = document.getElementById("profile-specialties");
 const profileArea = document.getElementById("profile-area");
+const servicesList = document.getElementById("services-list");
+const servicesEmpty = document.getElementById("services-empty");
 const metricPending = document.getElementById("metric-pending");
 const metricConfirmed = document.getElementById("metric-confirmed");
 const metricPast = document.getElementById("metric-past");
@@ -45,6 +50,8 @@ const badgePast = document.getElementById("badge-past");
 const pendingList = document.getElementById("pending-list");
 const confirmedList = document.getElementById("confirmed-list");
 const pastList = document.getElementById("past-list");
+let currentProfile = null;
+let fallbackProfileEmail = "";
 
 const defaultAppointmentData = {
   pending: [
@@ -138,6 +145,14 @@ const resetDashboard = () => {
   confirmedList.innerHTML = "";
   pastList.innerHTML = "";
   updateMetrics([], [], []);
+  if (servicesList) {
+    servicesList.innerHTML = "";
+  }
+  if (servicesEmpty) {
+    servicesEmpty.hidden = false;
+  }
+  currentProfile = null;
+  fallbackProfileEmail = "";
 };
 
 const formatCurrency = (value) => {
@@ -146,6 +161,62 @@ const formatCurrency = (value) => {
   }
   if (!value) return "—";
   return value;
+};
+
+const parsePriceValue = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.replace(/[^0-9,.-]/g, "").replace(/,/g, ".");
+    const parsed = Number.parseFloat(normalized);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
+};
+
+const renderServices = (services) => {
+  if (!servicesList || !servicesEmpty) {
+    return;
+  }
+  servicesList.innerHTML = "";
+  if (!Array.isArray(services) || services.length === 0) {
+    servicesEmpty.hidden = false;
+    return;
+  }
+  servicesEmpty.hidden = true;
+  services.forEach((service) => {
+    const item = document.createElement("li");
+    item.className = "profile-services__item";
+
+    const info = document.createElement("div");
+    info.className = "profile-services__info";
+    const name = document.createElement("span");
+    name.className = "profile-services__name";
+    name.textContent = service.name || "Serviço NailNow";
+    info.appendChild(name);
+
+    if (service.duration) {
+      const duration = document.createElement("span");
+      duration.className = "profile-services__meta";
+      duration.textContent = service.duration;
+      info.appendChild(duration);
+    }
+
+    const price = document.createElement("span");
+    price.className = "profile-services__price";
+    if (typeof service.price === "number") {
+      price.textContent = formatCurrency(service.price);
+    } else if (service.priceLabel) {
+      price.textContent = service.priceLabel;
+    } else {
+      price.textContent = "Sob consulta";
+    }
+
+    item.appendChild(info);
+    item.appendChild(price);
+    servicesList.appendChild(item);
+  });
 };
 
 const parseDateValue = (rawDate, rawTime) => {
@@ -188,8 +259,12 @@ const createAppointmentCard = (appointment, status) => {
   heading.className = "schedule-card__header";
   heading.innerHTML = `
     <div>
-      <p class="schedule-card__service">${appointment.service}</p>
-      <h3 class="schedule-card__client">${appointment.client}</h3>
+      <p class="schedule-card__service">${
+        appointment.service || appointment.servico || appointment.serviceName || "Serviço NailNow"
+      }</p>
+      <h3 class="schedule-card__client">${
+        appointment.client || appointment.cliente || appointment.clientName || "Cliente NailNow"
+      }</h3>
     </div>
     <span class="schedule-card__id">${appointment.id}</span>
   `;
@@ -232,6 +307,31 @@ const createAppointmentCard = (appointment, status) => {
 
   wrapper.appendChild(details);
 
+  if (status === "pending") {
+    const actions = document.createElement("div");
+    actions.className = "schedule-card__actions";
+
+    const approveButton = document.createElement("button");
+    approveButton.type = "button";
+    approveButton.className = "schedule-card__button schedule-card__button--approve";
+    approveButton.textContent = "Aceitar solicitação";
+    approveButton.addEventListener("click", () => {
+      handleAppointmentDecision(appointment, "accept", actions);
+    });
+
+    const rejectButton = document.createElement("button");
+    rejectButton.type = "button";
+    rejectButton.className = "schedule-card__button schedule-card__button--reject";
+    rejectButton.textContent = "Recusar";
+    rejectButton.addEventListener("click", () => {
+      handleAppointmentDecision(appointment, "reject", actions);
+    });
+
+    actions.appendChild(approveButton);
+    actions.appendChild(rejectButton);
+    wrapper.appendChild(actions);
+  }
+
   return wrapper;
 };
 
@@ -262,6 +362,103 @@ const renderAppointments = (status, appointments, options = {}) => {
   appointments.forEach((appointment) => {
     target.appendChild(createAppointmentCard(appointment, status));
   });
+};
+
+const mirrorDecisionToClient = async (appointment, decision) => {
+  const clientId =
+    appointment.clientId || appointment.clienteId || appointment.clientUID || appointment.clientUid || appointment.clientRefId;
+  if (!clientId) {
+    return;
+  }
+
+  const clientCollection = appointment.clientCollection || "clientes";
+  const clientRef = doc(db, clientCollection, clientId);
+  const pendingRef = doc(clientRef, appointmentCollections.pending, appointment.id);
+  const confirmedRef = doc(clientRef, appointmentCollections.confirmed, appointment.id);
+  const historyRef = doc(clientRef, appointmentCollections.past, appointment.id);
+
+  const basePayload = {
+    ...appointment,
+    status: decision === "accept" ? "confirmed" : "rejected",
+    decision: decision === "accept" ? "accepted" : "rejected",
+    decisionAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    if (decision === "accept") {
+      await Promise.all([
+        setDoc(confirmedRef, basePayload),
+        deleteDoc(pendingRef).catch(() => {}),
+      ]);
+    } else {
+      await Promise.all([
+        setDoc(historyRef, basePayload),
+        deleteDoc(pendingRef).catch(() => {}),
+        deleteDoc(confirmedRef).catch(() => {}),
+      ]);
+    }
+  } catch (error) {
+    console.warn("Não foi possível sincronizar a decisão com a cliente", error);
+  }
+};
+
+const toggleActionButtons = (container, disabled) => {
+  if (!container) {
+    return;
+  }
+  container.querySelectorAll("button").forEach((button) => {
+    button.disabled = disabled;
+  });
+};
+
+const handleAppointmentDecision = async (appointment, decision, actionsContainer) => {
+  if (!currentProfile?.id || appointment.__isFallback) {
+    return;
+  }
+
+  toggleActionButtons(actionsContainer, true);
+  setStatus(decision === "accept" ? "Confirmando atendimento..." : "Atualizando solicitação...");
+
+  const collectionName = currentProfile.collection || PROFILE_COLLECTIONS[0];
+  const professionalRef = doc(db, collectionName, currentProfile.id);
+  const pendingRef = doc(professionalRef, appointmentCollections.pending, appointment.id);
+
+  const payload = {
+    ...appointment,
+    status: decision === "accept" ? "confirmed" : "rejected",
+    decision: decision === "accept" ? "accepted" : "rejected",
+    decisionBy: currentProfile.id,
+    decisionAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    if (decision === "accept") {
+      const confirmedRef = doc(professionalRef, appointmentCollections.confirmed, appointment.id);
+      await Promise.all([
+        setDoc(confirmedRef, payload),
+        deleteDoc(pendingRef).catch(() => {}),
+        mirrorDecisionToClient(appointment, decision),
+      ]);
+      setStatus("Solicitação confirmada!", "success");
+    } else {
+      const historyRef = doc(professionalRef, appointmentCollections.past, appointment.id);
+      await Promise.all([
+        setDoc(historyRef, payload),
+        deleteDoc(pendingRef).catch(() => {}),
+        mirrorDecisionToClient(appointment, decision),
+      ]);
+      setStatus("Solicitação atualizada.", "success");
+    }
+
+    await loadAppointmentsForProfile(currentProfile);
+  } catch (error) {
+    console.error("Não foi possível atualizar a solicitação", error);
+    handleAuthError(error);
+  } finally {
+    toggleActionButtons(actionsContainer, false);
+  }
 };
 
 const updateMetrics = (pending, confirmed, past) => {
@@ -311,6 +508,146 @@ const getNestedValue = (data, path) => {
     }
     return undefined;
   }, data);
+};
+
+const toArray = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value);
+  }
+  return [];
+};
+
+const normalizeServiceEntry = (entry, index = 0) => {
+  if (!entry) {
+    return null;
+  }
+  if (typeof entry === "string") {
+    return {
+      id: `service-${index}`,
+      name: entry,
+      price: null,
+      priceLabel: "Sob consulta",
+      duration: "",
+    };
+  }
+  if (typeof entry === "object") {
+    const name =
+      entry.nome ||
+      entry.name ||
+      entry.titulo ||
+      entry.title ||
+      entry.servico ||
+      entry.service ||
+      `Serviço ${index + 1}`;
+    const rawPrice =
+      entry.preco ??
+      entry.price ??
+      entry.valor ??
+      entry.valorMinimo ??
+      entry.valor_maximo ??
+      entry.amount ??
+      entry.investimento ??
+      entry.precoSugerido ??
+      entry.valorSugerido;
+    const numericPrice = parsePriceValue(rawPrice);
+    let priceLabel = "Sob consulta";
+    if (typeof numericPrice === "number") {
+      priceLabel = formatCurrency(numericPrice);
+    } else if (rawPrice) {
+      priceLabel = typeof rawPrice === "string" ? rawPrice : String(rawPrice);
+    }
+    const duration = entry.duracao || entry.duration || entry.tempo || entry.time || "";
+    const id = entry.id || entry.uid || entry.slug || entry.codigo || `service-${index}`;
+    return {
+      id,
+      name,
+      price: typeof numericPrice === "number" ? numericPrice : null,
+      priceLabel,
+      duration,
+    };
+  }
+  return null;
+};
+
+const collectInlineServices = (profile) => {
+  const candidateFields = [
+    "servicos",
+    "services",
+    "catalogo.servicos",
+    "catalogo.services",
+    "portfolio.servicos",
+    "portfolio.services",
+    "ofertas",
+    "tabelaServicos",
+    "serviceList",
+    "pricing.servicos",
+    "pricing.services",
+  ];
+
+  const services = [];
+  const seen = new Set();
+
+  candidateFields.forEach((path) => {
+    const value = getNestedValue(profile, path);
+    toArray(value).forEach((entry, index) => {
+      const normalized = normalizeServiceEntry(entry, services.length + index);
+      if (normalized && !seen.has(normalized.id)) {
+        seen.add(normalized.id);
+        services.push(normalized);
+      }
+    });
+  });
+
+  return services;
+};
+
+const fetchServicesSubcollection = async (profile) => {
+  if (!profile?.id || !profile?.collection) {
+    return [];
+  }
+  try {
+    const ref = collection(doc(db, profile.collection, profile.id), "servicos");
+    const snapshot = await getDocs(ref);
+    if (snapshot.empty) {
+      return [];
+    }
+    return snapshot.docs
+      .map((docSnap, index) => {
+        const normalized = normalizeServiceEntry({ id: docSnap.id, ...docSnap.data() }, index);
+        return normalized;
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.warn("Não foi possível carregar os serviços cadastrados", error);
+    return [];
+  }
+};
+
+const loadServicesForProfile = async (profile) => {
+  if (!profile) {
+    renderServices([]);
+    return;
+  }
+  const inlineServices = collectInlineServices(profile);
+  let services = [...inlineServices];
+
+  const subcollectionServices = await fetchServicesSubcollection(profile);
+  if (subcollectionServices.length) {
+    const map = new Map(services.map((service) => [service.id, service]));
+    subcollectionServices.forEach((service) => {
+      if (!map.has(service.id)) {
+        services.push(service);
+      } else {
+        map.set(service.id, service);
+      }
+    });
+    services = Array.from(map.values());
+  }
+
+  renderServices(services);
 };
 
 const resolveStatusValue = (data) => {
@@ -488,17 +825,14 @@ const fetchAppointments = async (status, profileId, profileCollection) => {
   }
 };
 
-const hydrateDashboard = async (profile, fallbackEmail = "") => {
-  const displayName = profile.nome || profile.name || profile.displayName || profile.email || fallbackEmail || "manicure";
-  profileNameElements.forEach((element) => {
-    element.textContent = displayName;
-  });
-  profileDisplay.textContent = displayName;
-  profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
-  profileSpecialties.textContent =
-    profile.especialidades || profile.specialties || "Alongamento em fibra · Spa das mãos";
-  profileArea.textContent =
-    profile.atendimento || profile.area || profile.cidade || "São Paulo e região metropolitana";
+const loadAppointmentsForProfile = async (profile) => {
+  if (!profile?.id) {
+    renderAppointments("pending", []);
+    renderAppointments("confirmed", []);
+    renderAppointments("past", []);
+    updateMetrics([], [], []);
+    return { permissionIssue: false };
+  }
 
   const keys = ["pending", "confirmed", "past"];
   const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
@@ -511,13 +845,13 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
     if (result.status === "fulfilled") {
       const value = Array.isArray(result.value) ? result.value : [];
       if (value.length) {
-        return value;
+        return value.map((entry) => ({ status: key, ...entry }));
       }
     } else if (result.reason?.message === "permission-denied") {
       permissionIssue = true;
     }
     usedFallback[key] = true;
-    return defaultAppointmentData[key];
+    return defaultAppointmentData[key].map((entry) => ({ status: key, __isFallback: true, ...entry }));
   });
 
   const [pendingAppointments, confirmedAppointments, pastAppointments] = datasets;
@@ -540,6 +874,25 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
   });
 
   return { permissionIssue };
+};
+
+const hydrateDashboard = async (profile, fallbackEmail = "") => {
+  currentProfile = profile;
+  fallbackProfileEmail = fallbackEmail;
+
+  const displayName = profile.nome || profile.name || profile.displayName || profile.email || fallbackEmail || "manicure";
+  profileNameElements.forEach((element) => {
+    element.textContent = displayName;
+  });
+  profileDisplay.textContent = displayName;
+  profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
+  profileSpecialties.textContent =
+    profile.especialidades || profile.specialties || "Alongamento em fibra · Spa das mãos";
+  profileArea.textContent =
+    profile.atendimento || profile.area || profile.cidade || "São Paulo e região metropolitana";
+
+  await loadServicesForProfile(profile);
+  return loadAppointmentsForProfile(profile);
 };
 
 const handleAuthError = (error) => {

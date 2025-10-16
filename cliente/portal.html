@@ -110,6 +110,75 @@
           </div>
         </section>
 
+        <section class="request-board" aria-labelledby="request-board-heading">
+          <div class="request-board__intro">
+            <h2 id="request-board-heading">Solicitar atendimento</h2>
+            <p>
+              Encontre manicures NailNow, confira os serviços com valores atualizados e envie uma solicitação com a melhor
+              data e horário para você.
+            </p>
+          </div>
+          <div class="request-board__grid">
+            <section class="request-board__column" aria-labelledby="request-search-heading">
+              <div class="request-search">
+                <h3 id="request-search-heading">Buscar manicure</h3>
+                <label class="request-search__label" for="professional-search">Nome, bairro ou serviço</label>
+                <input
+                  type="search"
+                  id="professional-search"
+                  class="request-search__input"
+                  placeholder="Digite para filtrar"
+                  autocomplete="off"
+                />
+                <div id="professional-results" class="request-results" role="list"></div>
+                <p id="professional-results-empty" class="request-results__empty" hidden>
+                  Não encontramos manicures com esse filtro agora. Ajuste os termos e tente novamente.
+                </p>
+              </div>
+            </section>
+            <section class="request-board__column" aria-labelledby="request-form-heading">
+              <form id="service-request-form" class="request-form" novalidate>
+                <h3 id="request-form-heading">Detalhes da solicitação</h3>
+                <p id="request-form-empty" class="request-form__empty">
+                  Escolha uma manicure na lista ao lado para preencher os serviços disponíveis.
+                </p>
+                <div class="request-form__group" data-request-field="professional" hidden>
+                  <label for="request-professional">Profissional selecionada</label>
+                  <input id="request-professional" type="text" readonly />
+                </div>
+                <div class="request-form__group" data-request-field="service" hidden>
+                  <label for="request-service">Serviço</label>
+                  <select id="request-service"></select>
+                </div>
+                <div class="request-form__group" data-request-field="price" hidden>
+                  <label for="request-price">Valor</label>
+                  <input id="request-price" type="text" readonly />
+                </div>
+                <div class="request-form__row" data-request-field="schedule" hidden>
+                  <div class="request-form__group">
+                    <label for="request-date">Data desejada</label>
+                    <input type="date" id="request-date" required />
+                  </div>
+                  <div class="request-form__group">
+                    <label for="request-time">Horário</label>
+                    <input type="time" id="request-time" required />
+                  </div>
+                </div>
+                <div class="request-form__group" data-request-field="location" hidden>
+                  <label for="request-location">Endereço do atendimento</label>
+                  <input id="request-location" type="text" placeholder="Ex: Rua Exemplo, 123 - Bairro" />
+                </div>
+                <div class="request-form__group" data-request-field="notes" hidden>
+                  <label for="request-notes">Observações para a profissional</label>
+                  <textarea id="request-notes" rows="3" placeholder="Preferências, referências ou instruções adicionais"></textarea>
+                </div>
+                <button type="submit" id="submit-request" class="request-form__submit" disabled>Enviar solicitação</button>
+                <div id="request-feedback" class="auth-status" role="status" aria-live="polite" hidden></div>
+              </form>
+            </section>
+          </div>
+        </section>
+
         <section class="schedule-section" aria-labelledby="cliente-pending-heading">
           <div class="schedule-section__head">
             <h2 id="cliente-pending-heading">Solicitações em andamento</h2>

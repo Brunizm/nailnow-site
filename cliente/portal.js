@@ -8,6 +8,8 @@ import {
   getFirestore,
   limit,
   query,
+  serverTimestamp,
+  setDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -45,8 +47,27 @@ const badgePast = document.getElementById("badge-past");
 const pendingList = document.getElementById("pending-list");
 const confirmedList = document.getElementById("confirmed-list");
 const pastList = document.getElementById("past-list");
+const professionalSearchInput = document.getElementById("professional-search");
+const professionalResults = document.getElementById("professional-results");
+const professionalResultsEmpty = document.getElementById("professional-results-empty");
+const requestForm = document.getElementById("service-request-form");
+const requestFormEmpty = document.getElementById("request-form-empty");
+const requestFields = document.querySelectorAll("[data-request-field]");
+const requestProfessionalInput = document.getElementById("request-professional");
+const requestServiceSelect = document.getElementById("request-service");
+const requestPriceInput = document.getElementById("request-price");
+const requestDateInput = document.getElementById("request-date");
+const requestTimeInput = document.getElementById("request-time");
+const requestLocationInput = document.getElementById("request-location");
+const requestNotesInput = document.getElementById("request-notes");
+const requestSubmitButton = document.getElementById("submit-request");
+const requestFeedback = document.getElementById("request-feedback");
 let currentProfile = null;
 let fallbackProfileEmail = "";
+let professionalsCatalog = [];
+let filteredProfessionals = [];
+let selectedProfessional = null;
+let selectedService = null;
 
 const defaultAppointmentData = {
   pending: [
@@ -87,6 +108,32 @@ const defaultAppointmentData = {
   ],
 };
 
+const defaultProfessionalCatalog = [
+  {
+    id: "sample-mariana",
+    nome: "Mariana Costa",
+    area: "Pinheiros, São Paulo",
+    servicos: [
+      { id: "svc-1", name: "Esmaltação em gel", price: 120, priceLabel: "R$ 120,00", duration: "1h15" },
+      { id: "svc-2", name: "Spa das mãos", price: 150, priceLabel: "R$ 150,00", duration: "1h30" },
+      { id: "svc-3", name: "Blindagem", price: 180, priceLabel: "R$ 180,00", duration: "1h45" },
+    ],
+    rating: "4,9", 
+    __isFallback: true,
+  },
+  {
+    id: "sample-bianca",
+    nome: "Bianca Ramos",
+    area: "Moema, São Paulo",
+    servicos: [
+      { id: "svc-4", name: "Pedicure + spa relaxante", price: 130, priceLabel: "R$ 130,00", duration: "1h20" },
+      { id: "svc-5", name: "Alongamento em fibra", price: 210, priceLabel: "R$ 210,00", duration: "2h" },
+    ],
+    rating: "5,0",
+    __isFallback: true,
+  },
+];
+
 const appointmentCollections = {
   pending: "solicitacoes",
   confirmed: "confirmados",
@@ -105,6 +152,18 @@ const setStatus = (message, type = "") => {
   }
 };
 
+const setRequestFeedback = (message, type = "") => {
+  if (!requestFeedback) {
+    return;
+  }
+  requestFeedback.textContent = message;
+  requestFeedback.classList.remove("auth-status--error", "auth-status--success");
+  requestFeedback.hidden = !message;
+  if (type) {
+    requestFeedback.classList.add(`auth-status--${type}`);
+  }
+};
+
 const resetDashboard = () => {
   pendingList.innerHTML = "";
   confirmedList.innerHTML = "";
@@ -119,6 +178,30 @@ const resetDashboard = () => {
   profileEmail.textContent = "—";
   profilePhone.textContent = "—";
   profileAddress.textContent = "—";
+  if (professionalResults) {
+    professionalResults.innerHTML = "";
+  }
+  if (professionalResultsEmpty) {
+    professionalResultsEmpty.hidden = true;
+  }
+  if (requestFeedback) {
+    requestFeedback.textContent = "";
+    requestFeedback.hidden = true;
+    requestFeedback.classList.remove("auth-status--error", "auth-status--success");
+  }
+  if (requestForm) {
+    requestForm.reset();
+  }
+  requestFields.forEach((field) => {
+    field.hidden = true;
+  });
+  if (requestSubmitButton) {
+    requestSubmitButton.disabled = true;
+  }
+  selectedProfessional = null;
+  selectedService = null;
+  professionalsCatalog = [];
+  filteredProfessionals = [];
 };
 
 const formatCurrency = (value) => {
@@ -127,6 +210,80 @@ const formatCurrency = (value) => {
   }
   if (!value) return "—";
   return value;
+};
+
+const parsePriceValue = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.replace(/[^0-9,.-]/g, "").replace(/,/g, ".");
+    const parsed = Number.parseFloat(normalized);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
+};
+
+const toArray = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value);
+  }
+  return [];
+};
+
+const normalizeServiceEntry = (entry, index = 0) => {
+  if (!entry) {
+    return null;
+  }
+  if (typeof entry === "string") {
+    return {
+      id: `service-${index}`,
+      name: entry,
+      price: null,
+      priceLabel: "Sob consulta",
+      duration: "",
+    };
+  }
+  if (typeof entry === "object") {
+    const name =
+      entry.nome ||
+      entry.name ||
+      entry.titulo ||
+      entry.title ||
+      entry.servico ||
+      entry.service ||
+      `Serviço ${index + 1}`;
+    const rawPrice =
+      entry.preco ??
+      entry.price ??
+      entry.valor ??
+      entry.valorMinimo ??
+      entry.valor_maximo ??
+      entry.amount ??
+      entry.investimento ??
+      entry.precoSugerido ??
+      entry.valorSugerido;
+    const numericPrice = parsePriceValue(rawPrice);
+    let priceLabel = "Sob consulta";
+    if (typeof numericPrice === "number") {
+      priceLabel = formatCurrency(numericPrice);
+    } else if (rawPrice) {
+      priceLabel = typeof rawPrice === "string" ? rawPrice : String(rawPrice);
+    }
+    const duration = entry.duracao || entry.duration || entry.tempo || entry.time || "";
+    const id = entry.id || entry.uid || entry.slug || entry.codigo || `service-${index}`;
+    return {
+      id,
+      name,
+      price: typeof numericPrice === "number" ? numericPrice : null,
+      priceLabel,
+      duration,
+    };
+  }
+  return null;
 };
 
 const parseDateValue = (rawDate, rawTime) => {
@@ -247,6 +404,425 @@ const renderAppointments = (status, appointments, options = {}) => {
   });
 };
 
+const getProfessionalDisplayName = (professional) => {
+  return (
+    professional?.nome ||
+    professional?.name ||
+    professional?.displayName ||
+    professional?.fantasia ||
+    professional?.razaoSocial ||
+    "Manicure NailNow"
+  );
+};
+
+const normalizeProfessionalProfile = (snapshot) => {
+  if (!snapshot) {
+    return null;
+  }
+  const data = typeof snapshot.data === "function" ? snapshot.data() : snapshot;
+  const id = snapshot.id || data.id;
+  if (!id) {
+    return null;
+  }
+
+  const services = collectProfessionalServices(data);
+  const neighborhood = data.bairro || data.neighborhood;
+  const city = data.cidade || data.city;
+  const state = data.estado || data.state || data.uf;
+  const areaSource = data.atendimento || data.area || data.regiao || "";
+  const areaParts = [neighborhood, city, state].filter(Boolean);
+  const area = areaParts.length ? areaParts.join(" · ") : areaSource;
+  const ratingRaw = data.avaliacao || data.rating || data.nota || data.mediaAvaliacoes;
+  const rating = typeof ratingRaw === "number" ? ratingRaw.toFixed(1) : ratingRaw;
+  const collectionName = snapshot.ref?.parent?.id || data.collection || "profissionais";
+
+  return {
+    id,
+    nome: getProfessionalDisplayName(data),
+    area,
+    rating,
+    servicos: services,
+    collection: collectionName,
+    email: data.email || data.emailLowercase || data.contato?.email || "",
+    telefone: data.telefone || data.phone || data.celular || "",
+    raw: data,
+    __isFallback: Boolean(data.__isFallback),
+  };
+};
+
+const renderProfessionalResults = (items = []) => {
+  if (!professionalResults || !professionalResultsEmpty) {
+    return;
+  }
+  professionalResults.innerHTML = "";
+
+  if (!items.length) {
+    professionalResultsEmpty.hidden = false;
+    return;
+  }
+
+  professionalResultsEmpty.hidden = true;
+
+  items.forEach((professional) => {
+    const card = document.createElement("article");
+    card.className = "request-card";
+    if (selectedProfessional && selectedProfessional.id === professional.id) {
+      card.classList.add("request-card--selected");
+    }
+
+    const title = document.createElement("h4");
+    title.className = "request-card__title";
+    title.textContent = getProfessionalDisplayName(professional);
+    card.appendChild(title);
+
+    const meta = document.createElement("p");
+    meta.className = "request-card__meta";
+    const metaParts = [];
+    if (professional.area) {
+      metaParts.push(professional.area);
+    }
+    if (professional.rating) {
+      metaParts.push(`${professional.rating} ★`);
+    }
+    meta.textContent = metaParts.join(" • ") || "Área a combinar";
+    card.appendChild(meta);
+
+    const servicesListEl = document.createElement("ul");
+    servicesListEl.className = "request-card__services";
+
+    if (professional.servicos && professional.servicos.length) {
+      professional.servicos.slice(0, 3).forEach((service) => {
+        const item = document.createElement("li");
+        item.className = "request-card__service";
+        const name = document.createElement("span");
+        name.textContent = service.name;
+        const price = document.createElement("span");
+        price.textContent = service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+        item.appendChild(name);
+        item.appendChild(price);
+        servicesListEl.appendChild(item);
+      });
+    } else {
+      const placeholder = document.createElement("li");
+      placeholder.className = "request-card__service";
+      placeholder.textContent = "A profissional confirmará os valores com você.";
+      servicesListEl.appendChild(placeholder);
+    }
+
+    card.appendChild(servicesListEl);
+
+    const selectButton = document.createElement("button");
+    selectButton.type = "button";
+    selectButton.className = "request-card__select";
+    if (professional.__isFallback) {
+      selectButton.textContent = "Exemplo";
+      selectButton.disabled = true;
+      selectButton.title = "Faça login com sua conta para solicitar manicures reais.";
+    } else {
+      selectButton.textContent = "Selecionar manicure";
+      selectButton.addEventListener("click", () => {
+        selectProfessional(professional);
+      });
+    }
+    card.appendChild(selectButton);
+
+    professionalResults.appendChild(card);
+  });
+};
+
+const updateRequestSubmitState = () => {
+  if (!requestSubmitButton) {
+    return;
+  }
+  const hasSchedule = Boolean(requestDateInput?.value && requestTimeInput?.value);
+  const hasSelection = Boolean(selectedProfessional && selectedService);
+  requestSubmitButton.disabled = !(hasSchedule && hasSelection);
+};
+
+const populateRequestForm = (professional) => {
+  if (!requestForm || !requestProfessionalInput) {
+    return;
+  }
+
+  if (requestFormEmpty) {
+    requestFormEmpty.hidden = true;
+  }
+
+  requestFields.forEach((field) => {
+    field.hidden = false;
+  });
+
+  const areaLabel = professional.area ? ` — ${professional.area}` : "";
+  requestProfessionalInput.value = `${getProfessionalDisplayName(professional)}${areaLabel}`;
+
+  if (requestServiceSelect) {
+    requestServiceSelect.innerHTML = "";
+    if (professional.servicos && professional.servicos.length) {
+      professional.servicos.forEach((service, index) => {
+        const option = document.createElement("option");
+        option.value = service.id || `service-${index}`;
+        option.textContent = `${service.name} — ${service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta")}`;
+        option.dataset.serviceIndex = String(index);
+        requestServiceSelect.appendChild(option);
+      });
+      requestServiceSelect.disabled = false;
+      requestServiceSelect.selectedIndex = 0;
+      selectedService = professional.servicos[0];
+    } else {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "Serviços serão combinados diretamente com a manicure";
+      requestServiceSelect.appendChild(option);
+      requestServiceSelect.disabled = true;
+      selectedService = {
+        id: "manual-service",
+        name: "Serviço NailNow",
+        price: null,
+        priceLabel: "Sob consulta",
+        duration: "",
+      };
+    }
+  }
+
+  if (requestPriceInput) {
+    if (selectedService?.priceLabel) {
+      requestPriceInput.value = selectedService.priceLabel;
+    } else if (typeof selectedService?.price === "number") {
+      requestPriceInput.value = formatCurrency(selectedService.price);
+    } else {
+      requestPriceInput.value = "Sob consulta";
+    }
+  }
+
+  if (requestLocationInput && !requestLocationInput.value && currentProfile?.endereco) {
+    requestLocationInput.value = currentProfile.endereco;
+  }
+
+  setRequestFeedback("");
+  updateRequestSubmitState();
+};
+
+const selectProfessional = (professional) => {
+  selectedProfessional = professional;
+  selectedService = professional.servicos?.[0] || null;
+  renderProfessionalResults(filteredProfessionals);
+  populateRequestForm(professional);
+};
+
+const filterProfessionals = (term) => {
+  if (!term) {
+    filteredProfessionals = [...professionalsCatalog];
+  } else {
+    const normalized = term.trim().toLowerCase();
+    filteredProfessionals = professionalsCatalog.filter((professional) => {
+      const keywords = [
+        professional.nome,
+        professional.area,
+        ...(professional.servicos || []).map((service) => service.name),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return keywords.includes(normalized);
+    });
+  }
+  renderProfessionalResults(filteredProfessionals);
+};
+
+const loadProfessionalsCatalog = async () => {
+  if (!professionalResults) {
+    return;
+  }
+
+  setRequestFeedback("");
+
+  let catalog = [];
+  try {
+    const professionalsRef = collection(db, "profissionais");
+    const snapshot = await getDocs(query(professionalsRef, limit(24)));
+    if (snapshot.empty) {
+      catalog = defaultProfessionalCatalog;
+    } else {
+      catalog = snapshot.docs
+        .map((docSnap) => normalizeProfessionalProfile(docSnap))
+        .filter(Boolean)
+        .map((item) => ({ ...item, __isFallback: false }));
+    }
+  } catch (error) {
+    console.warn("Não foi possível carregar o catálogo de manicures", error);
+    if (error.code === "permission-denied") {
+      setRequestFeedback(
+        "Não foi possível listar as manicures agora. Avise o suporte NailNow para liberar o acesso.",
+        "error",
+      );
+    }
+    catalog = defaultProfessionalCatalog;
+  }
+
+  catalog.sort((a, b) => {
+    const nameA = getProfessionalDisplayName(a).toLowerCase();
+    const nameB = getProfessionalDisplayName(b).toLowerCase();
+    return nameA.localeCompare(nameB, "pt-BR");
+  });
+
+  professionalsCatalog = catalog;
+  if (!catalog.some((professional) => professional.id === selectedProfessional?.id)) {
+    selectedProfessional = null;
+    selectedService = null;
+    requestFields.forEach((field) => {
+      field.hidden = true;
+    });
+    if (requestFormEmpty) {
+      requestFormEmpty.hidden = false;
+    }
+    if (requestProfessionalInput) {
+      requestProfessionalInput.value = "";
+    }
+    if (requestPriceInput) {
+      requestPriceInput.value = "";
+    }
+  }
+  filteredProfessionals = [...catalog];
+  renderProfessionalResults(filteredProfessionals);
+  updateRequestSubmitState();
+};
+
+const handleServiceSelectionChange = () => {
+  if (!requestServiceSelect || !selectedProfessional) {
+    return;
+  }
+  const selectedOption = requestServiceSelect.selectedOptions?.[0];
+  const index = selectedOption ? Number.parseInt(selectedOption.dataset.serviceIndex || "-1", 10) : -1;
+  if (!Number.isNaN(index) && selectedProfessional.servicos?.[index]) {
+    selectedService = selectedProfessional.servicos[index];
+  }
+
+  if (requestPriceInput) {
+    if (selectedService?.priceLabel) {
+      requestPriceInput.value = selectedService.priceLabel;
+    } else if (typeof selectedService?.price === "number") {
+      requestPriceInput.value = formatCurrency(selectedService.price);
+    } else {
+      requestPriceInput.value = "Sob consulta";
+    }
+  }
+
+  updateRequestSubmitState();
+};
+
+const buildRequestPayload = (requestId, location, notes) => {
+  const professionalCollection = selectedProfessional.collection || "profissionais";
+  const clientCollection = currentProfile.collection || PROFILE_COLLECTIONS[0];
+  const priceLabel =
+    selectedService?.priceLabel ||
+    (typeof selectedService?.price === "number" ? formatCurrency(selectedService.price) : "Sob consulta");
+
+  return {
+    id: requestId,
+    status: "pending",
+    service: selectedService?.name || "Serviço NailNow",
+    serviceId: selectedService?.id || "",
+    price: typeof selectedService?.price === "number" ? selectedService.price : null,
+    priceLabel,
+    professional: getProfessionalDisplayName(selectedProfessional),
+    professionalId: selectedProfessional.id,
+    professionalCollection,
+    professionalEmail: selectedProfessional.email || "",
+    client: currentProfile.nome || currentProfile.name || currentProfile.email || "Cliente NailNow",
+    clientId: currentProfile.id,
+    clientCollection,
+    clientEmail: currentProfile.email || fallbackProfileEmail || "",
+    date: requestDateInput.value,
+    time: requestTimeInput.value,
+    location,
+    note: notes,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+};
+
+const handleRequestSubmission = async (event) => {
+  event.preventDefault();
+  if (!currentProfile?.id) {
+    setRequestFeedback("Sua sessão expirou. Faça login novamente.", "error");
+    return;
+  }
+  if (!selectedProfessional || !selectedService) {
+    setRequestFeedback("Selecione uma manicure e um serviço antes de enviar.", "error");
+    return;
+  }
+  if (!requestDateInput?.value || !requestTimeInput?.value) {
+    setRequestFeedback("Informe a data e o horário desejados.", "error");
+    return;
+  }
+
+  const location = (requestLocationInput?.value || currentProfile?.endereco || "").trim();
+  const notes = (requestNotesInput?.value || "").trim();
+
+  if (requestSubmitButton) {
+    requestSubmitButton.disabled = true;
+  }
+  setRequestFeedback("Enviando sua solicitação...");
+
+  try {
+    const professionalCollection = selectedProfessional.collection || "profissionais";
+    const professionalRef = doc(db, professionalCollection, selectedProfessional.id);
+    const professionalPendingRef = doc(collection(professionalRef, appointmentCollections.pending));
+    const requestId = professionalPendingRef.id;
+
+    const clientCollection = currentProfile.collection || PROFILE_COLLECTIONS[0];
+    const clientRef = doc(db, clientCollection, currentProfile.id);
+    const clientPendingRef = doc(collection(clientRef, appointmentCollections.pending), requestId);
+
+    const payload = buildRequestPayload(requestId, location, notes);
+
+    await Promise.all([
+      setDoc(professionalPendingRef, payload),
+      setDoc(clientPendingRef, payload),
+    ]);
+
+    setRequestFeedback("Solicitação enviada! A manicure responderá pelo portal.", "success");
+
+    if (requestDateInput) {
+      requestDateInput.value = "";
+    }
+    if (requestTimeInput) {
+      requestTimeInput.value = "";
+    }
+    if (requestNotesInput) {
+      requestNotesInput.value = "";
+    }
+
+    updateRequestSubmitState();
+    await loadAppointmentsForProfile(currentProfile);
+  } catch (error) {
+    console.error("Não foi possível registrar a solicitação", error);
+    if (error.code === "permission-denied") {
+      setRequestFeedback(
+        "Seu acesso não tem permissão para enviar solicitações agora. Avise o suporte NailNow.",
+        "error",
+      );
+    } else {
+      setRequestFeedback("Não foi possível enviar sua solicitação. Tente novamente em instantes.", "error");
+    }
+  } finally {
+    if (requestSubmitButton) {
+      requestSubmitButton.disabled = false;
+    }
+  }
+};
+
+professionalSearchInput?.addEventListener("input", (event) => {
+  filterProfessionals(event.target.value);
+});
+
+requestServiceSelect?.addEventListener("change", handleServiceSelectionChange);
+requestDateInput?.addEventListener("change", updateRequestSubmitState);
+requestTimeInput?.addEventListener("change", updateRequestSubmitState);
+requestLocationInput?.addEventListener("input", () => setRequestFeedback(""));
+requestNotesInput?.addEventListener("input", () => setRequestFeedback(""));
+requestForm?.addEventListener("submit", handleRequestSubmission);
+
 const updateMetrics = (pending, confirmed, past) => {
   metricPending.textContent = pending.length;
   badgePending.textContent = pending.length;
@@ -254,6 +830,57 @@ const updateMetrics = (pending, confirmed, past) => {
   badgeConfirmed.textContent = confirmed.length;
   metricPast.textContent = past.length;
   badgePast.textContent = past.length;
+};
+
+const loadAppointmentsForProfile = async (profile) => {
+  if (!profile?.id) {
+    renderAppointments("pending", []);
+    renderAppointments("confirmed", []);
+    renderAppointments("past", []);
+    updateMetrics([], [], []);
+    return { permissionIssue: false };
+  }
+
+  const keys = ["pending", "confirmed", "past"];
+  const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
+  const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id, profileCollection)));
+
+  let permissionIssue = false;
+  const usedFallback = {};
+  const datasets = keys.map((key, index) => {
+    const result = results[index];
+    if (result.status === "fulfilled") {
+      const value = Array.isArray(result.value) ? result.value : [];
+      if (value.length) {
+        return value.map((entry) => ({ status: key, ...entry }));
+      }
+    } else if (result.reason?.message === "permission-denied") {
+      permissionIssue = true;
+    }
+    usedFallback[key] = true;
+    return defaultAppointmentData[key].map((entry) => ({ status: key, __isFallback: true, ...entry }));
+  });
+
+  const [pendingAppointments, confirmedAppointments, pastAppointments] = datasets;
+  updateMetrics(pendingAppointments, confirmedAppointments, pastAppointments);
+
+  const fallbackNotice = permissionIssue
+    ? "Não conseguimos carregar sua agenda completa agora. Mostramos um exemplo enquanto sincronizamos seus dados."
+    : "";
+  let noticeDisplayed = false;
+
+  keys.forEach((key, index) => {
+    const data = datasets[index];
+    const shouldShowNotice = fallbackNotice && usedFallback[key] && !noticeDisplayed;
+    renderAppointments(key, data, {
+      notice: shouldShowNotice ? fallbackNotice : "",
+    });
+    if (shouldShowNotice) {
+      noticeDisplayed = true;
+    }
+  });
+
+  return { permissionIssue };
 };
 
 const buildLookupCandidates = (rawEmail) => {
@@ -294,6 +921,38 @@ const getNestedValue = (data, path) => {
     }
     return undefined;
   }, data);
+};
+
+const collectProfessionalServices = (profile) => {
+  const candidateFields = [
+    "servicos",
+    "services",
+    "catalogo.servicos",
+    "catalogo.services",
+    "portfolio.servicos",
+    "portfolio.services",
+    "ofertas",
+    "tabelaServicos",
+    "serviceList",
+    "pricing.servicos",
+    "pricing.services",
+  ];
+
+  const services = [];
+  const seen = new Set();
+
+  candidateFields.forEach((path) => {
+    const value = getNestedValue(profile, path);
+    toArray(value).forEach((entry, index) => {
+      const normalized = normalizeServiceEntry(entry, services.length + index);
+      if (normalized && !seen.has(normalized.id)) {
+        seen.add(normalized.id);
+        services.push(normalized);
+      }
+    });
+  });
+
+  return services;
 };
 
 const resolveStatusValue = (data) => {
@@ -494,8 +1153,7 @@ const updateProfileDisplay = (profile, fallbackEmail = "") => {
 };
 
 const hydrateDashboard = async (profile, fallbackEmail = "") => {
-  fallbackProfileEmail =
-    fallbackEmail || profile.email || profile.emailLowercase || fallbackProfileEmail || "";
+  fallbackProfileEmail = fallbackEmail || profile.email || profile.emailLowercase || fallbackProfileEmail || "";
   currentProfile = {
     ...profile,
     collection: profile.collection || PROFILE_COLLECTIONS[0],
@@ -505,49 +1163,8 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
   }
 
   updateProfileDisplay(currentProfile, fallbackEmail);
-
-  const keys = ["pending", "confirmed", "past"];
-  const profileCollection = currentProfile.collection || PROFILE_COLLECTIONS[0];
-  const results = await Promise.allSettled(
-    keys.map((key) => fetchAppointments(key, currentProfile.id, profileCollection)),
-  );
-
-  let permissionIssue = false;
-  const usedFallback = {};
-  const datasets = keys.map((key, index) => {
-    const result = results[index];
-    if (result.status === "fulfilled") {
-      const value = Array.isArray(result.value) ? result.value : [];
-      if (value.length) {
-        return value;
-      }
-    } else if (result.reason?.message === "permission-denied") {
-      permissionIssue = true;
-    }
-    usedFallback[key] = true;
-    return defaultAppointmentData[key];
-  });
-
-  const [pendingAppointments, confirmedAppointments, pastAppointments] = datasets;
-  updateMetrics(pendingAppointments, confirmedAppointments, pastAppointments);
-
-  const fallbackNotice = permissionIssue
-    ? "Não conseguimos carregar toda a agenda agora. Mostramos um exemplo enquanto sincronizamos seus dados."
-    : "";
-  let noticeDisplayed = false;
-
-  keys.forEach((key, index) => {
-    const data = datasets[index];
-    const shouldShowNotice = fallbackNotice && usedFallback[key] && !noticeDisplayed;
-    renderAppointments(key, data, {
-      notice: shouldShowNotice ? fallbackNotice : "",
-    });
-    if (shouldShowNotice) {
-      noticeDisplayed = true;
-    }
-  });
-
-  return { permissionIssue };
+  await loadProfessionalsCatalog();
+  return loadAppointmentsForProfile(currentProfile);
 };
 
 const handleAuthError = (error) => {
