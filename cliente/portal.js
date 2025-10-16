@@ -69,6 +69,28 @@ let filteredProfessionals = [];
 let selectedProfessional = null;
 let selectedService = null;
 
+const POSTAL_CODE_REGEX = /\b\d{5}-?\d{3}\b/g;
+
+const stripPostalCode = (value = "") => {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  let sanitized = value.replace(POSTAL_CODE_REGEX, "");
+  sanitized = sanitized.replace(/[,•·-]\s*(?=([,•·-]|$))/g, "");
+  sanitized = sanitized.replace(/\s{2,}/g, " ");
+  sanitized = sanitized.replace(/^[,•·-]\s*/, "");
+  sanitized = sanitized.replace(/\s*[,•·-]\s*$/, "");
+  return sanitized.trim();
+};
+
+const sanitizeAreaParts = (parts = []) => {
+  return parts
+    .map((part) => stripPostalCode(part))
+    .map((part) => part.replace(/\s{2,}/g, " ").trim())
+    .filter(Boolean);
+};
+
 const defaultAppointmentData = {
   pending: [
     {
@@ -430,8 +452,9 @@ const normalizeProfessionalProfile = (snapshot) => {
   const city = data.cidade || data.city;
   const state = data.estado || data.state || data.uf;
   const areaSource = data.atendimento || data.area || data.regiao || "";
-  const areaParts = [neighborhood, city, state].filter(Boolean);
-  const area = areaParts.length ? areaParts.join(" · ") : areaSource;
+  const areaParts = sanitizeAreaParts([neighborhood, city, state]);
+  const fallbackArea = stripPostalCode(areaSource);
+  const area = areaParts.length ? areaParts.join(" · ") : fallbackArea;
   const ratingRaw = data.avaliacao || data.rating || data.nota || data.mediaAvaliacoes;
   const rating = typeof ratingRaw === "number" ? ratingRaw.toFixed(1) : ratingRaw;
   const collectionName = snapshot.ref?.parent?.id || data.collection || "profissionais";
