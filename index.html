@@ -152,6 +152,7 @@
                     name="time"
                     class="booking-card__input"
                     step="900"
+                    list="booking-time-options"
                   />
                   <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
                     <path
@@ -159,6 +160,7 @@
                     />
                   </svg>
                 </div>
+                <datalist id="booking-time-options"></datalist>
               </div>
             </div>
           <button type="submit" class="booking-card__submit">Agende agora</button>
@@ -1108,6 +1110,68 @@
         closeServiceDropdown();
       }
 
+      function populateTimeOptions() {
+        const datalist = document.getElementById("booking-time-options");
+        if (!datalist) return;
+
+        const fragment = document.createDocumentFragment();
+        const minutesInDay = 24 * 60;
+        const step = 15;
+
+        for (let minutes = 0; minutes < minutesInDay; minutes += step) {
+          const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
+          const mins = String(minutes % 60).padStart(2, "0");
+          const option = document.createElement("option");
+          option.value = `${hours}:${mins}`;
+          fragment.appendChild(option);
+        }
+
+        datalist.innerHTML = "";
+        datalist.appendChild(fragment);
+      }
+
+      function alignTimeInputToStep(input) {
+        if (!input) return;
+
+        const step = 15;
+        const minutesInDay = 24 * 60;
+
+        function normalizeValue(value) {
+          if (!value) return "";
+
+          const [rawHours, rawMinutes] = value.split(":");
+          const hours = Number(rawHours);
+          const minutes = Number(rawMinutes);
+
+          if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+            return "";
+          }
+
+          const totalMinutes = hours * 60 + minutes;
+          if (!Number.isFinite(totalMinutes)) {
+            return "";
+          }
+
+          const rounded = Math.round(totalMinutes / step) * step;
+          const clamped = Math.max(0, Math.min(rounded, minutesInDay - step));
+          const finalHours = String(Math.floor(clamped / 60)).padStart(2, "0");
+          const finalMinutes = String(clamped % 60).padStart(2, "0");
+
+          return `${finalHours}:${finalMinutes}`;
+        }
+
+        function handleAlignment() {
+          const current = input.value;
+          const aligned = normalizeValue(current);
+          if (aligned && aligned !== current) {
+            input.value = aligned;
+          }
+        }
+
+        input.addEventListener("change", handleAlignment);
+        input.addEventListener("blur", handleAlignment);
+      }
+
       function formatDistance(kilometers) {
         if (!Number.isFinite(kilometers)) return null;
         if (kilometers < 1) {
@@ -1640,6 +1704,8 @@
 
       document.addEventListener("DOMContentLoaded", () => {
         populateServiceSelect();
+        populateTimeOptions();
+        alignTimeInputToStep(document.getElementById("booking-time"));
         ensureAnonymousAccess().catch((error) => {
           console.error("Erro ao preparar autenticação anônima", error);
         });
