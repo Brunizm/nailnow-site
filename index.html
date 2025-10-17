@@ -20,15 +20,15 @@
     <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
     <header class="site-header">
       <div class="header-inner">
-        <a href="/" class="brand-mark" aria-label="Início da NailNow">
-          NailNow
+        <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
+          <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
+          <span class="brand-mark__text">NailNow</span>
         </a>
         <div class="header-navigation">
           <nav class="primary-nav" aria-label="Principal">
             <a href="/" class="nav-link" aria-current="page">Home</a>
             <a href="como-funciona.html" class="nav-link">Como funciona</a>
             <a href="servicos.html" class="nav-link">Serviços</a>
-            <a href="agendamentos.html" class="nav-link">Agendamentos</a>
           </nav>
           <div class="header-actions">
             <a href="cliente/index.html" class="header-cta">Sou Cliente</a>
@@ -129,25 +129,45 @@
                 <label class="booking-card__label" for="booking-date">Data</label>
                 <div class="booking-card__control booking-card__control--compact">
                   <input type="date" id="booking-date" name="date" class="booking-card__input" />
-                  <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
-                    <path
-                      d="M7 2a1 1 0 0 0-1 1v1H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-1V3a1 1 0 1 0-2 0v1H8V3a1 1 0 0 0-1-1Zm-2 6h14v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z"
-                    />
-                  </svg>
+                  <button
+                    type="button"
+                    class="booking-card__icon-button"
+                    data-picker-target="booking-date"
+                    aria-label="Abrir seletor de data"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
+                      <path
+                        d="M7 2a1 1 0 0 0-1 1v1H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-1V3a1 1 0 1 0-2 0v1H8V3a1 1 0 0 0-1-1Zm-2 6h14v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z"
+                      />
+                    </svg>
+                  </button>
                 </div>
               </div>
-            <div class="booking-card__field">
-              <label class="booking-card__label" for="booking-time">Horário</label>
-              <div class="booking-card__control booking-card__control--compact">
-                <input type="time" id="booking-time" name="time" class="booking-card__input" />
-                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
-                    <path
-                      d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
-                    />
-                </svg>
+              <div class="booking-card__field">
+                <label class="booking-card__label" for="booking-time">Horário</label>
+                <div class="booking-card__control booking-card__control--compact">
+                  <input
+                    type="time"
+                    id="booking-time"
+                    name="time"
+                    class="booking-card__input"
+                    step="900"
+                  />
+                  <button
+                    type="button"
+                    class="booking-card__icon-button"
+                    data-picker-target="booking-time"
+                    aria-label="Abrir seletor de horário"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
+                      <path
+                        d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
           <button type="submit" class="booking-card__submit">Agende agora</button>
           <p class="booking-card__feedback" id="booking-feedback" role="status" aria-live="polite"></p>
           <p class="booking-card__note">Suporte dedicado e avaliações reais para você escolher a profissional ideal com tranquilidade.</p>
@@ -324,6 +344,28 @@
         blush: "match-results__avatar--blush",
         lavender: "match-results__avatar--lavender",
       };
+
+      const POSTAL_CODE_REGEX = /\b\d{5}-?\d{3}\b/g;
+
+      function stripPostalCode(value = "") {
+        if (typeof value !== "string") {
+          return "";
+        }
+
+        let sanitized = value.replace(POSTAL_CODE_REGEX, "");
+        sanitized = sanitized.replace(/[,•·-]\s*(?=([,•·-]|$))/g, "");
+        sanitized = sanitized.replace(/\s{2,}/g, " ");
+        sanitized = sanitized.replace(/^[,•·-]\s*/, "");
+        sanitized = sanitized.replace(/\s*[,•·-]\s*$/, "");
+        return sanitized.trim();
+      }
+
+      function sanitizeAreaParts(parts = []) {
+        return parts
+          .map((part) => stripPostalCode(part))
+          .map((part) => part.replace(/\s{2,}/g, " ").trim())
+          .filter(Boolean);
+      }
 
       function toNumber(value) {
         if (typeof value === "number") {
@@ -889,17 +931,19 @@
         const lng = toNumber(data.lng);
         const location = lat !== null && lng !== null ? { lat, lng } : null;
 
-        const areaCandidates = [data.cidade, data.estado, data.endereco, data.endereco_formatado]
+        const rawAreaCandidates = [data.cidade, data.estado, data.endereco, data.endereco_formatado]
           .filter(Boolean)
           .flatMap((value) => value.split(/,|·/).map((part) => part.trim()))
           .filter(Boolean);
+        const areaCandidates = sanitizeAreaParts(rawAreaCandidates);
 
         const city = (data.cidade ?? "").toString().trim();
         const state = (data.estado ?? "").toString().trim();
         const badgeParts = [city, state].filter(Boolean);
         const badge = badgeParts.length
           ? `${badgeParts.join(' · ')}`
-          : (data.endereco_formatado || data.endereco || "Atendimento móvel");
+          : stripPostalCode(data.endereco_formatado || data.endereco || "Atendimento móvel") ||
+            "Atendimento móvel";
 
         const rating = toNumber(data.rating);
         const reviewsNumber = toNumber(data.reviews);
@@ -981,10 +1025,7 @@
             professionalsLoadError = error;
             throw error;
           }
-          const sources = [
-            { path: "profissionais", label: "profissionais" },
-            { path: "manicures", label: "manicures" },
-          ];
+          const sources = [{ path: "profissionais", label: "profissionais" }];
 
           let mergedCatalog = [];
           let lastError = null;
@@ -1214,7 +1255,7 @@
           profissional: pro.id,
           servico: serviceParam,
         });
-        cta.href = `cliente/cadastro.html?${params.toString()}`;
+        cta.href = `cliente/index.html?${params.toString()}`;
         cta.textContent = "Reservar atendimento";
 
         content.appendChild(header);
@@ -1476,6 +1517,33 @@
         input.dataset.autocompleteInitialized = "true";
       }
 
+      function initBookingPickerButtons() {
+        const buttons = document.querySelectorAll(
+          ".booking-card__icon-button[data-picker-target]"
+        );
+
+        buttons.forEach((button) => {
+          if (button.dataset.pickerBound === "true") return;
+
+          const targetId = button.getAttribute("data-picker-target");
+          const input = targetId ? document.getElementById(targetId) : null;
+          if (!input) return;
+
+          button.addEventListener("click", () => {
+            if (typeof input.showPicker === "function") {
+              input.showPicker();
+            } else {
+              input.focus();
+              if (input.type === "time") {
+                input.click();
+              }
+            }
+          });
+
+          button.dataset.pickerBound = "true";
+        });
+      }
+
       async function handleBooking(event) {
         event.preventDefault();
         const form = event.target;
@@ -1585,6 +1653,7 @@
         ensureProfessionalsLoaded().catch((error) => {
           console.error("Erro inicial ao carregar profissionais", error);
         });
+        initBookingPickerButtons();
       });
 
       window.addEventListener("load", () => {
