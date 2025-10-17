@@ -39,6 +39,13 @@ body {
   padding-bottom: 72px;
 }
 
+.page-with-illustrated-bg {
+  background-image: url("assets/fundo.svg");
+  background-repeat: no-repeat;
+  background-position: top center;
+  background-size: cover;
+}
+
 a {
   color: inherit;
   text-decoration: none;
