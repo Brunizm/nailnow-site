@@ -129,25 +129,45 @@
                 <label class="booking-card__label" for="booking-date">Data</label>
                 <div class="booking-card__control booking-card__control--compact">
                   <input type="date" id="booking-date" name="date" class="booking-card__input" />
-                  <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
-                    <path
-                      d="M7 2a1 1 0 0 0-1 1v1H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-1V3a1 1 0 1 0-2 0v1H8V3a1 1 0 0 0-1-1Zm-2 6h14v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z"
-                    />
-                  </svg>
+                  <button
+                    type="button"
+                    class="booking-card__icon-button"
+                    data-picker-target="booking-date"
+                    aria-label="Abrir seletor de data"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
+                      <path
+                        d="M7 2a1 1 0 0 0-1 1v1H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-1V3a1 1 0 1 0-2 0v1H8V3a1 1 0 0 0-1-1Zm-2 6h14v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z"
+                      />
+                    </svg>
+                  </button>
                 </div>
               </div>
-            <div class="booking-card__field">
-              <label class="booking-card__label" for="booking-time">Horário</label>
-              <div class="booking-card__control booking-card__control--compact">
-                <input type="time" id="booking-time" name="time" class="booking-card__input" />
-                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
-                    <path
-                      d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
-                    />
-                </svg>
+              <div class="booking-card__field">
+                <label class="booking-card__label" for="booking-time">Horário</label>
+                <div class="booking-card__control booking-card__control--compact">
+                  <input
+                    type="time"
+                    id="booking-time"
+                    name="time"
+                    class="booking-card__input"
+                    step="900"
+                  />
+                  <button
+                    type="button"
+                    class="booking-card__icon-button"
+                    data-picker-target="booking-time"
+                    aria-label="Abrir seletor de horário"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
+                      <path
+                        d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
           <button type="submit" class="booking-card__submit">Agende agora</button>
           <p class="booking-card__feedback" id="booking-feedback" role="status" aria-live="polite"></p>
           <p class="booking-card__note">Suporte dedicado e avaliações reais para você escolher a profissional ideal com tranquilidade.</p>
@@ -1497,6 +1517,33 @@
         input.dataset.autocompleteInitialized = "true";
       }
 
+      function initBookingPickerButtons() {
+        const buttons = document.querySelectorAll(
+          ".booking-card__icon-button[data-picker-target]"
+        );
+
+        buttons.forEach((button) => {
+          if (button.dataset.pickerBound === "true") return;
+
+          const targetId = button.getAttribute("data-picker-target");
+          const input = targetId ? document.getElementById(targetId) : null;
+          if (!input) return;
+
+          button.addEventListener("click", () => {
+            if (typeof input.showPicker === "function") {
+              input.showPicker();
+            } else {
+              input.focus();
+              if (input.type === "time") {
+                input.click();
+              }
+            }
+          });
+
+          button.dataset.pickerBound = "true";
+        });
+      }
+
       async function handleBooking(event) {
         event.preventDefault();
         const form = event.target;
@@ -1606,6 +1653,7 @@
         ensureProfessionalsLoaded().catch((error) => {
           console.error("Erro inicial ao carregar profissionais", error);
         });
+        initBookingPickerButtons();
       });
 
       window.addEventListener("load", () => {
