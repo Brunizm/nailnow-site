@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NailNow | Portal da Manicure</title>
+    <meta
+      name="description"
+      content="Portal da Manicure NailNow — autonomia, visibilidade e pagamentos seguros. Cadastre-se e conquiste clientes."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
+    <header class="site-header">
+      <div class="header-inner">
+        <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
+          <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
+          <span class="brand-mark__text">NailNow</span>
+        </a>
+        <div class="header-navigation">
+          <nav class="primary-nav" aria-label="Principal">
+            <a href="../index.html" class="nav-link">Home</a>
+            <a href="../como-funciona.html" class="nav-link">Como funciona</a>
+            <a href="../servicos.html" class="nav-link">Serviços</a>
+          </nav>
+          <div class="header-actions">
+            <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
+            <a href="../profissional/index.html" class="header-cta">Sou Profissional</a>
+            <a
+              class="social-link social-link--instagram"
+              href="https://www.instagram.com/nailnowbr/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram da NailNow"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <div id="dashboard" class="dashboard" hidden aria-labelledby="dashboard-heading">
+        <section class="dashboard-hero">
+          <div class="dashboard-hero__header">
+            <div>
+              <p class="dashboard-kicker">Painel NailNow</p>
+              <h1 id="dashboard-heading">Olá, <span data-profile-name>manicure</span>!</h1>
+              <p class="dashboard-intro">Gerencie sua agenda, acompanhe solicitações e mantenha o relacionamento com suas clientes em um só lugar.</p>
+            </div>
+            <button type="button" id="sign-out" class="dashboard-signout">Sair</button>
+          </div>
+          <div id="dashboard-status" class="auth-status" role="status" aria-live="polite" hidden></div>
+          <div class="dashboard-summary">
+            <article class="profile-card" aria-labelledby="profile-heading">
+              <h2 id="profile-heading">Meu perfil</h2>
+              <dl class="profile-details">
+                <div class="profile-details__item">
+                  <dt>Nome</dt>
+                  <dd id="profile-display">—</dd>
+                </div>
+                <div class="profile-details__item">
+                  <dt>E-mail</dt>
+                  <dd id="profile-email">—</dd>
+                </div>
+                <div class="profile-details__item">
+                  <dt>Especialidades</dt>
+                  <dd id="profile-specialties">Alongamento em fibra · Spa das mãos</dd>
+                </div>
+                <div class="profile-details__item">
+                  <dt>Área de atendimento</dt>
+                  <dd id="profile-area">São Paulo e região metropolitana</dd>
+                </div>
+              </dl>
+              <div class="profile-services" aria-live="polite">
+                <h3 class="profile-services__title">Serviços e valores</h3>
+                <ul id="services-list" class="profile-services__list" role="list"></ul>
+                <p id="services-empty" class="profile-services__empty">
+                  Cadastre seus serviços no app NailNow para que as clientes possam solicitar com valores atualizados.
+                </p>
+              </div>
+            </article>
+            <div class="dashboard-metrics" aria-label="Resumo da agenda">
+              <div class="metric-card">
+                <span class="metric-label">Solicitações</span>
+                <span class="metric-value" id="metric-pending">0</span>
+                <span class="metric-footnote">aguardando resposta</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Confirmados</span>
+                <span class="metric-value" id="metric-confirmed">0</span>
+                <span class="metric-footnote">para os próximos dias</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Últimos 30 dias</span>
+                <span class="metric-value" id="metric-past">0</span>
+                <span class="metric-footnote">atendimentos concluídos</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="schedule-section" aria-labelledby="pending-heading">
+          <div class="schedule-section__head">
+            <h2 id="pending-heading">Solicitações de agendamento</h2>
+            <span class="schedule-count" id="badge-pending">0</span>
+          </div>
+          <div id="pending-list" class="schedule-list" role="list"></div>
+        </section>
+
+        <section class="schedule-section" aria-labelledby="confirmed-heading">
+          <div class="schedule-section__head">
+            <h2 id="confirmed-heading">Agendamentos confirmados</h2>
+            <span class="schedule-count" id="badge-confirmed">0</span>
+          </div>
+          <div id="confirmed-list" class="schedule-list" role="list"></div>
+        </section>
+
+        <section class="schedule-section" aria-labelledby="past-heading">
+          <div class="schedule-section__head">
+            <h2 id="past-heading">Atendimentos realizados</h2>
+            <span class="schedule-count" id="badge-past">0</span>
+          </div>
+          <div id="past-list" class="schedule-list" role="list"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-column footer-column--brand">
+          <h2 class="footer-logo">NailNow</h2>
+          <p>Beleza na sua agenda com profissionais selecionadas, atendimento onde você estiver e suporte humanizado.</p>
+        </div>
+        <div class="footer-column footer-links" aria-label="Links úteis">
+          <h3>FAQ</h3>
+          <a href="../faq.html">Perguntas frequentes</a>
+          <a href="../como-funciona.html">Como funciona</a>
+          <a href="../agendamentos.html">Agendamentos</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Contato e suporte">
+          <h3>Contato & suporte</h3>
+          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Termos e políticas">
+          <h3>Termos & políticas</h3>
+          <a href="#">Termos de uso</a>
+          <a href="#">Política de privacidade</a>
+          <a href="#">Cookies e preferências</a>
+        </div>
+      </div>
+      <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
+    </footer>
+    <script type="module" src="./portal.js"></script>
+
+  </body>
+</html>
