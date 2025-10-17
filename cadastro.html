@@ -9,7 +9,12 @@
   <script type="module">
     // SDKs Firebase (v10 modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
@@ -56,6 +61,19 @@
       Array.from(document.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
 
     // ---------- Submit ----------
+    async function ensureAuthAccount(email, senha) {
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, senha);
+        return { user: cred.user, isNew: true };
+      } catch (error) {
+        if (error.code === "auth/email-already-in-use") {
+          const cred = await signInWithEmailAndPassword(auth, email, senha);
+          return { user: cred.user, isNew: false };
+        }
+        throw error;
+      }
+    }
+
     async function enviarCadastro(event) {
       event.preventDefault();
       console.log(">> enviarCadastro DISPAROU");
@@ -95,8 +113,8 @@
 
         // 1) Auth
         console.log(">> Criando usuário no Auth…");
-        const cred = await createUserWithEmailAndPassword(auth, email, senha);
-        const uid = cred.user.uid;
+        const { user, isNew } = await ensureAuthAccount(email, senha);
+        const uid = user.uid;
         console.log(">> Auth OK, uid:", uid);
 
         // 2) Foto (opcional)
@@ -112,29 +130,41 @@
 
         // 3) Firestore
         console.log(">> Gravando no Firestore…");
-        await setDoc(doc(db, "profissionais", uid), {
+        const payload = {
           nome,
           email,
           telefone,
           cidade,
           bio,
           servicos: servicosSelecionados(),
-          fotoUrl,
-          createdAt: serverTimestamp(),
-          status: "pendente",
-        });
+          updatedAt: serverTimestamp(),
+        };
+
+        if (isNew) {
+          payload.createdAt = serverTimestamp();
+          payload.status = "pendente";
+          payload.fotoUrl = fotoUrl || null;
+        } else if (fotoUrl) {
+          payload.fotoUrl = fotoUrl;
+        }
+
+        await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
         console.log(">> Firestore OK");
 
         // 4) Sair (opcional)
         await signOut(auth);
 
-        alert("✅ Cadastro enviado com sucesso!");
+        alert(isNew ? "✅ Cadastro enviado com sucesso!" : "✅ Dados profissionais atualizados!");
         $("cadastroForm").reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
-        alert(`❌ Erro ao cadastrar:
-${error.code || ""}
-${error.message || ""}`);
+        if (error.code === "auth/wrong-password") {
+          alert("❌ Erro: A senha informada não confere com a conta existente.");
+        } else if (error.code === "auth/invalid-login-credentials") {
+          alert("❌ Erro: Não foi possível confirmar seus dados de acesso.");
+        } else {
+          alert(`❌ Erro ao cadastrar: ${error.code || error.message || "erro-desconhecido"}`);
+        }
       } finally {
         if (botao) { botao.disabled = false; botao.innerText = "Cadastrar profissional"; }
       }
@@ -162,6 +192,12 @@ ${error.message || ""}`);
     button { background-color: #e91e63; color: white; border: none; padding: 12px 20px; border-radius: 10px;
              cursor: pointer; font-size: 16px; margin-top: 15px; width: 100%; }
     button:hover { background-color: #d81b60; }
+    .password-input-wrapper { position: relative; display: flex; align-items: center; }
+    .password-input-wrapper input { flex: 1; padding-right: 3rem; }
+    .password-toggle { position: absolute; right: 1rem; display: inline-flex; align-items: center; gap: 0.25rem; border: none; background: transparent; color: #777; cursor: pointer; font-size: 0.85rem; }
+    .password-toggle svg { width: 1.2rem; height: 1.2rem; fill: currentColor; }
+    .password-toggle:focus-visible { outline: 2px solid #e91e63; outline-offset: 2px; }
+    .password-toggle--visible { color: #e91e63; }
     .servicos { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
     .hint { font-size: 12px; color: #777; margin-top: 4px; }
   </style>
@@ -178,10 +214,30 @@ ${error.message || ""}`);
       <input id="email" type="email" required />
 
       <label for="senha">Senha *</label>
-      <input id="senha" type="password" required />
+      <div class="password-input-wrapper">
+        <input id="senha" type="password" required />
+        <button type="button" class="password-toggle" data-password-target="senha" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 5c-4.13 0-7.5 2.86-9.42 7 1.92 4.14 5.29 7 9.42 7s7.5-2.86 9.42-7C19.5 7.86 16.13 5 12 5Zm0 11c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+            />
+          </svg>
+          <span class="password-toggle__label">Mostrar senha</span>
+        </button>
+      </div>
 
       <label for="confirmarSenha">Confirmar senha *</label>
-      <input id="confirmarSenha" type="password" required />
+      <div class="password-input-wrapper">
+        <input id="confirmarSenha" type="password" required />
+        <button type="button" class="password-toggle" data-password-target="confirmarSenha" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 5c-4.13 0-7.5 2.86-9.42 7 1.92 4.14 5.29 7 9.42 7s7.5-2.86 9.42-7C19.5 7.86 16.13 5 12 5Zm0 11c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+            />
+          </svg>
+          <span class="password-toggle__label">Mostrar senha</span>
+        </button>
+      </div>
 
       <label for="telefone">Telefone / WhatsApp</label>
       <input id="telefone" type="text" />
@@ -211,5 +267,6 @@ ${error.message || ""}`);
       <button id="enviar" type="submit">Cadastrar profissional</button>
     </form>
   </div>
+  <script src="assets/js/password-toggle.js"></script>
 </body>
 </html>
