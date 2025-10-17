@@ -1955,6 +1955,14 @@ main {
   margin: 0 0 2.4rem;
 }
 
+.hero--client .hero-copy__description {
+  color: var(--text-main);
+  font-weight: 500;
+  max-width: 42ch;
+  margin: 0;
+  line-height: 1.6;
+}
+
 @media (max-width: 720px) {
   .header-navigation {
     justify-content: center;

@@ -76,7 +76,6 @@
           const senha = form.senha.value;
           const confirmarSenha = form.confirmarSenha.value;
           const telefone = form.telefone.value.trim();
-          const nascimento = form.nascimento.value;
           const endereco = form.endereco_text.value.trim();
           const complemento = form.complemento.value.trim();
           const preferencias = [];
@@ -119,7 +118,6 @@
             email,
             senha,
             telefone,
-            nascimento,
             endereco,
             complemento,
             endereco_formatado,
@@ -203,7 +201,7 @@
         <div class="hero-copy">
           <span class="hero-label">Para clientes</span>
           <h1 id="cadastro-cliente">Crie sua conta e agende em minutos</h1>
-          <p>
+          <p class="hero-copy__description">
             Cadastre-se para encontrar profissionais avaliadas perto de você, acompanhar cada etapa do atendimento e receber suporte
             humanizado sempre que precisar.
           </p>
@@ -271,11 +269,6 @@
                     <span class="password-toggle__label">Mostrar senha</span>
                   </button>
                 </div>
-              </div>
-
-              <div class="signup-field">
-                <label for="nascimento">Data de nascimento</label>
-                <input id="nascimento" name="nascimento" type="date" />
               </div>
 
               <input type="text" name="ignore_autofill" autocomplete="off" class="autofill-trap" aria-hidden="true" />
