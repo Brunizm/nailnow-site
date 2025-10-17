@@ -79,7 +79,7 @@
           const nascimento = form.nascimento.value;
           const endereco = form.endereco_text.value.trim();
           const complemento = form.complemento.value.trim();
-          const preferencias = Array.from(form.querySelectorAll('input[name="preferencias"]:checked')).map((el) => el.value);
+          const preferencias = [];
           const newsletter = false;
           const aceiteTermos = form.aceiteTermos.checked;
 
@@ -305,17 +305,6 @@
               <div class="signup-field">
                 <label for="complemento">Complemento / Referência</label>
                 <input id="complemento" name="complemento" type="text" placeholder="Apartamento, bloco, portaria..." />
-              </div>
-
-              <div class="signup-field">
-                <span class="signup-field__legend">Preferências de atendimento</span>
-                <div class="services-grid services-grid--compact">
-                  <label><input type="checkbox" name="preferencias" value="Manicure clássica" /> Manicure clássica</label>
-                  <label><input type="checkbox" name="preferencias" value="Pedicure clássica" /> Pedicure clássica</label>
-                  <label><input type="checkbox" name="preferencias" value="Esmaltação em gel" /> Esmaltação em gel</label>
-                  <label><input type="checkbox" name="preferencias" value="Spa dos pés" /> Spa dos pés</label>
-                  <label><input type="checkbox" name="preferencias" value="Alongamento" /> Alongamento</label>
-                </div>
               </div>
 
               <label class="signup-checkbox signup-checkbox--terms">

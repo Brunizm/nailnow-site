@@ -1393,14 +1393,14 @@ main {
 }
 
 .client-signup-card {
-  width: min(100%, 600px);
+  width: min(100%, 520px);
   background: rgba(255, 255, 255, 0.98);
   border-radius: var(--radius-medium);
   border: 1px solid rgba(244, 92, 162, 0.12);
-  box-shadow: 0 20px 40px rgba(244, 92, 162, 0.15);
-  padding: clamp(2rem, 5vw, 2.5rem);
+  box-shadow: 0 18px 32px rgba(244, 92, 162, 0.14);
+  padding: clamp(1.75rem, 4.5vw, 2.25rem);
   display: grid;
-  gap: clamp(1.1rem, 3vw, 1.6rem);
+  gap: clamp(1rem, 2.5vw, 1.4rem);
   position: relative;
   overflow: hidden;
   isolation: isolate;
