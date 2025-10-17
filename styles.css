@@ -11,6 +11,7 @@
   --surface-alt: #fff7fb;
   --surface-contrast: #fef3f9;
   --pattern-nail: url("assets/pattern-nail.svg");
+  --illustrated-bg: url("/assets/fundo.svg");
   --shadow-sm: 0 8px 24px rgba(18, 18, 18, 0.08);
   --shadow-lg: 0 26px 52px rgba(18, 18, 18, 0.12);
   --max-width: 1120px;
@@ -40,11 +41,13 @@ body {
 }
 
 .page-with-illustrated-bg {
-  background-image: url("/assets/fundo.svg");
+  background-image: var(--illustrated-bg);
   background-repeat: no-repeat;
   background-position: top center;
   background-size: cover;
+  background-color: #fff3f9;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 a {
