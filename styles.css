@@ -1173,6 +1173,15 @@ main {
   white-space: nowrap;
 }
 
+.brand-mark__logo {
+  width: clamp(2.25rem, 5vw, 2.75rem);
+  height: auto;
+}
+
+.brand-mark__text {
+  line-height: 1;
+}
+
 .primary-nav {
   display: flex;
   align-items: center;
