@@ -146,21 +146,18 @@
               <div class="booking-card__field">
                 <label class="booking-card__label" for="booking-time">Horário</label>
                 <div class="booking-card__control booking-card__control--compact">
-                  <input
-                    type="time"
+                  <select
                     id="booking-time"
                     name="time"
-                    class="booking-card__input"
-                    step="900"
-                    list="booking-time-options"
-                  />
+                    class="booking-card__input booking-card__input--select"
+                    required
+                  ></select>
                   <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
                     <path
                       d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
                     />
                   </svg>
                 </div>
-                <datalist id="booking-time-options"></datalist>
               </div>
             </div>
           <button type="submit" class="booking-card__submit">Agende agora</button>
@@ -1110,65 +1107,49 @@
       }
 
       function populateTimeOptions() {
-        const datalist = document.getElementById("booking-time-options");
-        if (!datalist) return;
+        const select = document.getElementById("booking-time");
+        if (!select) return;
 
-        const fragment = document.createDocumentFragment();
+        const currentValue = select.value;
         const minutesInDay = 24 * 60;
         const step = 15;
 
+        select.innerHTML = "";
+
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "--:--";
+        placeholder.disabled = true;
+        select.appendChild(placeholder);
+
+        let matchedValue = false;
         for (let minutes = 0; minutes < minutesInDay; minutes += step) {
           const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
           const mins = String(minutes % 60).padStart(2, "0");
           const option = document.createElement("option");
           option.value = `${hours}:${mins}`;
-          fragment.appendChild(option);
+          option.textContent = `${hours}:${mins}`;
+          if (currentValue && currentValue === option.value) {
+            option.selected = true;
+            matchedValue = true;
+          }
+          select.appendChild(option);
         }
 
-        datalist.innerHTML = "";
-        datalist.appendChild(fragment);
+        if (!currentValue || !matchedValue) {
+          placeholder.selected = true;
+          select.value = "";
+        } else {
+          placeholder.selected = false;
+        }
+
+        updateTimeEmptyState(select);
       }
 
-      function alignTimeInputToStep(input) {
-        if (!input) return;
-
-        const step = 15;
-        const minutesInDay = 24 * 60;
-
-        function normalizeValue(value) {
-          if (!value) return "";
-
-          const [rawHours, rawMinutes] = value.split(":");
-          const hours = Number(rawHours);
-          const minutes = Number(rawMinutes);
-
-          if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-            return "";
-          }
-
-          const totalMinutes = hours * 60 + minutes;
-          if (!Number.isFinite(totalMinutes)) {
-            return "";
-          }
-
-          const rounded = Math.round(totalMinutes / step) * step;
-          const clamped = Math.max(0, Math.min(rounded, minutesInDay - step));
-          const finalHours = String(Math.floor(clamped / 60)).padStart(2, "0");
-          const finalMinutes = String(clamped % 60).padStart(2, "0");
-
-          return `${finalHours}:${finalMinutes}`;
-        }
-
-        function handleAlignment() {
-          const current = input.value;
-          const aligned = normalizeValue(current);
-          if (aligned && aligned !== current) {
-            input.value = aligned;
-          }
-        }
-
-        input.addEventListener("change", handleAlignment);
-        input.addEventListener("blur", handleAlignment);
+      function updateTimeEmptyState(select) {
+        if (!select) return;
+        if (!select.classList.contains("booking-card__input")) return;
+        select.classList.toggle("booking-card__input--empty", !select.value);
       }
 
       function formatDistance(kilometers) {
@@ -1704,7 +1685,12 @@
       document.addEventListener("DOMContentLoaded", () => {
         populateServiceSelect();
         populateTimeOptions();
-        alignTimeInputToStep(document.getElementById("booking-time"));
+        const timeSelect = document.getElementById("booking-time");
+        if (timeSelect) {
+          updateTimeEmptyState(timeSelect);
+          timeSelect.addEventListener("change", () => updateTimeEmptyState(timeSelect));
+          timeSelect.addEventListener("blur", () => updateTimeEmptyState(timeSelect));
+        }
         ensureAnonymousAccess().catch((error) => {
           console.error("Erro ao preparar autenticação anônima", error);
         });
