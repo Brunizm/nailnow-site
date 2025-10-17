@@ -44,6 +44,7 @@ body {
   background-repeat: no-repeat;
   background-position: top center;
   background-size: cover;
+  min-height: 100vh;
 }
 
 a {
