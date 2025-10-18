@@ -39124,6 +39124,27 @@ main {
   color: var(--text-main);
 }
 
+.signup-field__hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.signup-photo-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px dashed rgba(233, 30, 99, 0.35);
+  padding: 0.4rem;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(233, 30, 99, 0.08);
+}
+
+.signup-photo-preview[hidden] {
+  display: none;
+}
+
 .signup-field__legend {
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -40078,7 +40099,7 @@ main {
   border-radius: 999px;
   border: none;
   background: var(--pink-primary);
-  color: var(--text-main);
+  color: var(--surface);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -40231,9 +40252,6 @@ main {
 }
 
 .flow-step__number {
-  position: absolute;
-  top: clamp(1rem, 3vw, 1.4rem);
-  left: clamp(1.5rem, 3vw, 2rem);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -40245,6 +40263,7 @@ main {
   font-weight: 600;
   letter-spacing: 0.14em;
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 .flow-steps h3 {
