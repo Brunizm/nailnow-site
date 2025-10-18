@@ -40032,6 +40032,8 @@ main {
   box-shadow: 0 18px 36px rgba(244, 92, 162, 0.1);
   display: grid;
   gap: clamp(1.25rem, 3vw, 1.75rem);
+  position: relative;
+  isolation: isolate;
 }
 
 .booking-card__row {
@@ -41301,5 +41303,88 @@ main {
 
   .header-actions .social-link {
     margin-left: 0;
+  }
+
+  .hero {
+    margin: clamp(1.75rem, 7vw, 2.5rem) clamp(1.35rem, 8vw, 2rem) 0;
+    padding: clamp(2.25rem, 9vw, 3.15rem) clamp(1.35rem, 7vw, 1.95rem);
+    grid-template-columns: 1fr;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 228, 242, 0.9) 0%,
+      rgba(255, 255, 255, 0.98) 55%,
+      #ffffff 100%
+    );
+    border: none;
+    box-shadow: none;
+  }
+
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid rgba(244, 92, 162, 0.18);
+    pointer-events: none;
+  }
+
+  .hero-copy {
+    align-items: center;
+    gap: clamp(1rem, 5vw, 1.6rem);
+    text-align: center;
+  }
+
+  .hero-label {
+    margin: 0 auto;
+  }
+
+  .hero h1 {
+    margin-bottom: clamp(1.2rem, 6vw, 1.8rem);
+  }
+
+  .hero p {
+    margin: 0 0 clamp(1.5rem, 6vw, 2rem);
+  }
+
+  .booking-card {
+    width: min(100%, 420px);
+    margin-inline: auto;
+    padding: clamp(1.75rem, 9vw, 2.5rem);
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 30px;
+    border: 1px solid rgba(244, 92, 162, 0.2);
+    box-shadow: 0 24px 52px rgba(244, 92, 162, 0.18);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  .booking-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(244, 92, 162, 0.12) 0%,
+      rgba(244, 92, 162, 0) 70%
+    );
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .booking-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .booking-card__control {
+    padding: 0.9rem 1.1rem;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(244, 92, 162, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .booking-card__submit {
+    box-shadow: 0 18px 32px rgba(244, 92, 162, 0.35);
   }
 }
