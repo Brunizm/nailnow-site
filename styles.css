@@ -40078,7 +40078,7 @@ main {
   border-radius: 999px;
   border: none;
   background: var(--pink-primary);
-  color: var(--text-main);
+  color: var(--surface);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -40231,9 +40231,6 @@ main {
 }
 
 .flow-step__number {
-  position: absolute;
-  top: clamp(1rem, 3vw, 1.4rem);
-  left: clamp(1.5rem, 3vw, 2rem);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -40245,6 +40242,7 @@ main {
   font-weight: 600;
   letter-spacing: 0.14em;
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 .flow-steps h3 {
