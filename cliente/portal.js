@@ -91,71 +91,6 @@ const sanitizeAreaParts = (parts = []) => {
     .filter(Boolean);
 };
 
-const defaultAppointmentData = {
-  pending: [
-    {
-      id: "SOL-4021",
-      service: "Esmaltação em gel",
-      professional: "Mariana Costa",
-      date: "2025-05-12",
-      time: "19:30",
-      location: "Seu endereço cadastrado",
-      price: "R$ 120,00",
-      note: "Aguarde a confirmação da profissional escolhida.",
-    },
-  ],
-  confirmed: [
-    {
-      id: "AGEN-3110",
-      service: "Spa das mãos + pedicure",
-      professional: "Bianca Ramos",
-      date: "2025-05-15",
-      time: "10:00",
-      location: "Condomínio Jardins, São Paulo",
-      price: "R$ 189,00",
-      note: "A profissional levará todos os materiais esterilizados.",
-    },
-  ],
-  past: [
-    {
-      id: "HIST-2980",
-      service: "Blindagem + esmaltação",
-      professional: "Ana Paula",
-      date: "2025-04-28",
-      time: "15:00",
-      location: "Brooklin, São Paulo",
-      price: "R$ 165,00",
-      note: "Avaliação enviada com 5 estrelas.",
-    },
-  ],
-};
-
-const defaultProfessionalCatalog = [
-  {
-    id: "sample-mariana",
-    nome: "Mariana Costa",
-    area: "Pinheiros, São Paulo",
-    servicos: [
-      { id: "svc-1", name: "Esmaltação em gel", price: 120, priceLabel: "R$ 120,00", duration: "1h15" },
-      { id: "svc-2", name: "Spa das mãos", price: 150, priceLabel: "R$ 150,00", duration: "1h30" },
-      { id: "svc-3", name: "Blindagem", price: 180, priceLabel: "R$ 180,00", duration: "1h45" },
-    ],
-    rating: "4,9", 
-    __isFallback: true,
-  },
-  {
-    id: "sample-bianca",
-    nome: "Bianca Ramos",
-    area: "Moema, São Paulo",
-    servicos: [
-      { id: "svc-4", name: "Pedicure + spa relaxante", price: 130, priceLabel: "R$ 130,00", duration: "1h20" },
-      { id: "svc-5", name: "Alongamento em fibra", price: 210, priceLabel: "R$ 210,00", duration: "2h" },
-    ],
-    rating: "5,0",
-    __isFallback: true,
-  },
-];
-
 const appointmentCollections = {
   pending: "solicitacoes",
   confirmed: "confirmados",
@@ -469,7 +404,6 @@ const normalizeProfessionalProfile = (snapshot) => {
     email: data.email || data.emailLowercase || data.contato?.email || "",
     telefone: data.telefone || data.phone || data.celular || "",
     raw: data,
-    __isFallback: Boolean(data.__isFallback),
   };
 };
 
@@ -537,16 +471,10 @@ const renderProfessionalResults = (items = []) => {
     const selectButton = document.createElement("button");
     selectButton.type = "button";
     selectButton.className = "request-card__select";
-    if (professional.__isFallback) {
-      selectButton.textContent = "Exemplo";
-      selectButton.disabled = true;
-      selectButton.title = "Faça login com sua conta para solicitar manicures reais.";
-    } else {
-      selectButton.textContent = "Selecionar manicure";
-      selectButton.addEventListener("click", () => {
-        selectProfessional(professional);
-      });
-    }
+    selectButton.textContent = "Selecionar manicure";
+    selectButton.addEventListener("click", () => {
+      selectProfessional(professional);
+    });
     card.appendChild(selectButton);
 
     professionalResults.appendChild(card);
@@ -663,13 +591,8 @@ const loadProfessionalsCatalog = async () => {
   try {
     const professionalsRef = collection(db, "profissionais");
     const snapshot = await getDocs(query(professionalsRef, limit(24)));
-    if (snapshot.empty) {
-      catalog = defaultProfessionalCatalog;
-    } else {
-      catalog = snapshot.docs
-        .map((docSnap) => normalizeProfessionalProfile(docSnap))
-        .filter(Boolean)
-        .map((item) => ({ ...item, __isFallback: false }));
+    if (!snapshot.empty) {
+      catalog = snapshot.docs.map((docSnap) => normalizeProfessionalProfile(docSnap)).filter(Boolean);
     }
   } catch (error) {
     console.warn("Não foi possível carregar o catálogo de manicures", error);
@@ -679,7 +602,6 @@ const loadProfessionalsCatalog = async () => {
         "error",
       );
     }
-    catalog = defaultProfessionalCatalog;
   }
 
   catalog.sort((a, b) => {
@@ -869,32 +791,35 @@ const loadAppointmentsForProfile = async (profile) => {
   const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id, profileCollection)));
 
   let permissionIssue = false;
-  const usedFallback = {};
   const datasets = keys.map((key, index) => {
     const result = results[index];
     if (result.status === "fulfilled") {
       const value = Array.isArray(result.value) ? result.value : [];
-      if (value.length) {
-        return value.map((entry) => ({ status: key, ...entry }));
-      }
-    } else if (result.reason?.message === "permission-denied") {
+      return value.map((entry) => ({ status: key, ...entry }));
+    }
+
+    const reason = result.reason;
+    const denied =
+      reason?.code === "permission-denied" ||
+      (typeof reason?.message === "string" && reason.message.includes("permission-denied"));
+    if (denied) {
       permissionIssue = true;
     }
-    usedFallback[key] = true;
-    return defaultAppointmentData[key].map((entry) => ({ status: key, __isFallback: true, ...entry }));
+
+    return [];
   });
 
   const [pendingAppointments, confirmedAppointments, pastAppointments] = datasets;
   updateMetrics(pendingAppointments, confirmedAppointments, pastAppointments);
 
   const fallbackNotice = permissionIssue
-    ? "Não conseguimos carregar sua agenda completa agora. Mostramos um exemplo enquanto sincronizamos seus dados."
+    ? "Não conseguimos carregar sua agenda completa agora. Avise o suporte NailNow para liberar o acesso."
     : "";
   let noticeDisplayed = false;
 
   keys.forEach((key, index) => {
     const data = datasets[index];
-    const shouldShowNotice = fallbackNotice && usedFallback[key] && !noticeDisplayed;
+    const shouldShowNotice = Boolean(fallbackNotice) && !noticeDisplayed;
     renderAppointments(key, data, {
       notice: shouldShowNotice ? fallbackNotice : "",
     });
