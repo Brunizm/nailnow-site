@@ -181,7 +181,8 @@
         return true;
       }
 
-      const UPLOAD_STALL_TIMEOUT_MS = 30000;
+      const UPLOAD_STALL_TIMEOUT_MS = 45000;
+      const UPLOAD_PROGRESS_HEARTBEAT_MS = 2000;
 
       function uploadFotoPerfil({ storageInstance, file, uid, onProgress }) {
         if (!file) return Promise.resolve(null);
@@ -198,7 +199,9 @@
         return new Promise((resolve, reject) => {
           const uploadTask = uploadBytesResumable(ref(storageInstance, caminho), file, metadata);
           let stallTimer = null;
+          let heartbeatTimer = null;
           let settled = false;
+          let ultimoPercentual = 0;
 
           const clearStallTimer = () => {
             if (stallTimer) {
@@ -218,33 +221,72 @@
               }
               const timeoutError = new Error("Tempo limite de upload atingido.");
               timeoutError.code = "storage/upload-timeout";
+              clearHeartbeat();
               settled = true;
               reject(timeoutError);
             }, UPLOAD_STALL_TIMEOUT_MS);
           };
 
+          const clearHeartbeat = () => {
+            if (heartbeatTimer) {
+              clearInterval(heartbeatTimer);
+              heartbeatTimer = null;
+            }
+          };
+
+          const ensureHeartbeat = () => {
+            if (heartbeatTimer || typeof onProgress !== "function") return;
+            heartbeatTimer = setInterval(() => {
+              if (settled) return;
+              if (ultimoPercentual === 0) {
+                ultimoPercentual = 1;
+                onProgress(ultimoPercentual);
+              }
+            }, UPLOAD_PROGRESS_HEARTBEAT_MS);
+          };
+
+          const emitirProgresso = (valor) => {
+            if (typeof onProgress !== "function") return;
+            const valorNormalizado = Math.min(100, Math.max(0, Math.round(valor)));
+            if (valorNormalizado <= ultimoPercentual && valorNormalizado !== 100) {
+              return;
+            }
+            ultimoPercentual = valorNormalizado;
+            onProgress(ultimoPercentual);
+          };
+
           restartStallTimer();
+          ensureHeartbeat();
 
           uploadTask.on(
             "state_changed",
             (snapshot) => {
               restartStallTimer();
+              ensureHeartbeat();
               if (typeof onProgress === "function") {
                 const totalBytes = snapshot.totalBytes || file.size || 0;
+                const bytesTransferidos = snapshot.bytesTransferred || 0;
                 let progresso = 0;
                 if (totalBytes > 0) {
-                  progresso = Math.round((snapshot.bytesTransferred / totalBytes) * 100);
-                } else if (snapshot.bytesTransferred > 0) {
+                  progresso = (bytesTransferidos / totalBytes) * 100;
+                } else if (bytesTransferidos > 0) {
                   progresso = 1;
                 }
-                const progressoSeguro = Math.min(100, Math.max(0, progresso));
-                onProgress(
-                  snapshot.state === "running" && progressoSeguro === 0 && snapshot.bytesTransferred > 0 ? 1 : progressoSeguro,
-                );
+
+                if (bytesTransferidos > 0 && progresso < 1) {
+                  progresso = 1;
+                }
+
+                if (progresso >= 100 || bytesTransferidos >= totalBytes) {
+                  emitirProgresso(100);
+                } else {
+                  emitirProgresso(Math.min(99, progresso));
+                }
               }
             },
             (error) => {
               clearStallTimer();
+              clearHeartbeat();
               if (settled) return;
               settled = true;
               reject(error);
@@ -252,6 +294,7 @@
             async () => {
               try {
                 const url = await getDownloadURL(uploadTask.snapshot.ref);
+                emitirProgresso(100);
                 settled = true;
                 resolve({ url, caminho });
               } catch (erroDownload) {
@@ -261,6 +304,7 @@
                 }
               } finally {
                 clearStallTimer();
+                clearHeartbeat();
               }
             },
           );
