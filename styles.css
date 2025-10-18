@@ -39124,6 +39124,27 @@ main {
   color: var(--text-main);
 }
 
+.signup-field__hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.signup-photo-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px dashed rgba(233, 30, 99, 0.35);
+  padding: 0.4rem;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(233, 30, 99, 0.08);
+}
+
+.signup-photo-preview[hidden] {
+  display: none;
+}
+
 .signup-field__legend {
   font-weight: 600;
   letter-spacing: 0.04em;
