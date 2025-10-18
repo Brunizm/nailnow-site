@@ -53,6 +53,7 @@
         createUserWithEmailAndPassword,
         signInWithEmailAndPassword,
         signOut,
+        updateCurrentUser,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
       import {
         getFirestore,
@@ -358,6 +359,51 @@
         }
       }
 
+      async function ensureUserReadyForStorage(authInstance, user) {
+        if (!user) {
+          const missingUserError = new Error("Não foi possível confirmar a sessão do cadastro.");
+          missingUserError.code = "auth/current-user-missing";
+          throw missingUserError;
+        }
+
+        const MAX_ATTEMPTS = 4;
+        const BASE_DELAY = 400;
+
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+          try {
+            if (attempt > 0) {
+              try {
+                await user.reload();
+              } catch (reloadError) {
+                console.warn("Falha ao atualizar usuário antes do upload", reloadError);
+              }
+            }
+            await user.getIdToken(attempt > 0);
+            const current = authInstance.currentUser;
+            if (current?.uid === user.uid) {
+              return;
+            }
+            await updateCurrentUser(authInstance, user);
+            if (authInstance.currentUser?.uid === user.uid) {
+              return;
+            }
+          } catch (tokenError) {
+            if (attempt === MAX_ATTEMPTS - 1) {
+              const wrapped = new Error("Não foi possível preparar a sessão para enviar a foto. Tente novamente.");
+              wrapped.code = "auth/id-token-unavailable";
+              wrapped.cause = tokenError;
+              throw wrapped;
+            }
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, BASE_DELAY * (attempt + 1)));
+        }
+
+        const finalError = new Error("Não foi possível preparar a sessão para enviar a foto. Tente novamente.");
+        finalError.code = "auth/id-token-unavailable";
+        throw finalError;
+      }
+
       async function safeSignOut() {
         try {
           if (auth.currentUser) {
@@ -427,6 +473,7 @@
           setFeedbackMessage(feedback, "Validando seus dados…", "info");
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
+          await ensureUserReadyForStorage(auth, user);
           const uid = user.uid;
           btn.textContent = "Processando cadastro…";
 
@@ -512,6 +559,8 @@
             "auth/weak-password": "❌ Erro: Use uma senha com pelo menos 6 caracteres.",
             "auth/wrong-password": "❌ Erro: A senha informada não confere com a conta existente.",
             "auth/invalid-login-credentials": "❌ Erro: Não foi possível confirmar seus dados de acesso.",
+            "auth/current-user-missing": "❌ Erro: Não foi possível confirmar sua sessão. Atualize a página e tente novamente.",
+            "auth/id-token-unavailable": "❌ Erro: Não conseguimos preparar sua sessão para enviar a foto. Atualize a página e tente novamente.",
             "storage/unauthorized": "❌ Erro: Não foi possível enviar a foto. Verifique sua conexão e tente novamente.",
             "storage/canceled": "❌ Erro: O envio da foto foi cancelado.",
             "storage/retry-limit-exceeded": "❌ Erro: Não foi possível concluir o upload da foto. Tente novamente em instantes.",
