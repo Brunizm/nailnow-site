@@ -40078,7 +40078,7 @@ main {
   border-radius: 999px;
   border: none;
   background: var(--pink-primary);
-  color: var(--text-main);
+  color: var(--surface);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
