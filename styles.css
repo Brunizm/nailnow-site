@@ -38697,13 +38697,13 @@ main {
   font-family: "Playfair Display", serif;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  font-size: clamp(1.5rem, 3.4vw, 2.35rem);
+  font-size: clamp(1.2rem, 2.6vw, 1.85rem);
   color: var(--pink-primary);
   white-space: nowrap;
 }
 
 .brand-mark__logo {
-  width: clamp(2.25rem, 5vw, 2.75rem);
+  width: clamp(1.9rem, 4vw, 2.3rem);
   height: auto;
 }
 
@@ -38751,13 +38751,13 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.55rem 1.4rem;
+  padding: 0.5rem 1.25rem;
   border-radius: 999px;
   border: 1px solid var(--pink-primary);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--surface);
   background: var(--pink-primary);
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
@@ -38775,7 +38775,7 @@ main {
 .nav-link {
   position: relative;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding-bottom: 0.35rem;
@@ -39581,14 +39581,14 @@ main {
 
   .brand-mark {
     gap: 0.5rem;
-    font-size: clamp(1.35rem, 5vw, 1.6rem);
+    font-size: clamp(1.1rem, 4.2vw, 1.4rem);
     align-items: center;
     align-self: center;
     margin-right: auto;
   }
 
   .brand-mark__logo {
-    width: clamp(2rem, 6vw, 2.4rem);
+    width: clamp(1.7rem, 5.5vw, 2.1rem);
   }
 
   .brand-mark__text {
@@ -39603,7 +39603,7 @@ main {
   }
 
   .nav-link {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     letter-spacing: 0.12em;
   }
 
@@ -41295,11 +41295,11 @@ main {
   .brand-mark {
     align-self: center;
     gap: 0.5rem;
-    font-size: clamp(1.2rem, 5vw, 1.6rem);
+    font-size: clamp(1.05rem, 4.6vw, 1.3rem);
   }
 
   .brand-mark__logo {
-    width: clamp(1.8rem, 7vw, 2.25rem);
+    width: clamp(1.6rem, 6.5vw, 2rem);
   }
 
   .mobile-menu-toggle {
@@ -41340,7 +41340,7 @@ main {
   }
 
   .nav-link {
-    font-size: 0.82rem;
+    font-size: 0.74rem;
     letter-spacing: 0.12em;
     text-align: center;
   }
