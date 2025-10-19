@@ -46,7 +46,9 @@
     </script>
   </head>
   <body>
-    <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
+    <div class="promo-banner">
+      Unhas perfeitas sem sair de casa. Agende manicures de confiança, no momento e lugar que desejar.
+    </div>
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
@@ -94,12 +96,17 @@
     </header>
 
     <main>
-      <section class="hero">
+      <section class="hero hero--home">
         <div class="hero-copy">
           <span class="hero-label">Para clientes</span>
-          <h1>Beleza na sua agenda</h1>
+          <h1>
+            Unhas perfeitas sem sair de casa.
+            <span class="hero-headline__subtitle">
+              Agende manicures de confiança, no momento e lugar que desejar.
+            </span>
+          </h1>
           <p>
-            Manicure de qualidade, onde você estiver. Agende em 3 cliques e receba atendimento premium na sua casa ou no trabalho.
+            Selecione os serviços, escolha o horário ideal e receba profissionais NailNow onde estiver, com pagamento seguro e acompanhamento em tempo real.
           </p>
           <form class="booking-card" aria-label="Buscar profissionais disponíveis" onsubmit="handleBooking(event)">
             <div class="booking-card__field">
@@ -123,13 +130,7 @@
               <input type="hidden" id="booking-location-place-id" name="location_place_id" />
               <input type="hidden" id="booking-location-lat" name="location_lat" />
               <input type="hidden" id="booking-location-lng" name="location_lng" />
-              <div
-                id="booking-map"
-                class="booking-card__map"
-                role="presentation"
-                aria-hidden="true"
-                hidden
-              ></div>
+              <div class="booking-card__divider" aria-hidden="true"></div>
             </div>
             <div class="booking-card__field booking-card__field--services" id="booking-service-field">
               <label class="booking-card__label" for="booking-service-toggle">Serviços desejados</label>
@@ -255,7 +256,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
@@ -345,6 +346,16 @@
             closeMobileMenu();
           }
         });
+      }
+
+      const headerActionsLinks = Array.from(
+        document.querySelectorAll(".header-actions a, .header-actions button")
+      );
+      const headerDetailsLink = headerActionsLinks.find(
+        (action) => action.textContent?.trim().toLowerCase() === "ver detalhes"
+      );
+      if (headerDetailsLink) {
+        headerDetailsLink.remove();
       }
 
       const defaultMapCenter = { lat: -14.235004, lng: -51.92528 };
