@@ -34,6 +34,7 @@
     />
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
+    <script src="/assets/js/menu-toggle.js" defer></script>
     <script>
       document.documentElement.classList.remove("no-js");
       document.documentElement.classList.add("js");
@@ -316,42 +317,6 @@
       const allowedServicesMap = new Map(
         allowedServices.map((service) => [service.toLowerCase(), service])
       );
-
-      const mobileMenuToggle = document.querySelector(".mobile-menu-toggle");
-      const headerNavigation = document.querySelector("#site-navigation");
-
-      if (mobileMenuToggle && headerNavigation) {
-        const openMobileMenu = () => {
-          mobileMenuToggle.setAttribute("aria-expanded", "true");
-          headerNavigation.classList.add("is-open");
-        };
-
-        const closeMobileMenu = () => {
-          mobileMenuToggle.setAttribute("aria-expanded", "false");
-          headerNavigation.classList.remove("is-open");
-        };
-
-        mobileMenuToggle.addEventListener("click", () => {
-          const isExpanded = mobileMenuToggle.getAttribute("aria-expanded") === "true";
-          if (isExpanded) {
-            closeMobileMenu();
-          } else {
-            openMobileMenu();
-          }
-        });
-
-        headerNavigation.addEventListener("click", (event) => {
-          if (event.target instanceof Element && event.target.closest("a")) {
-            closeMobileMenu();
-          }
-        });
-
-        window.addEventListener("resize", () => {
-          if (window.innerWidth > 720) {
-            closeMobileMenu();
-          }
-        });
-      }
 
       const defaultMapCenter = { lat: -14.235004, lng: -51.92528 };
 
