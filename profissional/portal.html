@@ -46,7 +46,6 @@
     </script>
   </head>
   <body>
-    <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
@@ -133,9 +132,9 @@
                 <span class="metric-footnote">para os próximos dias</span>
               </div>
               <div class="metric-card">
-                <span class="metric-label">Últimos 30 dias</span>
-                <span class="metric-value" id="metric-past">0</span>
-                <span class="metric-footnote">atendimentos concluídos</span>
+                <span class="metric-label">Cancelados</span>
+                <span class="metric-value" id="metric-cancelled">0</span>
+                <span class="metric-footnote">solicitações perdidas</span>
               </div>
             </div>
           </div>
@@ -143,7 +142,7 @@
 
         <section class="schedule-section" aria-labelledby="pending-heading">
           <div class="schedule-section__head">
-            <h2 id="pending-heading">Solicitações de agendamento</h2>
+            <h2 id="pending-heading">Solicitações pendentes</h2>
             <span class="schedule-count" id="badge-pending">0</span>
           </div>
           <div id="pending-list" class="schedule-list" role="list"></div>
@@ -151,18 +150,18 @@
 
         <section class="schedule-section" aria-labelledby="confirmed-heading">
           <div class="schedule-section__head">
-            <h2 id="confirmed-heading">Agendamentos confirmados</h2>
+            <h2 id="confirmed-heading">Solicitações confirmadas</h2>
             <span class="schedule-count" id="badge-confirmed">0</span>
           </div>
           <div id="confirmed-list" class="schedule-list" role="list"></div>
         </section>
 
-        <section class="schedule-section" aria-labelledby="past-heading">
+        <section class="schedule-section" aria-labelledby="cancelled-heading">
           <div class="schedule-section__head">
-            <h2 id="past-heading">Atendimentos realizados</h2>
-            <span class="schedule-count" id="badge-past">0</span>
+            <h2 id="cancelled-heading">Solicitações canceladas</h2>
+            <span class="schedule-count" id="badge-cancelled">0</span>
           </div>
-          <div id="past-list" class="schedule-list" role="list"></div>
+          <div id="cancelled-list" class="schedule-list" role="list"></div>
         </section>
       </div>
     </main>
@@ -181,7 +180,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>

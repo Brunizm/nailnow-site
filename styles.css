@@ -774,6 +774,12 @@ main {
   font-size: 0.95rem;
 }
 
+.request-card__hint {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
 .request-card__services {
   display: grid;
   gap: 0.35rem;
@@ -919,8 +925,19 @@ main {
   border-left: 6px solid #2e7d32;
 }
 
+.schedule-card--cancelled {
+  border-left: 6px solid #c62828;
+}
+
 .schedule-card--past {
   border-left: 6px solid #5a5a5a;
+}
+
+.schedule-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
 }
 
 .schedule-card__header {
@@ -949,6 +966,10 @@ main {
 
 .schedule-card--confirmed .schedule-card__status {
   color: #2e7d32;
+}
+
+.schedule-card--cancelled .schedule-card__status {
+  color: #c62828;
 }
 
 .schedule-card--past .schedule-card__status {
@@ -39124,6 +39145,27 @@ main {
   color: var(--text-main);
 }
 
+.signup-field__hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.signup-photo-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px dashed rgba(233, 30, 99, 0.35);
+  padding: 0.4rem;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(233, 30, 99, 0.08);
+}
+
+.signup-photo-preview[hidden] {
+  display: none;
+}
+
 .signup-field__legend {
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -39455,6 +39497,37 @@ main {
   margin: 0 0 2.4rem;
 }
 
+.hero--home .hero-copy {
+  align-items: center;
+  text-align: center;
+}
+
+.hero--home .hero-label {
+  margin: 0;
+  align-self: center;
+}
+
+.hero--home h1 {
+  margin: 0 auto 1.5rem;
+  text-align: center;
+  white-space: normal;
+}
+
+.hero--home h1 .hero-headline__subtitle {
+  display: block;
+  margin-top: 0.85rem;
+  font-size: clamp(1.2rem, 3vw, 1.7rem);
+  color: var(--text-muted);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.hero--home p {
+  margin: 0 auto 2.4rem;
+  max-width: 48ch;
+  text-align: center;
+}
+
 .hero--client .hero-copy__description {
   color: var(--text-main);
   font-weight: 500;
@@ -39770,12 +39843,46 @@ main {
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+.booking-card__field--location .booking-card__control {
+  align-items: center;
+}
+
+.booking-card__control--line {
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-radius: 0;
+  border: none;
+  border-bottom: 2px solid rgba(244, 92, 162, 0.25);
+  background: transparent;
+  box-shadow: none;
+  transition: border-bottom-color 0.3s ease;
+}
+
+.booking-card__control--line:focus-within {
+  border-bottom-color: rgba(244, 92, 162, 0.65);
+  box-shadow: none;
+}
+
 .booking-card__field--services {
   position: relative;
 }
 
 .booking-card__control--compact {
+  position: relative;
   padding: 0.75rem 1rem;
+}
+
+.booking-card__control--compact > .booking-card__icon {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.booking-card__control--compact .booking-card__input--select {
+  padding-right: 2.5rem;
 }
 
 .booking-card__input {
@@ -39911,6 +40018,24 @@ main {
   fill: var(--pink-primary);
 }
 
+.booking-card__icon--leading {
+  width: 18px;
+  height: 18px;
+  justify-self: center;
+}
+
+.booking-card__control--line .booking-card__icon {
+  fill: rgba(244, 92, 162, 0.8);
+}
+
+.booking-card__control--line .booking-card__input {
+  padding: 0.2rem 0;
+}
+
+.booking-card__control--line .booking-card__input::placeholder {
+  color: rgba(22, 22, 22, 0.45);
+}
+
 .booking-card__icon-button {
   border: none;
   background: rgba(244, 92, 162, 0.14);
@@ -39982,25 +40107,12 @@ main {
   color: var(--success);
 }
 
-.booking-card__map {
-  margin-top: 0.85rem;
+.booking-card__divider {
+  margin-top: 1rem;
   width: 100%;
-  height: 240px;
-  border-radius: 22px;
-  border: 1px solid var(--border-soft);
-  overflow: hidden;
-  box-shadow: 0 18px 40px -24px rgba(233, 30, 99, 0.35);
-  background: linear-gradient(135deg, rgba(244, 92, 162, 0.12), rgba(255, 240, 246, 0.8));
-}
-
-.booking-card__map[hidden] {
-  display: none;
-}
-
-@media (max-width: 600px) {
-  .booking-card__map {
-    height: 200px;
-  }
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(244, 92, 162, 0), rgba(244, 92, 162, 0.35), rgba(244, 92, 162, 0));
 }
 
 .booking-card {
@@ -40046,7 +40158,20 @@ main {
 }
 
 .booking-card__control--compact {
+  position: relative;
   padding: 0.75rem 1rem;
+}
+
+.booking-card__control--compact > .booking-card__icon {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.booking-card__control--compact .booking-card__input--select {
+  padding-right: 2.5rem;
 }
 
 .booking-card__input {
@@ -40078,7 +40203,7 @@ main {
   border-radius: 999px;
   border: none;
   background: var(--pink-primary);
-  color: var(--text-main);
+  color: var(--surface);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -40231,9 +40356,6 @@ main {
 }
 
 .flow-step__number {
-  position: absolute;
-  top: clamp(1rem, 3vw, 1.4rem);
-  left: clamp(1.5rem, 3vw, 2rem);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -40245,6 +40367,7 @@ main {
   font-weight: 600;
   letter-spacing: 0.14em;
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 .flow-steps h3 {
