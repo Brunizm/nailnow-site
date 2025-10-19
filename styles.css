@@ -39969,6 +39969,10 @@ main {
   padding: 0.8rem 1rem;
 }
 
+.booking-card__control--compact .booking-card__icon {
+  justify-self: end;
+  margin-left: auto;
+}
 
 .booking-card__input {
   border: none;
@@ -40106,6 +40110,24 @@ main {
   fill: var(--pink-primary);
   flex-shrink: 0;
   order: -1;
+}
+
+.booking-card__icon--leading {
+  width: 18px;
+  height: 18px;
+  justify-self: center;
+}
+
+.booking-card__control--line .booking-card__icon {
+  fill: rgba(244, 92, 162, 0.8);
+}
+
+.booking-card__control--line .booking-card__input {
+  padding: 0.2rem 0;
+}
+
+.booking-card__control--line .booking-card__input::placeholder {
+  color: rgba(22, 22, 22, 0.45);
 }
 
 .booking-card__icon--leading {
