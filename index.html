@@ -46,7 +46,9 @@
     </script>
   </head>
   <body>
-    <div class="promo-banner">Profissionais sob medida: agende especialistas verificadas onde você estiver.</div>
+    <div class="promo-banner">
+      Unhas perfeitas sem sair de casa. Agende manicures de confiança, no momento e lugar que desejar.
+    </div>
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
@@ -94,42 +96,42 @@
     </header>
 
     <main>
-      <section class="hero">
+      <section class="hero hero--home">
         <div class="hero-copy">
           <span class="hero-label">Para clientes</span>
-          <h1>Beleza na sua agenda</h1>
+          <h1>
+            Unhas perfeitas sem sair de casa.
+            <span class="hero-headline__subtitle">
+              Agende manicures de confiança, no momento e lugar que desejar.
+            </span>
+          </h1>
           <p>
-            Manicure de qualidade, onde você estiver. Agende em 3 cliques e receba atendimento premium na sua casa ou no trabalho.
+            Selecione os serviços, escolha o horário ideal e receba profissionais NailNow onde estiver, com pagamento seguro e acompanhamento em tempo real.
           </p>
           <form class="booking-card" aria-label="Buscar profissionais disponíveis" onsubmit="handleBooking(event)">
-            <div class="booking-card__field">
+            <div class="booking-card__field booking-card__field--location">
               <label class="booking-card__label" for="booking-location">Local do atendimento</label>
-              <div class="booking-card__control">
+              <div class="booking-card__control booking-card__control--line">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
+                  <path
+                    d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
+                  />
+                </svg>
                 <input
                   type="text"
                   id="booking-location"
                   class="booking-card__input"
                   name="location"
-                  placeholder="Informe o endereço onde deseja ser atendida"
+                  placeholder="Digite o endereço do atendimento"
+                  autocomplete="street-address"
+                  enterkeyhint="go"
                   required
                 />
-                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
-                  <path
-                    d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
-                  />
-                </svg>
               </div>
               <input type="hidden" id="booking-location-formatted" name="location_formatted" />
               <input type="hidden" id="booking-location-place-id" name="location_place_id" />
               <input type="hidden" id="booking-location-lat" name="location_lat" />
               <input type="hidden" id="booking-location-lng" name="location_lng" />
-              <div
-                id="booking-map"
-                class="booking-card__map"
-                role="presentation"
-                aria-hidden="true"
-                hidden
-              ></div>
             </div>
             <div class="booking-card__field booking-card__field--services" id="booking-service-field">
               <label class="booking-card__label" for="booking-service-toggle">Serviços desejados</label>
@@ -255,7 +257,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
@@ -345,6 +347,16 @@
             closeMobileMenu();
           }
         });
+      }
+
+      const headerActionsLinks = Array.from(
+        document.querySelectorAll(".header-actions a, .header-actions button")
+      );
+      const headerDetailsLink = headerActionsLinks.find(
+        (action) => action.textContent?.trim().toLowerCase() === "ver detalhes"
+      );
+      if (headerDetailsLink) {
+        headerDetailsLink.remove();
       }
 
       const defaultMapCenter = { lat: -14.235004, lng: -51.92528 };
@@ -1751,6 +1763,18 @@
           updateTimeEmptyState(timeSelect);
           timeSelect.addEventListener("change", () => updateTimeEmptyState(timeSelect));
           timeSelect.addEventListener("blur", () => updateTimeEmptyState(timeSelect));
+        }
+        initBookingAutocomplete();
+        const bookingLocationInput = document.getElementById("booking-location");
+        if (bookingLocationInput) {
+          bookingLocationInput.addEventListener("focus", () => {
+            if (
+              window.google?.maps?.places &&
+              bookingLocationInput.dataset.autocompleteInitialized !== "true"
+            ) {
+              initBookingAutocomplete();
+            }
+          });
         }
         ensureAnonymousAccess().catch((error) => {
           console.error("Erro ao preparar autenticação anônima", error);
