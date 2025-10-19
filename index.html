@@ -52,10 +52,7 @@
   </head>
   <body>
     <div class="promo-banner">
-      <span class="promo-banner__message"
-        >Unhas perfeitas sem sair de casa. Agende manicures de confiança, no momento e lugar que desejar.</span
-      >
-      <a class="promo-banner__cta" href="#hero">Ver detalhes</a>
+      Unhas perfeitas sem sair de casa. Agende manicures de confiança, no momento e lugar que desejar.
     </div>
     <header class="site-header">
       <div class="header-inner">
@@ -104,12 +101,17 @@
     </header>
 
     <main>
-      <section class="hero" id="hero">
+      <section class="hero hero--home">
         <div class="hero-copy">
           <span class="hero-label">Para clientes</span>
-          <h1>Beleza na sua agenda</h1>
+          <h1>
+            Unhas perfeitas sem sair de casa.
+            <span class="hero-headline__subtitle">
+              Agende manicures de confiança, no momento e lugar que desejar.
+            </span>
+          </h1>
           <p>
-            Manicure de qualidade, onde você estiver. Agende em 3 cliques e receba atendimento premium na sua casa ou no trabalho.
+            Selecione os serviços, escolha o horário ideal e receba profissionais NailNow onde estiver, com pagamento seguro e acompanhamento em tempo real.
           </p>
           <form class="booking-card" aria-label="Buscar profissionais disponíveis" onsubmit="handleBooking(event)">
             <div class="booking-card__field booking-card__field--inline">
@@ -133,13 +135,7 @@
               <input type="hidden" id="booking-location-place-id" name="location_place_id" />
               <input type="hidden" id="booking-location-lat" name="location_lat" />
               <input type="hidden" id="booking-location-lng" name="location_lng" />
-              <div
-                id="booking-map"
-                class="booking-card__map"
-                role="presentation"
-                aria-hidden="true"
-                hidden
-              ></div>
+              <div class="booking-card__divider" aria-hidden="true"></div>
             </div>
             <div class="booking-card__field booking-card__field--services" id="booking-service-field">
               <label class="booking-card__label" for="booking-service-toggle">Serviços desejados</label>
@@ -320,6 +316,52 @@
       const allowedServicesMap = new Map(
         allowedServices.map((service) => [service.toLowerCase(), service])
       );
+
+      const mobileMenuToggle = document.querySelector(".mobile-menu-toggle");
+      const headerNavigation = document.querySelector("#site-navigation");
+
+      if (mobileMenuToggle && headerNavigation) {
+        const openMobileMenu = () => {
+          mobileMenuToggle.setAttribute("aria-expanded", "true");
+          headerNavigation.classList.add("is-open");
+        };
+
+        const closeMobileMenu = () => {
+          mobileMenuToggle.setAttribute("aria-expanded", "false");
+          headerNavigation.classList.remove("is-open");
+        };
+
+        mobileMenuToggle.addEventListener("click", () => {
+          const isExpanded = mobileMenuToggle.getAttribute("aria-expanded") === "true";
+          if (isExpanded) {
+            closeMobileMenu();
+          } else {
+            openMobileMenu();
+          }
+        });
+
+        headerNavigation.addEventListener("click", (event) => {
+          if (event.target instanceof Element && event.target.closest("a")) {
+            closeMobileMenu();
+          }
+        });
+
+        window.addEventListener("resize", () => {
+          if (window.innerWidth > 720) {
+            closeMobileMenu();
+          }
+        });
+      }
+
+      const headerActionsLinks = Array.from(
+        document.querySelectorAll(".header-actions a, .header-actions button")
+      );
+      const headerDetailsLink = headerActionsLinks.find(
+        (action) => action.textContent?.trim().toLowerCase() === "ver detalhes"
+      );
+      if (headerDetailsLink) {
+        headerDetailsLink.remove();
+      }
 
       const defaultMapCenter = { lat: -14.235004, lng: -51.92528 };
 
