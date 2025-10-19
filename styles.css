@@ -39939,6 +39939,27 @@ main {
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+.booking-card__field--location .booking-card__control {
+  align-items: center;
+}
+
+.booking-card__control--line {
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-radius: 0;
+  border: none;
+  border-bottom: 2px solid rgba(244, 92, 162, 0.25);
+  background: transparent;
+  box-shadow: none;
+  transition: border-bottom-color 0.3s ease;
+}
+
+.booking-card__control--line:focus-within {
+  border-bottom-color: rgba(244, 92, 162, 0.65);
+  box-shadow: none;
+}
+
 .booking-card__field--services {
   position: relative;
 }
@@ -40087,6 +40108,24 @@ main {
   order: -1;
 }
 
+.booking-card__icon--leading {
+  width: 18px;
+  height: 18px;
+  justify-self: center;
+}
+
+.booking-card__control--line .booking-card__icon {
+  fill: rgba(244, 92, 162, 0.8);
+}
+
+.booking-card__control--line .booking-card__input {
+  padding: 0.2rem 0;
+}
+
+.booking-card__control--line .booking-card__input::placeholder {
+  color: rgba(22, 22, 22, 0.45);
+}
+
 .booking-card__icon-button {
   border: none;
   background: rgba(244, 92, 162, 0.14);
@@ -40164,12 +40203,6 @@ main {
   height: 2px;
   border-radius: 999px;
   background: linear-gradient(90deg, rgba(244, 92, 162, 0), rgba(244, 92, 162, 0.35), rgba(244, 92, 162, 0));
-}
-
-@media (min-width: 720px) {
-  .booking-card__row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .booking-card {

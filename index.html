@@ -114,28 +114,29 @@
             Selecione os serviços, escolha o horário ideal e receba profissionais NailNow onde estiver, com pagamento seguro e acompanhamento em tempo real.
           </p>
           <form class="booking-card" aria-label="Buscar profissionais disponíveis" onsubmit="handleBooking(event)">
-            <div class="booking-card__field booking-card__field--inline">
+            <div class="booking-card__field booking-card__field--location">
               <label class="booking-card__label" for="booking-location">Local do atendimento</label>
-              <div class="booking-card__control">
+              <div class="booking-card__control booking-card__control--line">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
+                  <path
+                    d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
+                  />
+                </svg>
                 <input
                   type="text"
                   id="booking-location"
                   class="booking-card__input"
                   name="location"
-                  placeholder="Informe o endereço onde deseja ser atendida"
+                  placeholder="Digite o endereço do atendimento"
+                  autocomplete="street-address"
+                  enterkeyhint="go"
                   required
                 />
-                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
-                  <path
-                    d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
-                  />
-                </svg>
               </div>
               <input type="hidden" id="booking-location-formatted" name="location_formatted" />
               <input type="hidden" id="booking-location-place-id" name="location_place_id" />
               <input type="hidden" id="booking-location-lat" name="location_lat" />
               <input type="hidden" id="booking-location-lng" name="location_lng" />
-              <div class="booking-card__divider" aria-hidden="true"></div>
             </div>
             <div class="booking-card__field booking-card__field--services" id="booking-service-field">
               <label class="booking-card__label" for="booking-service-toggle">Serviços desejados</label>
@@ -1864,6 +1865,18 @@
           updateTimeEmptyState(timeSelect);
           timeSelect.addEventListener("change", () => updateTimeEmptyState(timeSelect));
           timeSelect.addEventListener("blur", () => updateTimeEmptyState(timeSelect));
+        }
+        initBookingAutocomplete();
+        const bookingLocationInput = document.getElementById("booking-location");
+        if (bookingLocationInput) {
+          bookingLocationInput.addEventListener("focus", () => {
+            if (
+              window.google?.maps?.places &&
+              bookingLocationInput.dataset.autocompleteInitialized !== "true"
+            ) {
+              initBookingAutocomplete();
+            }
+          });
         }
         ensureAnonymousAccess().catch((error) => {
           console.error("Erro ao preparar autenticação anônima", error);
