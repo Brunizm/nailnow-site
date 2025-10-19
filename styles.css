@@ -39774,6 +39774,25 @@ main {
   gap: 0.4rem;
 }
 
+.booking-card__field--inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(0.5rem, 2vw, 0.85rem);
+}
+
+.booking-card__field--inline .booking-card__label {
+  white-space: nowrap;
+}
+
+.booking-card__field--inline .booking-card__control {
+  flex: 1 1 12rem;
+}
+
+.booking-card__field--inline > :not(.booking-card__label):not(.booking-card__control) {
+  flex-basis: 100%;
+}
+
 .booking-card__label {
   font-size: 0.78rem;
   letter-spacing: 0.08em;
