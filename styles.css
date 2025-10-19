@@ -774,6 +774,12 @@ main {
   font-size: 0.95rem;
 }
 
+.request-card__hint {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
 .request-card__services {
   display: grid;
   gap: 0.35rem;
@@ -919,8 +925,19 @@ main {
   border-left: 6px solid #2e7d32;
 }
 
+.schedule-card--cancelled {
+  border-left: 6px solid #c62828;
+}
+
 .schedule-card--past {
   border-left: 6px solid #5a5a5a;
+}
+
+.schedule-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
 }
 
 .schedule-card__header {
@@ -949,6 +966,10 @@ main {
 
 .schedule-card--confirmed .schedule-card__status {
   color: #2e7d32;
+}
+
+.schedule-card--cancelled .schedule-card__status {
+  color: #c62828;
 }
 
 .schedule-card--past .schedule-card__status {
@@ -40118,6 +40139,24 @@ main {
   fill: var(--pink-primary);
   flex-shrink: 0;
   order: -1;
+}
+
+.booking-card__icon--leading {
+  width: 18px;
+  height: 18px;
+  justify-self: center;
+}
+
+.booking-card__control--line .booking-card__icon {
+  fill: rgba(244, 92, 162, 0.8);
+}
+
+.booking-card__control--line .booking-card__input {
+  padding: 0.2rem 0;
+}
+
+.booking-card__control--line .booking-card__input::placeholder {
+  color: rgba(22, 22, 22, 0.45);
 }
 
 .booking-card__icon--leading {
