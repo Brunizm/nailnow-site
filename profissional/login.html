@@ -103,6 +103,7 @@
       window.loginProfissional = loginProfissional;
       window.enviarReset = enviarReset;
     </script>
+    <script src="/assets/js/menu-toggle.js" defer></script>
   </head>
   <body>
     <div class="promo-banner">Profissionais NailNow: acesse sua agenda e suporte exclusivo.</div>
@@ -110,7 +111,20 @@
     <header class="site-header">
       <div class="header-inner">
         <a href="/" class="brand-mark" aria-label="Início da NailNow">NailNow</a>
-        <div class="header-navigation">
+        <button
+          class="mobile-menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="site-navigation"
+        >
+          <span class="sr-only">Alternar menu</span>
+          <span class="mobile-menu-toggle__bars" aria-hidden="true">
+            <span class="mobile-menu-toggle__bar"></span>
+            <span class="mobile-menu-toggle__bar"></span>
+            <span class="mobile-menu-toggle__bar"></span>
+          </span>
+        </button>
+        <div class="header-navigation" id="site-navigation">
           <nav class="primary-nav" aria-label="Principal">
             <a href="/" class="nav-link">Home</a>
             <a href="../como-funciona.html" class="nav-link">Como funciona</a>
