@@ -38549,12 +38549,62 @@ main {
   letter-spacing: 0.14em;
   font-size: 0.78rem;
   font-weight: 600;
-  text-align: center;
-  padding: 0.7rem 1rem;
+  padding: 0.7rem clamp(1rem, 6vw, 2.5rem);
   border-bottom: 1px solid var(--border-soft);
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.65rem, 2vw, 1.5rem);
+  flex-wrap: wrap;
+  text-align: center;
+}
+
+.promo-banner__message {
+  flex: 1 1 240px;
+  text-align: center;
+}
+
+.promo-banner__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--text-main);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-main);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  margin-left: auto;
+}
+
+.promo-banner__cta::after {
+  content: "›";
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: transform 0.3s ease;
+}
+
+.promo-banner__cta:hover,
+.promo-banner__cta:focus-visible {
+  background: var(--text-main);
+  color: var(--surface);
+  box-shadow: 0 10px 18px rgba(18, 18, 18, 0.16);
+  transform: translateY(-1px);
+}
+
+.promo-banner__cta:hover::after,
+.promo-banner__cta:focus-visible::after {
+  transform: translateX(3px);
 }
 
 .promo-banner::before {
@@ -39634,13 +39684,40 @@ main {
   }
 }
 
-@media (max-width: 480px) {
-  .promo-banner {
-    font-size: 0.7rem;
-    padding: 0.5rem 0.75rem;
+@media (max-width: 640px) {
+  .promo-banner__cta {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .promo-banner__message {
+    text-align: center;
   }
 }
 
+@media (max-width: 480px) {
+  .promo-banner {
+    font-size: 0.7rem;
+    padding: 0.55rem 0.85rem;
+  }
+
+  .promo-banner__cta {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    padding: 0.45rem 1.1rem;
+  }
+}
+
+@media (min-width: 641px) {
+  .promo-banner:has(.promo-banner__cta) {
+    justify-content: space-between;
+    text-align: left;
+  }
+
+  .promo-banner:has(.promo-banner__cta) .promo-banner__message {
+    text-align: left;
+  }
+}
 
 .page-hero {
   max-width: var(--max-width);
