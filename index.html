@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="no-js">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -34,6 +34,11 @@
     />
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
+    <script src="/assets/js/menu-toggle.js" defer></script>
+    <script>
+      document.documentElement.classList.remove("no-js");
+      document.documentElement.classList.add("js");
+    </script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -109,7 +114,7 @@
             Selecione os serviços, escolha o horário ideal e receba profissionais NailNow onde estiver, com pagamento seguro e acompanhamento em tempo real.
           </p>
           <form class="booking-card" aria-label="Buscar profissionais disponíveis" onsubmit="handleBooking(event)">
-            <div class="booking-card__field">
+            <div class="booking-card__field booking-card__field--inline">
               <label class="booking-card__label" for="booking-location">Local do atendimento</label>
               <div class="booking-card__control">
                 <input
@@ -1626,6 +1631,109 @@
         input.dataset.autocompleteInitialized = "true";
       }
 
+      function openNativeInputPicker(input, triggerElement) {
+        if (!input) return;
+
+        if (triggerElement && typeof triggerElement.blur === "function") {
+          try {
+            triggerElement.blur();
+          } catch (error) {
+            console.debug("Não foi possível remover o foco do botão do seletor", error);
+          }
+        }
+
+        const tryShowPicker = () => {
+          if (typeof input.showPicker === "function") {
+            try {
+              input.showPicker();
+              return true;
+            } catch (error) {
+              console.debug("Não foi possível abrir o seletor nativo via showPicker", error);
+            }
+          }
+          return false;
+        };
+
+        const focusInput = () => {
+          if (typeof input.focus !== "function") {
+            return;
+          }
+
+          try {
+            input.focus({ preventScroll: true });
+          } catch (error) {
+            console.debug("Não foi possível focar o campo do seletor", error);
+            try {
+              input.focus();
+            } catch (fallbackError) {
+              console.debug("O foco simples também falhou", fallbackError);
+            }
+          }
+        };
+
+        const triggerClick = () => {
+          focusInput();
+
+          if (typeof input.click === "function") {
+            try {
+              input.click();
+            } catch (error) {
+              console.debug("Não foi possível disparar o clique do seletor", error);
+            }
+          }
+
+          const eventInit = {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          };
+
+          if (typeof window.PointerEvent === "function") {
+            const pointerEventInit = {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              pointerType: "touch",
+            };
+
+            ["pointerdown", "pointerup"].forEach((type) => {
+              input.dispatchEvent(new PointerEvent(type, pointerEventInit));
+            });
+          }
+
+          if (typeof window.TouchEvent === "function") {
+            ["touchstart", "touchend"].forEach((type) => {
+              try {
+                const touchEvent = new TouchEvent(type, {
+                  bubbles: true,
+                  cancelable: true,
+                });
+                input.dispatchEvent(touchEvent);
+              } catch (error) {
+                console.debug("Não foi possível disparar o evento touch", error);
+              }
+            });
+          }
+
+          ["mousedown", "mouseup", "click"].forEach((type) => {
+            input.dispatchEvent(new MouseEvent(type, eventInit));
+          });
+        };
+
+        if (tryShowPicker()) {
+          return;
+        }
+
+        focusInput();
+
+        const scheduleFallback =
+          typeof window.requestAnimationFrame === "function"
+            ? window.requestAnimationFrame
+            : (callback) => setTimeout(callback, 0);
+
+        scheduleFallback(triggerClick);
+      }
+
       function initBookingPickerButtons() {
         const buttons = document.querySelectorAll(
           ".booking-card__icon-button[data-picker-target]"
@@ -1638,15 +1746,9 @@
           const input = targetId ? document.getElementById(targetId) : null;
           if (!input) return;
 
-          button.addEventListener("click", () => {
-            if (typeof input.showPicker === "function") {
-              input.showPicker();
-            } else {
-              input.focus();
-              if (input.type === "time") {
-                input.click();
-              }
-            }
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            openNativeInputPicker(input, button);
           });
 
           button.dataset.pickerBound = "true";
