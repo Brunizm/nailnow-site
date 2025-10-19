@@ -38605,6 +38605,10 @@ main {
     box-shadow 0.3s ease;
 }
 
+.no-js .mobile-menu-toggle {
+  display: none !important;
+}
+
 .mobile-menu-toggle:focus-visible,
 .mobile-menu-toggle:hover {
   transform: translateY(-1px);
@@ -39551,6 +39555,15 @@ main {
     transition: max-height 0.35s ease, opacity 0.25s ease,
       transform 0.35s ease, padding 0.35s ease;
     align-items: stretch;
+  }
+
+  .no-js .header-navigation {
+    padding: 1.25rem 1.5rem;
+    max-height: none;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    overflow: visible;
   }
 
   .header-navigation.is-open {
