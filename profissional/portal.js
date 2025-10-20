@@ -43,89 +43,47 @@ const servicesList = document.getElementById("services-list");
 const servicesEmpty = document.getElementById("services-empty");
 const metricPending = document.getElementById("metric-pending");
 const metricConfirmed = document.getElementById("metric-confirmed");
-const metricPast = document.getElementById("metric-past");
+const metricCancelled = document.getElementById("metric-cancelled");
 const badgePending = document.getElementById("badge-pending");
 const badgeConfirmed = document.getElementById("badge-confirmed");
-const badgePast = document.getElementById("badge-past");
+const badgeCancelled = document.getElementById("badge-cancelled");
 const pendingList = document.getElementById("pending-list");
 const confirmedList = document.getElementById("confirmed-list");
-const pastList = document.getElementById("past-list");
+const cancelledList = document.getElementById("cancelled-list");
 let currentProfile = null;
 let fallbackProfileEmail = "";
-
-const defaultAppointmentData = {
-  pending: [
-    {
-      id: "SOL-1842",
-      client: "Bianca Lopes",
-      service: "Alongamento em fibra de vidro",
-      date: "2025-05-08",
-      time: "14:00",
-      location: "Pinheiros, São Paulo",
-      price: "R$ 180,00",
-      note: "Prefere acabamento natural e formato amendoado.",
-    },
-    {
-      id: "SOL-1853",
-      client: "Thais Camargo",
-      service: "Spa das mãos + esmaltação gel",
-      date: "2025-05-09",
-      time: "09:30",
-      location: "Brooklin, São Paulo",
-      price: "R$ 140,00",
-      note: "Levar paleta de tons nudes.",
-    },
-  ],
-  confirmed: [
-    {
-      id: "AGEN-1027",
-      client: "Larissa Monteiro",
-      service: "Blindagem + esmaltação",
-      date: "2025-05-06",
-      time: "18:30",
-      location: "Vila Mariana, São Paulo",
-      price: "R$ 165,00",
-      note: "Cliente indicou preferência por glitter rosé.",
-    },
-    {
-      id: "AGEN-1028",
-      client: "Amanda Reis",
-      service: "Pedicure + spa relaxante",
-      date: "2025-05-07",
-      time: "10:00",
-      location: "Moema, São Paulo",
-      price: "R$ 120,00",
-      note: "Chegar 10 min antes para montagem do espaço.",
-    },
-  ],
-  past: [
-    {
-      id: "HIST-980",
-      client: "Nathalia Cruz",
-      service: "Esmaltação em gel",
-      date: "2025-04-29",
-      time: "16:30",
-      location: "Itaim Bibi, São Paulo",
-      price: "R$ 110,00",
-      note: "Avaliação 5 estrelas enviada.",
-    },
-    {
-      id: "HIST-975",
-      client: "Juliana Prado",
-      service: "Alongamento em fibra",
-      date: "2025-04-25",
-      time: "11:00",
-      location: "Tatuapé, São Paulo",
-      price: "R$ 190,00",
-      note: "Cliente agendou manutenção para daqui 3 semanas.",
-    },
-  ],
-};
 
 const appointmentCollections = {
   pending: "solicitacoes",
   confirmed: "confirmados",
-  past: "historico",
+  cancelled: "cancelados",
+};
+
+const legacyAppointmentCollections = {
+  cancelled: ["historico"],
+};
+
+const appointmentStatusLabels = {
+  pending: "Pendente",
+  confirmed: "Confirmado",
+  cancelled: "Cancelado",
+};
+
+const resolveStatusLabel = (status) => {
+  const normalized = (status || "").toString().toLowerCase();
+  if (appointmentStatusLabels[normalized]) {
+    return appointmentStatusLabels[normalized];
+  }
+  if (normalized === "rejected" || normalized === "cancelado" || normalized === "canceled") {
+    return appointmentStatusLabels.cancelled;
+  }
+  if (normalized === "confirmado" || normalized === "confirmed") {
+    return appointmentStatusLabels.confirmed;
+  }
+  if (normalized === "pendente" || normalized === "pending") {
+    return appointmentStatusLabels.pending;
+  }
+  return appointmentStatusLabels.pending;
 };
 
 const setStatus = (message, type = "") => {
@@ -143,7 +101,7 @@ const setStatus = (message, type = "") => {
 const resetDashboard = () => {
   pendingList.innerHTML = "";
   confirmedList.innerHTML = "";
-  pastList.innerHTML = "";
+  cancelledList.innerHTML = "";
   updateMetrics([], [], []);
   if (servicesList) {
     servicesList.innerHTML = "";
@@ -257,6 +215,7 @@ const createAppointmentCard = (appointment, status) => {
 
   const heading = document.createElement("header");
   heading.className = "schedule-card__header";
+  const statusLabel = resolveStatusLabel(status);
   heading.innerHTML = `
     <div>
       <p class="schedule-card__service">${
@@ -266,7 +225,10 @@ const createAppointmentCard = (appointment, status) => {
         appointment.client || appointment.cliente || appointment.clientName || "Cliente NailNow"
       }</h3>
     </div>
-    <span class="schedule-card__id">${appointment.id}</span>
+    <div class="schedule-card__meta">
+      <span class="schedule-card__status">${statusLabel}</span>
+      <span class="schedule-card__id">${appointment.id || "—"}</span>
+    </div>
   `;
   wrapper.appendChild(heading);
 
@@ -339,9 +301,12 @@ const renderAppointments = (status, appointments, options = {}) => {
   const mapping = {
     pending: pendingList,
     confirmed: confirmedList,
-    past: pastList,
+    cancelled: cancelledList,
   };
   const target = mapping[status];
+  if (!target) {
+    return;
+  }
   target.innerHTML = "";
 
   if (options.notice) {
@@ -354,7 +319,12 @@ const renderAppointments = (status, appointments, options = {}) => {
   if (!appointments.length) {
     const empty = document.createElement("p");
     empty.className = "schedule-empty";
-    empty.textContent = "Nenhum agendamento disponível no momento.";
+    const emptyMessages = {
+      pending: "Nenhuma solicitação aguardando resposta.",
+      confirmed: "Nenhum atendimento confirmado por enquanto.",
+      cancelled: "Nenhuma solicitação cancelada registrada.",
+    };
+    empty.textContent = emptyMessages[status] || "Nenhum agendamento disponível no momento.";
     target.appendChild(empty);
     return;
   }
@@ -375,12 +345,19 @@ const mirrorDecisionToClient = async (appointment, decision) => {
   const clientRef = doc(db, clientCollection, clientId);
   const pendingRef = doc(clientRef, appointmentCollections.pending, appointment.id);
   const confirmedRef = doc(clientRef, appointmentCollections.confirmed, appointment.id);
-  const historyRef = doc(clientRef, appointmentCollections.past, appointment.id);
+  const cancelledCollectionName =
+    appointmentCollections.cancelled || (legacyAppointmentCollections.cancelled || [])[0];
+  const cancelledRef = cancelledCollectionName
+    ? doc(clientRef, cancelledCollectionName, appointment.id)
+    : null;
+  const legacyCancelledRefs = (legacyAppointmentCollections.cancelled || [])
+    .filter((collectionName) => collectionName && collectionName !== cancelledCollectionName)
+    .map((collectionName) => doc(clientRef, collectionName, appointment.id));
 
   const basePayload = {
     ...appointment,
-    status: decision === "accept" ? "confirmed" : "rejected",
-    decision: decision === "accept" ? "accepted" : "rejected",
+    status: decision === "accept" ? "confirmed" : "cancelled",
+    decision: decision === "accept" ? "accepted" : "declined",
     decisionAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -390,12 +367,15 @@ const mirrorDecisionToClient = async (appointment, decision) => {
       await Promise.all([
         setDoc(confirmedRef, basePayload),
         deleteDoc(pendingRef).catch(() => {}),
+        ...(cancelledRef ? [deleteDoc(cancelledRef).catch(() => {})] : []),
+        ...legacyCancelledRefs.map((ref) => deleteDoc(ref).catch(() => {})),
       ]);
     } else {
       await Promise.all([
-        setDoc(historyRef, basePayload),
+        ...(cancelledRef ? [setDoc(cancelledRef, basePayload)] : []),
         deleteDoc(pendingRef).catch(() => {}),
         deleteDoc(confirmedRef).catch(() => {}),
+        ...legacyCancelledRefs.map((ref) => setDoc(ref, basePayload)),
       ]);
     }
   } catch (error) {
@@ -413,7 +393,7 @@ const toggleActionButtons = (container, disabled) => {
 };
 
 const handleAppointmentDecision = async (appointment, decision, actionsContainer) => {
-  if (!currentProfile?.id || appointment.__isFallback) {
+  if (!currentProfile?.id) {
     return;
   }
 
@@ -423,11 +403,19 @@ const handleAppointmentDecision = async (appointment, decision, actionsContainer
   const collectionName = currentProfile.collection || PROFILE_COLLECTIONS[0];
   const professionalRef = doc(db, collectionName, currentProfile.id);
   const pendingRef = doc(professionalRef, appointmentCollections.pending, appointment.id);
+  const cancelledCollectionName =
+    appointmentCollections.cancelled || (legacyAppointmentCollections.cancelled || [])[0];
+  const cancelledRef = cancelledCollectionName
+    ? doc(professionalRef, cancelledCollectionName, appointment.id)
+    : null;
+  const legacyCancelledRefs = (legacyAppointmentCollections.cancelled || [])
+    .filter((name) => name && name !== cancelledCollectionName)
+    .map((name) => doc(professionalRef, name, appointment.id));
 
   const payload = {
     ...appointment,
-    status: decision === "accept" ? "confirmed" : "rejected",
-    decision: decision === "accept" ? "accepted" : "rejected",
+    status: decision === "accept" ? "confirmed" : "cancelled",
+    decision: decision === "accept" ? "accepted" : "declined",
     decisionBy: currentProfile.id,
     decisionAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -439,14 +427,16 @@ const handleAppointmentDecision = async (appointment, decision, actionsContainer
       await Promise.all([
         setDoc(confirmedRef, payload),
         deleteDoc(pendingRef).catch(() => {}),
+        ...(cancelledRef ? [deleteDoc(cancelledRef).catch(() => {})] : []),
+        ...legacyCancelledRefs.map((ref) => deleteDoc(ref).catch(() => {})),
         mirrorDecisionToClient(appointment, decision),
       ]);
       setStatus("Solicitação confirmada!", "success");
     } else {
-      const historyRef = doc(professionalRef, appointmentCollections.past, appointment.id);
       await Promise.all([
-        setDoc(historyRef, payload),
+        ...(cancelledRef ? [setDoc(cancelledRef, payload)] : []),
         deleteDoc(pendingRef).catch(() => {}),
+        ...legacyCancelledRefs.map((ref) => setDoc(ref, payload)),
         mirrorDecisionToClient(appointment, decision),
       ]);
       setStatus("Solicitação atualizada.", "success");
@@ -461,13 +451,13 @@ const handleAppointmentDecision = async (appointment, decision, actionsContainer
   }
 };
 
-const updateMetrics = (pending, confirmed, past) => {
+const updateMetrics = (pending, confirmed, cancelled) => {
   metricPending.textContent = pending.length;
   badgePending.textContent = pending.length;
   metricConfirmed.textContent = confirmed.length;
   badgeConfirmed.textContent = confirmed.length;
-  metricPast.textContent = past.length;
-  badgePast.textContent = past.length;
+  metricCancelled.textContent = cancelled.length;
+  badgeCancelled.textContent = cancelled.length;
 };
 
 const buildLookupCandidates = (rawEmail) => {
@@ -804,16 +794,29 @@ const fetchAppointments = async (status, profileId, profileCollection) => {
 
   try {
     const parentRef = doc(db, profileCollection, profileId);
-    const appointmentsCollection = appointmentCollections[status];
-    if (!appointmentsCollection) {
+    const collectionCandidates = [
+      appointmentCollections[status],
+      ...(legacyAppointmentCollections[status] || []),
+    ].filter(Boolean);
+
+    if (!collectionCandidates.length) {
       return [];
     }
-    const appointmentsRef = collection(parentRef, appointmentsCollection);
-    const snapshot = await getDocs(appointmentsRef);
-    if (snapshot.empty) {
-      return [];
+
+    const appointments = new Map();
+
+    for (const collectionName of collectionCandidates) {
+      const appointmentsRef = collection(parentRef, collectionName);
+      const snapshot = await getDocs(appointmentsRef);
+      if (snapshot.empty) {
+        continue;
+      }
+      snapshot.docs.forEach((docSnap) => {
+        appointments.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+      });
     }
-    return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+
+    return Array.from(appointments.values());
   } catch (error) {
     if (error.code === "permission-denied") {
       const permissionError = new Error("permission-denied");
@@ -829,42 +832,46 @@ const loadAppointmentsForProfile = async (profile) => {
   if (!profile?.id) {
     renderAppointments("pending", []);
     renderAppointments("confirmed", []);
-    renderAppointments("past", []);
+    renderAppointments("cancelled", []);
     updateMetrics([], [], []);
     return { permissionIssue: false };
   }
 
-  const keys = ["pending", "confirmed", "past"];
+  const keys = ["pending", "confirmed", "cancelled"];
   const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
   const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id, profileCollection)));
 
   let permissionIssue = false;
-  const usedFallback = {};
   const datasets = keys.map((key, index) => {
     const result = results[index];
     if (result.status === "fulfilled") {
       const value = Array.isArray(result.value) ? result.value : [];
-      if (value.length) {
-        return value.map((entry) => ({ status: key, ...entry }));
-      }
-    } else if (result.reason?.message === "permission-denied") {
+      return value.map((entry) => ({ status: key, ...entry }));
+    }
+
+    const reason = result.reason;
+    const denied =
+      reason?.code === "permission-denied" ||
+      reason?.message === "permission-denied" ||
+      (typeof reason?.message === "string" && reason.message.includes("permission-denied"));
+    if (denied) {
       permissionIssue = true;
     }
-    usedFallback[key] = true;
-    return defaultAppointmentData[key].map((entry) => ({ status: key, __isFallback: true, ...entry }));
+
+    return [];
   });
 
-  const [pendingAppointments, confirmedAppointments, pastAppointments] = datasets;
-  updateMetrics(pendingAppointments, confirmedAppointments, pastAppointments);
+  const [pendingAppointments, confirmedAppointments, cancelledAppointments] = datasets;
+  updateMetrics(pendingAppointments, confirmedAppointments, cancelledAppointments);
 
   const fallbackNotice = permissionIssue
-    ? "Não conseguimos carregar toda a agenda agora. Mostramos um exemplo enquanto sincronizamos seus dados."
+    ? "Não conseguimos carregar toda a agenda agora. Atualize a página ou fale com o suporte NailNow."
     : "";
   let noticeDisplayed = false;
 
   keys.forEach((key, index) => {
     const data = datasets[index];
-    const shouldShowNotice = fallbackNotice && usedFallback[key] && !noticeDisplayed;
+    const shouldShowNotice = Boolean(fallbackNotice) && !noticeDisplayed;
     renderAppointments(key, data, {
       notice: shouldShowNotice ? fallbackNotice : "",
     });

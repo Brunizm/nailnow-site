@@ -46,7 +46,6 @@
     </script>
   </head>
   <body>
-    <div class="promo-banner">Clientes NailNow: organize seus agendamentos com profissionais verificadas.</div>
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
@@ -117,7 +116,7 @@
               </dl>
               <p class="profile-support-note">
                 Para atualizar qualquer informação, fale com o suporte NailNow pelo e-mail
-                <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>.
+                <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>.
               </p>
             </article>
             <div class="dashboard-metrics" aria-label="Resumo dos agendamentos">
@@ -132,9 +131,9 @@
                 <span class="metric-footnote">próximos serviços</span>
               </div>
               <div class="metric-card">
-                <span class="metric-label">Histórico</span>
-                <span class="metric-value" id="metric-past">0</span>
-                <span class="metric-footnote">atendimentos recentes</span>
+                <span class="metric-label">Cancelados</span>
+                <span class="metric-value" id="metric-cancelled">0</span>
+                <span class="metric-footnote">não realizados</span>
               </div>
             </div>
           </div>
@@ -144,74 +143,98 @@
           <div class="request-board__intro">
             <h2 id="request-board-heading">Solicitar atendimento</h2>
             <p>
-              Encontre manicures NailNow, confira os serviços com valores atualizados e envie uma solicitação com a melhor
-              data e horário para você.
+              Envie uma solicitação rápida para manicures NailNow e acompanhe o retorno diretamente pelo portal.
             </p>
           </div>
-          <div class="request-board__grid">
-            <section class="request-board__column" aria-labelledby="request-search-heading">
-              <div class="request-search">
-                <h3 id="request-search-heading">Buscar manicure</h3>
-                <label class="request-search__label" for="professional-search">Nome, bairro ou serviço</label>
+          <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
+            <div class="booking-card__field booking-card__field--wide">
+              <label class="booking-card__label" for="professional-search">Buscar manicure</label>
+              <div class="booking-card__control booking-card__control--line">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
+                  <path
+                    d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 14.5 15l.27.28v.79l4.25 4.25a1 1 0 0 0 1.5-1.32l-.1-.1L15.5 14Zm-5 0a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"
+                  />
+                </svg>
                 <input
                   type="search"
                   id="professional-search"
-                  class="request-search__input"
-                  placeholder="Digite para filtrar"
+                  class="booking-card__input"
+                  placeholder="Nome, bairro ou serviço"
                   autocomplete="off"
                 />
-                <div id="professional-results" class="request-results" role="list"></div>
-                <p id="professional-results-empty" class="request-results__empty" hidden>
-                  Não encontramos manicures com esse filtro agora. Ajuste os termos e tente novamente.
-                </p>
               </div>
-            </section>
-            <section class="request-board__column" aria-labelledby="request-form-heading">
-              <form id="service-request-form" class="request-form" novalidate>
-                <h3 id="request-form-heading">Detalhes da solicitação</h3>
-                <p id="request-form-empty" class="request-form__empty">
-                  Escolha uma manicure na lista ao lado para preencher os serviços disponíveis.
-                </p>
-                <div class="request-form__group" data-request-field="professional" hidden>
-                  <label for="request-professional">Profissional selecionada</label>
-                  <input id="request-professional" type="text" readonly />
+              <div id="professional-results" class="request-results request-results--inline" role="list"></div>
+              <p id="professional-results-empty" class="request-results__empty" hidden>
+                Não encontramos manicures com esse filtro agora. Ajuste os termos e tente novamente.
+              </p>
+            </div>
+            <p id="request-form-empty" class="booking-card__hint">
+              Escolha uma manicure acima para liberar os detalhes da solicitação.
+            </p>
+            <div class="booking-card__field" data-request-field="professional" hidden>
+              <label class="booking-card__label" for="request-professional">Profissional selecionada</label>
+              <input id="request-professional" type="text" class="booking-card__input" readonly />
+            </div>
+            <div class="booking-card__field" data-request-field="service" hidden>
+              <label class="booking-card__label" for="request-service">Serviço</label>
+              <select id="request-service" class="booking-card__input booking-card__input--select"></select>
+            </div>
+            <div class="booking-card__field" data-request-field="price" hidden>
+              <label class="booking-card__label" for="request-price">Valor</label>
+              <input id="request-price" type="text" class="booking-card__input" readonly />
+            </div>
+            <div class="booking-card__row" data-request-field="schedule" hidden>
+              <div class="booking-card__field">
+                <label class="booking-card__label" for="request-date">Data desejada</label>
+                <div class="booking-card__control booking-card__control--compact">
+                  <input type="date" id="request-date" class="booking-card__input" required />
                 </div>
-                <div class="request-form__group" data-request-field="service" hidden>
-                  <label for="request-service">Serviço</label>
-                  <select id="request-service"></select>
+              </div>
+              <div class="booking-card__field">
+                <label class="booking-card__label" for="request-time">Horário</label>
+                <div class="booking-card__control booking-card__control--compact booking-card__control--with-trailing-icon">
+                  <input type="time" id="request-time" class="booking-card__input" required />
+                  <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
+                    <path
+                      d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
+                    />
+                  </svg>
                 </div>
-                <div class="request-form__group" data-request-field="price" hidden>
-                  <label for="request-price">Valor</label>
-                  <input id="request-price" type="text" readonly />
-                </div>
-                <div class="request-form__row" data-request-field="schedule" hidden>
-                  <div class="request-form__group">
-                    <label for="request-date">Data desejada</label>
-                    <input type="date" id="request-date" required />
-                  </div>
-                  <div class="request-form__group">
-                    <label for="request-time">Horário</label>
-                    <input type="time" id="request-time" required />
-                  </div>
-                </div>
-                <div class="request-form__group" data-request-field="location" hidden>
-                  <label for="request-location">Endereço do atendimento</label>
-                  <input id="request-location" type="text" placeholder="Ex: Rua Exemplo, 123 - Bairro" />
-                </div>
-                <div class="request-form__group" data-request-field="notes" hidden>
-                  <label for="request-notes">Observações para a profissional</label>
-                  <textarea id="request-notes" rows="3" placeholder="Preferências, referências ou instruções adicionais"></textarea>
-                </div>
-                <button type="submit" id="submit-request" class="request-form__submit" disabled>Enviar solicitação</button>
-                <div id="request-feedback" class="auth-status" role="status" aria-live="polite" hidden></div>
-              </form>
-            </section>
-          </div>
+              </div>
+            </div>
+            <div class="booking-card__field booking-card__field--location" data-request-field="location" hidden>
+              <label class="booking-card__label" for="request-location">Endereço do atendimento</label>
+              <div class="booking-card__control booking-card__control--line">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
+                  <path
+                    d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
+                  />
+                </svg>
+                <input
+                  id="request-location"
+                  type="text"
+                  class="booking-card__input"
+                  placeholder="Digite o endereço do atendimento"
+                />
+              </div>
+            </div>
+            <div class="booking-card__field" data-request-field="notes" hidden>
+              <label class="booking-card__label" for="request-notes">Observações para a profissional</label>
+              <textarea
+                id="request-notes"
+                rows="3"
+                class="booking-card__input booking-card__input--textarea"
+                placeholder="Preferências, referências ou instruções adicionais"
+              ></textarea>
+            </div>
+            <button type="submit" id="submit-request" class="booking-card__submit" disabled>Enviar solicitação</button>
+            <p id="request-feedback" class="booking-card__feedback auth-status" role="status" aria-live="polite" hidden></p>
+          </form>
         </section>
 
         <section class="schedule-section" aria-labelledby="cliente-pending-heading">
           <div class="schedule-section__head">
-            <h2 id="cliente-pending-heading">Solicitações em andamento</h2>
+            <h2 id="cliente-pending-heading">Solicitações pendentes</h2>
             <span class="schedule-count" id="badge-pending">0</span>
           </div>
           <div id="pending-list" class="schedule-list" role="list"></div>
@@ -219,18 +242,18 @@
 
         <section class="schedule-section" aria-labelledby="cliente-confirmed-heading">
           <div class="schedule-section__head">
-            <h2 id="cliente-confirmed-heading">Serviços confirmados</h2>
+            <h2 id="cliente-confirmed-heading">Solicitações confirmadas</h2>
             <span class="schedule-count" id="badge-confirmed">0</span>
           </div>
           <div id="confirmed-list" class="schedule-list" role="list"></div>
         </section>
 
-        <section class="schedule-section" aria-labelledby="cliente-past-heading">
+        <section class="schedule-section" aria-labelledby="cliente-cancelled-heading">
           <div class="schedule-section__head">
-            <h2 id="cliente-past-heading">Histórico de atendimentos</h2>
-            <span class="schedule-count" id="badge-past">0</span>
+            <h2 id="cliente-cancelled-heading">Solicitações canceladas</h2>
+            <span class="schedule-count" id="badge-cancelled">0</span>
           </div>
-          <div id="past-list" class="schedule-list" role="list"></div>
+          <div id="cancelled-list" class="schedule-list" role="list"></div>
         </section>
       </div>
     </main>
@@ -249,7 +272,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:contato@nailnow.com">contato@nailnow.com</a>
+          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>

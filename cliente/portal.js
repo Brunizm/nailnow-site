@@ -40,13 +40,13 @@ const profilePhone = document.getElementById("profile-phone");
 const profileAddress = document.getElementById("profile-address");
 const metricPending = document.getElementById("metric-pending");
 const metricConfirmed = document.getElementById("metric-confirmed");
-const metricPast = document.getElementById("metric-past");
+const metricCancelled = document.getElementById("metric-cancelled");
 const badgePending = document.getElementById("badge-pending");
 const badgeConfirmed = document.getElementById("badge-confirmed");
-const badgePast = document.getElementById("badge-past");
+const badgeCancelled = document.getElementById("badge-cancelled");
 const pendingList = document.getElementById("pending-list");
 const confirmedList = document.getElementById("confirmed-list");
-const pastList = document.getElementById("past-list");
+const cancelledList = document.getElementById("cancelled-list");
 const professionalSearchInput = document.getElementById("professional-search");
 const professionalResults = document.getElementById("professional-results");
 const professionalResultsEmpty = document.getElementById("professional-results-empty");
@@ -94,7 +94,54 @@ const sanitizeAreaParts = (parts = []) => {
 const appointmentCollections = {
   pending: "solicitacoes",
   confirmed: "confirmados",
-  past: "historico",
+  cancelled: "cancelados",
+};
+
+const legacyAppointmentCollections = {
+  cancelled: ["historico"],
+};
+
+const appointmentStatusLabels = {
+  pending: "Pendente",
+  confirmed: "Confirmado",
+  cancelled: "Cancelado",
+};
+
+const resolveStatusLabel = (status) => {
+  const normalized = (status || "").toString().toLowerCase();
+  if (appointmentStatusLabels[normalized]) {
+    return appointmentStatusLabels[normalized];
+  }
+  if (normalized === "rejected" || normalized === "cancelado" || normalized === "canceled") {
+    return appointmentStatusLabels.cancelled;
+  }
+  if (normalized === "confirmado" || normalized === "confirmed") {
+    return appointmentStatusLabels.confirmed;
+  }
+  if (normalized === "pendente" || normalized === "pending") {
+    return appointmentStatusLabels.pending;
+  }
+  return appointmentStatusLabels.pending;
+};
+
+const getPublicProfessionalLabel = (professional) => {
+  const displayName = getProfessionalDisplayName(professional);
+  if (!displayName) {
+    return "Manicure NailNow";
+  }
+  if (displayName.includes("@")) {
+    return "Manicure NailNow";
+  }
+  const tokens = displayName.split(/\s+/).filter(Boolean);
+  if (!tokens.length) {
+    return "Manicure NailNow";
+  }
+  if (tokens.length === 1) {
+    return tokens[0];
+  }
+  const [first, second] = tokens;
+  const initial = second ? `${second.charAt(0).toUpperCase()}.` : "";
+  return `${first} ${initial}`.trim();
 };
 
 const setStatus = (message, type = "") => {
@@ -124,7 +171,7 @@ const setRequestFeedback = (message, type = "") => {
 const resetDashboard = () => {
   pendingList.innerHTML = "";
   confirmedList.innerHTML = "";
-  pastList.innerHTML = "";
+  cancelledList.innerHTML = "";
   updateMetrics([], [], []);
   currentProfile = null;
   fallbackProfileEmail = "";
@@ -281,12 +328,19 @@ const createAppointmentCard = (appointment, status) => {
 
   const heading = document.createElement("header");
   heading.className = "schedule-card__header";
+  const statusLabel = resolveStatusLabel(status);
+  const professionalLabel = appointment.professional
+    ? getPublicProfessionalLabel({ nome: appointment.professional })
+    : "Profissional NailNow";
   heading.innerHTML = `
     <div>
       <p class="schedule-card__service">${appointment.service || "Serviço NailNow"}</p>
-      <h3 class="schedule-card__client">${appointment.professional || "Profissional NailNow"}</h3>
+      <h3 class="schedule-card__client">${professionalLabel}</h3>
     </div>
-    <span class="schedule-card__id">${appointment.id || "—"}</span>
+    <div class="schedule-card__meta">
+      <span class="schedule-card__status">${statusLabel}</span>
+      <span class="schedule-card__id">${appointment.id || "—"}</span>
+    </div>
   `;
   wrapper.appendChild(heading);
 
@@ -336,9 +390,12 @@ const renderAppointments = (status, appointments, options = {}) => {
   const mapping = {
     pending: pendingList,
     confirmed: confirmedList,
-    past: pastList,
+    cancelled: cancelledList,
   };
   const target = mapping[status];
+  if (!target) {
+    return;
+  }
   target.innerHTML = "";
 
   if (options.notice) {
@@ -351,7 +408,12 @@ const renderAppointments = (status, appointments, options = {}) => {
   if (!appointments.length) {
     const empty = document.createElement("p");
     empty.className = "schedule-empty";
-    empty.textContent = "Nenhum agendamento disponível no momento.";
+    const emptyMessages = {
+      pending: "Nenhuma solicitação pendente no momento.",
+      confirmed: "Nenhuma solicitação confirmada ainda.",
+      cancelled: "Nenhuma solicitação cancelada registrada.",
+    };
+    empty.textContent = emptyMessages[status] || "Nenhum agendamento disponível no momento.";
     target.appendChild(empty);
     return;
   }
@@ -429,7 +491,7 @@ const renderProfessionalResults = (items = []) => {
 
     const title = document.createElement("h4");
     title.className = "request-card__title";
-    title.textContent = getProfessionalDisplayName(professional);
+    title.textContent = getPublicProfessionalLabel(professional);
     card.appendChild(title);
 
     const meta = document.createElement("p");
@@ -444,29 +506,21 @@ const renderProfessionalResults = (items = []) => {
     meta.textContent = metaParts.join(" • ") || "Área a combinar";
     card.appendChild(meta);
 
-    const servicesListEl = document.createElement("ul");
-    servicesListEl.className = "request-card__services";
-
-    if (professional.servicos && professional.servicos.length) {
-      professional.servicos.slice(0, 3).forEach((service) => {
-        const item = document.createElement("li");
-        item.className = "request-card__service";
-        const name = document.createElement("span");
-        name.textContent = service.name;
-        const price = document.createElement("span");
-        price.textContent = service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
-        item.appendChild(name);
-        item.appendChild(price);
-        servicesListEl.appendChild(item);
-      });
+    const servicesHint = document.createElement("p");
+    servicesHint.className = "request-card__hint";
+    if (selectedProfessional && selectedProfessional.id === professional.id) {
+      servicesHint.textContent = "Confira os serviços e valores no formulário ao lado.";
+    } else if (professional.servicos && professional.servicos.length) {
+      const count = professional.servicos.length;
+      servicesHint.textContent =
+        count === 1
+          ? "1 serviço disponível após selecionar"
+          : `${count} serviços disponíveis após selecionar`;
     } else {
-      const placeholder = document.createElement("li");
-      placeholder.className = "request-card__service";
-      placeholder.textContent = "A profissional confirmará os valores com você.";
-      servicesListEl.appendChild(placeholder);
+      servicesHint.textContent = "Serviços e valores confirmados após a seleção.";
     }
 
-    card.appendChild(servicesListEl);
+    card.appendChild(servicesHint);
 
     const selectButton = document.createElement("button");
     selectButton.type = "button";
@@ -504,7 +558,7 @@ const populateRequestForm = (professional) => {
   });
 
   const areaLabel = professional.area ? ` — ${professional.area}` : "";
-  requestProfessionalInput.value = `${getProfessionalDisplayName(professional)}${areaLabel}`;
+  requestProfessionalInput.value = `${getPublicProfessionalLabel(professional)}${areaLabel}`;
 
   if (requestServiceSelect) {
     requestServiceSelect.innerHTML = "";
@@ -768,25 +822,25 @@ requestLocationInput?.addEventListener("input", () => setRequestFeedback(""));
 requestNotesInput?.addEventListener("input", () => setRequestFeedback(""));
 requestForm?.addEventListener("submit", handleRequestSubmission);
 
-const updateMetrics = (pending, confirmed, past) => {
+const updateMetrics = (pending, confirmed, cancelled) => {
   metricPending.textContent = pending.length;
   badgePending.textContent = pending.length;
   metricConfirmed.textContent = confirmed.length;
   badgeConfirmed.textContent = confirmed.length;
-  metricPast.textContent = past.length;
-  badgePast.textContent = past.length;
+  metricCancelled.textContent = cancelled.length;
+  badgeCancelled.textContent = cancelled.length;
 };
 
 const loadAppointmentsForProfile = async (profile) => {
   if (!profile?.id) {
     renderAppointments("pending", []);
     renderAppointments("confirmed", []);
-    renderAppointments("past", []);
+    renderAppointments("cancelled", []);
     updateMetrics([], [], []);
     return { permissionIssue: false };
   }
 
-  const keys = ["pending", "confirmed", "past"];
+  const keys = ["pending", "confirmed", "cancelled"];
   const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
   const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id, profileCollection)));
 
@@ -809,8 +863,8 @@ const loadAppointmentsForProfile = async (profile) => {
     return [];
   });
 
-  const [pendingAppointments, confirmedAppointments, pastAppointments] = datasets;
-  updateMetrics(pendingAppointments, confirmedAppointments, pastAppointments);
+  const [pendingAppointments, confirmedAppointments, cancelledAppointments] = datasets;
+  updateMetrics(pendingAppointments, confirmedAppointments, cancelledAppointments);
 
   const fallbackNotice = permissionIssue
     ? "Não conseguimos carregar sua agenda completa agora. Avise o suporte NailNow para liberar o acesso."
@@ -1059,16 +1113,29 @@ const fetchAppointments = async (status, profileId, profileCollection) => {
 
   try {
     const parentRef = doc(db, profileCollection, profileId);
-    const appointmentsCollection = appointmentCollections[status];
-    if (!appointmentsCollection) {
+    const collectionCandidates = [
+      appointmentCollections[status],
+      ...(legacyAppointmentCollections[status] || []),
+    ].filter(Boolean);
+
+    if (!collectionCandidates.length) {
       return [];
     }
-    const appointmentsRef = collection(parentRef, appointmentsCollection);
-    const snapshot = await getDocs(appointmentsRef);
-    if (snapshot.empty) {
-      return [];
+
+    const appointments = new Map();
+
+    for (const collectionName of collectionCandidates) {
+      const appointmentsRef = collection(parentRef, collectionName);
+      const snapshot = await getDocs(appointmentsRef);
+      if (snapshot.empty) {
+        continue;
+      }
+      snapshot.docs.forEach((docSnap) => {
+        appointments.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+      });
     }
-    return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+
+    return Array.from(appointments.values());
   } catch (error) {
     if (error.code === "permission-denied") {
       const permissionError = new Error("permission-denied");
