@@ -678,6 +678,11 @@ main {
   gap: clamp(1.5rem, 4vw, 2rem);
 }
 
+.request-board .booking-card {
+  margin-top: 0;
+  justify-self: center;
+}
+
 .request-board__intro h2 {
   margin: 0 0 0.75rem;
   font-size: clamp(1.6rem, 4vw, 2rem);
@@ -733,6 +738,26 @@ main {
   max-height: 420px;
   overflow-y: auto;
   padding-right: 0.35rem;
+}
+
+.request-results--inline {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.request-results--inline .request-card {
+  background: var(--surface);
+  border: 1px solid rgba(244, 92, 162, 0.16);
+  box-shadow: none;
+}
+
+.request-results--inline .request-card:hover,
+.request-results--inline .request-card:focus-within,
+.request-results--inline .request-card.request-card--selected {
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
 }
 
 .request-results__empty {
@@ -39910,6 +39935,12 @@ main {
   overflow: hidden;
 }
 
+.booking-card--portal {
+  margin-top: 0;
+  width: min(100%, 520px);
+  box-shadow: var(--shadow-md);
+}
+
 .booking-card__row {
   display: grid;
   gap: clamp(0.85rem, 2.5vw, 1.25rem);
@@ -39941,6 +39972,10 @@ main {
   flex-basis: 100%;
 }
 
+.booking-card__field--wide {
+  gap: 0.75rem;
+}
+
 .booking-card__label {
   font-size: 0.78rem;
   letter-spacing: 0.08em;
@@ -39958,6 +39993,14 @@ main {
   background: var(--surface);
   border: 1px solid var(--border-soft);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.booking-card__control--with-trailing-icon {
+  grid-template-columns: 1fr auto;
+}
+
+.booking-card__control--with-trailing-icon .booking-card__icon {
+  pointer-events: none;
 }
 
 .booking-card__field--location .booking-card__control {
@@ -40013,6 +40056,15 @@ main {
   flex: 1;
   appearance: none;
   -webkit-appearance: none;
+}
+
+.booking-card__input--textarea {
+  resize: vertical;
+  min-height: 120px;
+  padding: 0.75rem 1rem;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
 }
 
 .booking-card__input--select {
@@ -40073,6 +40125,12 @@ main {
 
 .booking-card__input::placeholder {
   color: rgba(22, 22, 22, 0.5);
+}
+
+.booking-card__hint {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
 }
 
 .booking-card__control:focus-within {
@@ -40139,6 +40197,24 @@ main {
   fill: var(--pink-primary);
   flex-shrink: 0;
   order: -1;
+}
+
+.booking-card__icon--leading {
+  width: 18px;
+  height: 18px;
+  justify-self: center;
+}
+
+.booking-card__control--line .booking-card__icon {
+  fill: rgba(244, 92, 162, 0.8);
+}
+
+.booking-card__control--line .booking-card__input {
+  padding: 0.2rem 0;
+}
+
+.booking-card__control--line .booking-card__input::placeholder {
+  color: rgba(22, 22, 22, 0.45);
 }
 
 .booking-card__icon--leading {
