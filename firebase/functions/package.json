@@ -1,0 +1,15 @@
+{
+  "name": "nailnow-functions",
+  "description": "Cloud Functions para notificações do portal NailNow",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": "^18"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.1",
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.8.0"
+  }
+}
