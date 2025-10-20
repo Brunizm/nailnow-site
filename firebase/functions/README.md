@@ -8,8 +8,9 @@ status dentro do Firestore.
 
 - Observa as subcoleções `solicitacoes`, `confirmados` e `cancelados` em
   `profissionais/{professionalId}`.
-- Sempre que um documento é criado ou muda de status, envia um e-mail tanto para a manicure quanto
-  para a cliente.
+- Sempre que um documento é criado ou muda de status (`pending`/`pendente`,
+  `confirmed`/`confirmado(a)` ou `cancelled`/`cancelado(a)`), envia um e-mail tanto
+  para a manicure quanto para a cliente.
 - O conteúdo utiliza templates transacionais do SendGrid. Caso nenhum template
   seja configurado, a função envia um fallback em texto puro com as principais
   informações do atendimento.

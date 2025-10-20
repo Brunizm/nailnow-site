@@ -11,34 +11,40 @@ const SENDGRID_SENDER = defineSecret('SENDGRID_SENDER');
 const SENDGRID_TEMPLATE_CLIENT = defineSecret('SENDGRID_TEMPLATE_CLIENT');
 const SENDGRID_TEMPLATE_PROFESSIONAL = defineSecret('SENDGRID_TEMPLATE_PROFESSIONAL');
 
+const normalizeStatus = (status) => (status || '').toString().toLowerCase();
+
+const hasStatus = (status, ...candidates) =>
+  candidates.some((candidate) => normalizeStatus(status) === candidate);
+
 const getStatusMetadata = (status) => {
-  const normalized = (status || '').toString().toLowerCase();
-  switch (normalized) {
-    case 'pending':
-      return {
-        subjectProfessional: 'Nova solicitação recebida',
-        subjectClient: 'Recebemos a sua solicitação',
-      };
-    case 'confirmed':
-      return {
-        subjectProfessional: 'Você confirmou um atendimento',
-        subjectClient: 'Seu atendimento foi confirmado',
-      };
-    case 'cancelled':
-      return {
-        subjectProfessional: 'Atendimento cancelado',
-        subjectClient: 'Atualização da sua solicitação',
-      };
-    default:
-      return null;
+  if (hasStatus(status, 'pending', 'pendente')) {
+    return {
+      subjectProfessional: 'Nova solicitação recebida',
+      subjectClient: 'Recebemos a sua solicitação',
+    };
   }
+
+  if (hasStatus(status, 'confirmed', 'confirmado', 'confirmada')) {
+    return {
+      subjectProfessional: 'Você confirmou um atendimento',
+      subjectClient: 'Seu atendimento foi confirmado',
+    };
+  }
+
+  if (hasStatus(status, 'cancelled', 'canceled', 'cancelado', 'cancelada', 'rejected')) {
+    return {
+      subjectProfessional: 'Atendimento cancelado',
+      subjectClient: 'Atualização da sua solicitação',
+    };
+  }
+
+  return null;
 };
 
 const resolveStatusLabel = (status) => {
-  const normalized = (status || '').toString().toLowerCase();
-  if (normalized === 'pending') return 'Pendente';
-  if (normalized === 'confirmed') return 'Confirmado';
-  if (normalized === 'cancelled' || normalized === 'canceled') return 'Cancelado';
+  if (hasStatus(status, 'pending', 'pendente')) return 'Pendente';
+  if (hasStatus(status, 'confirmed', 'confirmado', 'confirmada')) return 'Confirmado';
+  if (hasStatus(status, 'cancelled', 'canceled', 'cancelado', 'cancelada', 'rejected')) return 'Cancelado';
   return 'Atualizado';
 };
 
