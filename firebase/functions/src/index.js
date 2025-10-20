@@ -1,9 +1,15 @@
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { initializeApp } from 'firebase-admin/app';
 import { Timestamp } from 'firebase-admin/firestore';
-import sendEmail, { settings as mailSettings } from './mail/sendEmail.js';
+import { defineSecret } from 'firebase-functions/params';
+import sendEmail, { resolveSettings } from './mail/sendEmail.js';
 
 initializeApp();
+
+const SENDGRID_API_KEY = defineSecret('SENDGRID_API_KEY');
+const SENDGRID_SENDER = defineSecret('SENDGRID_SENDER');
+const SENDGRID_TEMPLATE_CLIENT = defineSecret('SENDGRID_TEMPLATE_CLIENT');
+const SENDGRID_TEMPLATE_PROFESSIONAL = defineSecret('SENDGRID_TEMPLATE_PROFESSIONAL');
 
 const getStatusMetadata = (status) => {
   const normalized = (status || '').toString().toLowerCase();
@@ -75,7 +81,7 @@ const normalizeAppointment = (data = {}) => {
   };
 };
 
-const buildEmailPayloads = (appointment, metadata, context) => {
+const buildEmailPayloads = (appointment, metadata, context, mailSettings) => {
   const { params } = context;
   const requestId = appointment.id || params.requestId;
   const baseUrl = 'https://www.nailnow.app';
@@ -124,7 +130,7 @@ Gerencie a agenda em ${professionalCta}`;
     {
       to: appointment.professionalEmail,
       subject: metadata.subjectProfessional,
-      templateId: mailSettings.templateProfessional,
+      templateId: mailSettings?.templateProfessional,
       dynamicTemplateData: dynamicData,
       text: plainTextProfessional,
       html: undefined,
@@ -132,7 +138,7 @@ Gerencie a agenda em ${professionalCta}`;
     {
       to: appointment.clientEmail,
       subject: metadata.subjectClient,
-      templateId: mailSettings.templateClient,
+      templateId: mailSettings?.templateClient,
       dynamicTemplateData: dynamicData,
       text: plainTextClient,
       html: undefined,
@@ -147,17 +153,36 @@ const shouldNotify = (context) => {
   return ['solicitacoes', 'confirmados', 'cancelados'].includes(normalized);
 };
 
-export const onProfessionalRequestCreated = onDocumentCreated(
-  'profissionais/{professionalId}/{collectionId}/{requestId}',
+const readSecret = (secret) => {
+  if (!secret) return undefined;
+  try {
+    return secret.value();
+  } catch (error) {
+    return undefined;
+  }
+};
+
+export const onProfessionalRequestChange = onDocumentWritten(
+  {
+    document: 'profissionais/{professionalId}/{collectionId}/{requestId}',
+    secrets: [
+      SENDGRID_API_KEY,
+      SENDGRID_SENDER,
+      SENDGRID_TEMPLATE_CLIENT,
+      SENDGRID_TEMPLATE_PROFESSIONAL,
+    ],
+  },
   async (event) => {
     if (!shouldNotify(event)) {
       return;
     }
 
-    const rawData = event.data?.data();
+    const rawData = event.data?.after?.data();
     if (!rawData) {
       return;
     }
+
+    const previousStatus = event.data?.before?.data()?.status;
 
     const appointment = normalizeAppointment({ ...rawData, id: event.params.requestId });
     const metadata = getStatusMetadata(appointment.status);
@@ -167,7 +192,19 @@ export const onProfessionalRequestCreated = onDocumentCreated(
       return;
     }
 
-    const payloads = buildEmailPayloads(appointment, metadata, event);
-    await Promise.all(payloads.map((payload) => sendEmail(payload)));
+    if (previousStatus && previousStatus === appointment.status) {
+      console.log('[mail] Atualização ignorada — status não mudou', appointment.status);
+      return;
+    }
+
+    const mailSettings = resolveSettings({
+      apiKey: readSecret(SENDGRID_API_KEY),
+      sender: readSecret(SENDGRID_SENDER),
+      templateClient: readSecret(SENDGRID_TEMPLATE_CLIENT),
+      templateProfessional: readSecret(SENDGRID_TEMPLATE_PROFESSIONAL),
+    });
+
+    const payloads = buildEmailPayloads(appointment, metadata, event, mailSettings);
+    await Promise.all(payloads.map((payload) => sendEmail(payload, mailSettings)));
   }
 );

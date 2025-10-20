@@ -8,7 +8,7 @@ status dentro do Firestore.
 
 - Observa as subcoleções `solicitacoes`, `confirmados` e `cancelados` em
   `profissionais/{professionalId}`.
-- Sempre que um documento é criado, envia um e-mail tanto para a manicure quanto
+- Sempre que um documento é criado ou muda de status, envia um e-mail tanto para a manicure quanto
   para a cliente.
 - O conteúdo utiliza templates transacionais do SendGrid. Caso nenhum template
   seja configurado, a função envia um fallback em texto puro com as principais
@@ -43,7 +43,7 @@ status dentro do Firestore.
    export SENDGRID_TEMPLATE_PROFESSIONAL="d-yyyyyyyy"
    ```
 
-3. Faça o deploy das funções:
+3. Faça o deploy das funções (os secrets são montados automaticamente graças à configuração da função):
 
    ```bash
    firebase deploy --only functions
@@ -51,7 +51,7 @@ status dentro do Firestore.
 
 ## Estrutura
 
-- `src/index.js` — definição das Cloud Functions observando o Firestore.
+- `src/index.js` — definição das Cloud Functions observando o Firestore (função `onProfessionalRequestChange`).
 - `src/mail/sendEmail.js` — wrapper de envio com SendGrid.
 
 Com isso, manicure e cliente passam a receber notificações assim que uma
