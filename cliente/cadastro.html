@@ -191,6 +191,7 @@
       window.cadastrarCliente = cadastrarCliente;
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
+    <script src="/assets/js/menu-toggle.js" defer></script>
   </head>
 
   <body>
@@ -201,7 +202,20 @@
           <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
-        <div class="header-navigation">
+        <button
+          class="mobile-menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="site-navigation"
+        >
+          <span class="sr-only">Alternar menu</span>
+          <span class="mobile-menu-toggle__bars" aria-hidden="true">
+            <span class="mobile-menu-toggle__bar"></span>
+            <span class="mobile-menu-toggle__bar"></span>
+            <span class="mobile-menu-toggle__bar"></span>
+          </span>
+        </button>
+        <div class="header-navigation" id="site-navigation">
           <nav class="primary-nav" aria-label="Principal">
             <a href="/" class="nav-link">Home</a>
             <a href="../como-funciona.html" class="nav-link">Como funciona</a>
