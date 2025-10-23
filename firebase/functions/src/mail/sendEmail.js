@@ -30,6 +30,11 @@ const mergeSettings = (overrides = {}) => {
       process.env.SENDGRID_TEMPLATE_PROFESSIONAL ??
       sendgridConfig.template_professional ??
       '',
+    templateProfessionalSignup:
+      overrides.templateProfessionalSignup ??
+      process.env.SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP ??
+      sendgridConfig.template_professional_signup ??
+      '',
   };
 };
 

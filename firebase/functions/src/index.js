@@ -1,4 +1,4 @@
-import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { initializeApp } from 'firebase-admin/app';
 import { Timestamp } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
@@ -10,6 +10,9 @@ const SENDGRID_API_KEY = defineSecret('SENDGRID_API_KEY');
 const SENDGRID_SENDER = defineSecret('SENDGRID_SENDER');
 const SENDGRID_TEMPLATE_CLIENT = defineSecret('SENDGRID_TEMPLATE_CLIENT');
 const SENDGRID_TEMPLATE_PROFESSIONAL = defineSecret('SENDGRID_TEMPLATE_PROFESSIONAL');
+const SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP = defineSecret(
+  'SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP'
+);
 
 const normalizeStatus = (status) => (status || '').toString().toLowerCase();
 
@@ -168,6 +171,65 @@ const readSecret = (secret) => {
   }
 };
 
+const readMailSettings = () =>
+  resolveSettings({
+    apiKey: readSecret(SENDGRID_API_KEY),
+    sender: readSecret(SENDGRID_SENDER),
+    templateClient: readSecret(SENDGRID_TEMPLATE_CLIENT),
+    templateProfessional: readSecret(SENDGRID_TEMPLATE_PROFESSIONAL),
+    templateProfessionalSignup: readSecret(SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP),
+  });
+
+const normalizeProfessionalProfile = (data = {}, professionalId = null) => ({
+  id: professionalId || data.uid || null,
+  name:
+    data.nome ||
+    data.name ||
+    data.displayName ||
+    data.fullName ||
+    data.professionalName ||
+    'Profissional NailNow',
+  email: data.email || data.professionalEmail || null,
+  phone: data.telefone || data.phone || data.professionalPhone || null,
+  city: data.cidade || data.city || null,
+  status: data.status || null,
+});
+
+const buildProfessionalSignupEmail = (professional, mailSettings) => {
+  if (!professional.email) {
+    console.warn('[mail] Cadastro de profissional sem e-mail; notificações ignoradas.');
+    return null;
+  }
+
+  const statusLabel = resolveStatusLabel(professional.status);
+  const portalUrl = 'https://www.nailnow.app/profissional/login.html';
+
+  const text = `Olá, ${professional.name}!
+
+Recebemos o seu cadastro na NailNow e já estamos revisando suas informações.
+
+Status do cadastro: ${statusLabel}
+Cidade de atendimento: ${professional.city || 'Não informado'}
+
+Assim que sua conta for liberada, acesse o portal em ${portalUrl} para acompanhar solicitações, confirmar horários e atualizar seu perfil.
+
+Equipe NailNow`;
+
+  return {
+    to: professional.email,
+    subject: 'Recebemos seu cadastro na NailNow',
+    templateId: mailSettings?.templateProfessionalSignup,
+    dynamicTemplateData: {
+      professionalName: professional.name,
+      statusLabel,
+      city: professional.city,
+      portalUrl,
+    },
+    text,
+    html: undefined,
+  };
+};
+
 export const onProfessionalRequestChange = onDocumentWritten(
   {
     document: 'profissionais/{professionalId}/{collectionId}/{requestId}',
@@ -176,6 +238,7 @@ export const onProfessionalRequestChange = onDocumentWritten(
       SENDGRID_SENDER,
       SENDGRID_TEMPLATE_CLIENT,
       SENDGRID_TEMPLATE_PROFESSIONAL,
+      SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP,
     ],
   },
   async (event) => {
@@ -203,14 +266,59 @@ export const onProfessionalRequestChange = onDocumentWritten(
       return;
     }
 
-    const mailSettings = resolveSettings({
-      apiKey: readSecret(SENDGRID_API_KEY),
-      sender: readSecret(SENDGRID_SENDER),
-      templateClient: readSecret(SENDGRID_TEMPLATE_CLIENT),
-      templateProfessional: readSecret(SENDGRID_TEMPLATE_PROFESSIONAL),
-    });
+    const mailSettings = readMailSettings();
 
     const payloads = buildEmailPayloads(appointment, metadata, event, mailSettings);
+
+    if (!payloads.length) {
+      console.log('[mail] Nenhum destinatário válido encontrado para a atualização de atendimento.');
+      return;
+    }
+
+    console.log(
+      '[mail] Enviando notificações de atendimento',
+      {
+        requestId: appointment.id,
+        professionalEmail: payloads.find((payload) => payload.to === appointment.professionalEmail)?.to || null,
+        clientEmail: payloads.find((payload) => payload.to === appointment.clientEmail)?.to || null,
+        status: appointment.status,
+      }
+    );
+
     await Promise.all(payloads.map((payload) => sendEmail(payload, mailSettings)));
+  }
+);
+
+export const onProfessionalProfileCreated = onDocumentCreated(
+  {
+    document: 'profissionais/{professionalId}',
+    secrets: [
+      SENDGRID_API_KEY,
+      SENDGRID_SENDER,
+      SENDGRID_TEMPLATE_CLIENT,
+      SENDGRID_TEMPLATE_PROFESSIONAL,
+      SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP,
+    ],
+  },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) {
+      return;
+    }
+
+    const professional = normalizeProfessionalProfile(data, event.params.professionalId);
+    const mailSettings = readMailSettings();
+    const payload = buildProfessionalSignupEmail(professional, mailSettings);
+    if (!payload) {
+      return;
+    }
+
+    console.log('[mail] Enviando e-mail de boas-vindas para profissional', {
+      professionalId: professional.id,
+      email: professional.email,
+      status: professional.status,
+    });
+
+    await sendEmail(payload, mailSettings);
   }
 );

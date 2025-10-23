@@ -11,6 +11,8 @@ status dentro do Firestore.
 - Sempre que um documento é criado ou muda de status (`pending`/`pendente`,
   `confirmed`/`confirmado(a)` ou `cancelled`/`cancelado(a)`), envia um e-mail tanto
   para a manicure quanto para a cliente.
+- Dispara um e-mail de confirmação para a profissional assim que um novo perfil é
+  criado na coleção `profissionais`.
 - O conteúdo utiliza templates transacionais do SendGrid. Caso nenhum template
   seja configurado, a função envia um fallback em texto puro com as principais
   informações do atendimento.
@@ -31,6 +33,7 @@ status dentro do Firestore.
    firebase functions:secrets:set SENDGRID_SENDER --data-file sender.txt
    firebase functions:secrets:set SENDGRID_TEMPLATE_CLIENT --data-file template_client.txt
    firebase functions:secrets:set SENDGRID_TEMPLATE_PROFESSIONAL --data-file template_professional.txt
+   firebase functions:secrets:set SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP --data-file template_professional_signup.txt
    ```
 
    > Os arquivos `sender.txt`, `template_client.txt` e `template_professional.txt` devem conter apenas o valor correspondente.
@@ -42,6 +45,7 @@ status dentro do Firestore.
    export SENDGRID_SENDER="contato@nailnow.app"
    export SENDGRID_TEMPLATE_CLIENT="d-xxxxxxxx"
    export SENDGRID_TEMPLATE_PROFESSIONAL="d-yyyyyyyy"
+   export SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP="d-zzzzzzzz"
    ```
 
 3. Faça o deploy das funções (os secrets são montados automaticamente graças à configuração da função):
@@ -52,8 +56,32 @@ status dentro do Firestore.
 
 ## Estrutura
 
-- `src/index.js` — definição das Cloud Functions observando o Firestore (função `onProfessionalRequestChange`).
+- `src/index.js` — definição das Cloud Functions observando o Firestore (funções
+  `onProfessionalRequestChange` e `onProfessionalProfileCreated`).
 - `src/mail/sendEmail.js` — wrapper de envio com SendGrid.
 
 Com isso, manicure e cliente passam a receber notificações assim que uma
 solicitação é criada, confirmada ou cancelada.
+
+## Dúvidas frequentes
+
+### Preciso enviar os e-mails manualmente?
+
+Não. Depois que os segredos do SendGrid estiverem configurados e o deploy das
+funções for realizado, os disparos acontecem automaticamente:
+
+- Assim que um documento é criado ou atualizado nas subcoleções de agenda,
+  a função `onProfessionalRequestChange` envia os e-mails para manicure e
+  cliente.
+- Quando um novo documento é adicionado à coleção `profissionais`, a função
+  `onProfessionalProfileCreated` envia o e-mail de boas-vindas.
+
+Para testar, crie um documento de exemplo diretamente pelo console do
+Firestore. Em seguida, acompanhe os logs em tempo real com:
+
+```bash
+firebase functions:log --only onProfessionalRequestChange,onProfessionalProfileCreated
+```
+
+Os logs exibem qual e-mail foi gerado e apontam a causa caso algum destinatário
+ou credencial esteja ausente.
