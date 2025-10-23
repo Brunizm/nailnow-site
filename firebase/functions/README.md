@@ -26,7 +26,7 @@ status dentro do Firestore.
    npm install
    ```
 
-2. Cadastre as credenciais como secrets (recomendado a partir do Firebase Functions v2):
+2. Cadastre as credenciais como secrets (recomendado a partir do Firebase Functions v2). Este é o único passo manual necessário para que os e-mails usem o remetente e os templates corretos:
 
    ```bash
    firebase functions:secrets:set SENDGRID_API_KEY
@@ -48,7 +48,7 @@ status dentro do Firestore.
    export SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP="d-zzzzzzzz"
    ```
 
-3. Faça o deploy das funções (os secrets são montados automaticamente graças à configuração da função):
+3. Faça o deploy das funções (os secrets são montados automaticamente graças à configuração da função). Depois desse passo, nenhum envio precisa ser disparado manualmente — as funções ficam escutando o Firestore continuamente:
 
    ```bash
    firebase deploy --only functions
@@ -85,3 +85,15 @@ firebase functions:log --only onProfessionalRequestChange,onProfessionalProfileC
 
 Os logs exibem qual e-mail foi gerado e apontam a causa caso algum destinatário
 ou credencial esteja ausente.
+
+### Em resumo, o que eu preciso fazer manualmente?
+
+1. Instalar as dependências de `firebase/functions` na primeira vez (ou quando
+   houver novas bibliotecas).
+2. Cadastrar/atualizar os secrets do SendGrid sempre que o remetente ou os
+   templates mudarem.
+3. Executar `firebase deploy --only functions` quando houver alterações nas
+   funções.
+
+Todo o restante — escutar o Firestore, gerar os dados do e-mail e enviá-lo para
+manicures, clientes e profissionais recém-cadastrados — é automático.
