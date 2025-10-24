@@ -9,9 +9,10 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 - Quando um novo cadastro aparece, gera uma mensagem de boas-vindas com assunto, texto e HTML em português.
 - Grava o documento na coleção `mail` com o formato esperado pela extensão instalada (`to` como array e `message` contendo `subject`, `text` e `html`).
 - Marca o cadastro original com `welcomeEmailQueuedAt`, `welcomeEmailQueuedBy` e o `welcomeEmailMailId` criado.
+- Se o documento já possuir `welcomeEmailMailId`/`welcomeEmailQueuedBy` (por exemplo, porque o formulário web conseguiu criar o documento em `mail`), a função apenas registra o evento e evita duplicar o envio.
 
-> 💡 Se o front-end conseguir gravar diretamente na coleção `mail`, a extensão continuará funcionando. As funções servem como
-> garantia extra para que o e-mail seja enfileirado mesmo quando as regras de segurança bloquearem a gravação pelo navegador.
+> 💡 Os formulários web da NailNow já tentam gravar diretamente na coleção `mail`.
+> As funções atuam como garantia extra para que o e-mail seja enfileirado mesmo quando as regras de segurança bloquearem a gravação pelo navegador.
 
 ## Passo a passo para deploy
 

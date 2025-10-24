@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 
 const firestore = admin.firestore();
-const { FieldValue } = admin.firestore;
+const FieldValue = admin.firestore.FieldValue;
 
 const APP_URL = "https://www.nailnow.app";
 
@@ -21,16 +21,27 @@ function buildWelcomeMessage({ name, role }) {
   return { subject, text, html };
 }
 
-async function enqueueWelcomeEmail({ email, name, role, sourcePath }) {
+async function enqueueWelcomeEmail({ email, name, role, sourcePath, profileId, profilePath }) {
   if (!email) {
     functions.logger.warn("Ignorando envio de boas-vindas: documento sem email", { role, sourcePath });
     return null;
   }
 
   const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
+    functions.logger.warn("Ignorando boas-vindas: email vazio após trim", { role, sourcePath });
+    return null;
+  }
   const payload = {
     to: [trimmedEmail],
     message: buildWelcomeMessage({ name, role }),
+    metadata: {
+      role,
+      source: "cloud-function",
+      profileId: profileId || null,
+      profilePath: profilePath || null,
+      sourcePath: sourcePath || null,
+    },
   };
 
   const ref = await firestore.collection("mail").add(payload);
@@ -44,25 +55,58 @@ async function enqueueWelcomeEmail({ email, name, role, sourcePath }) {
 
 async function handleProfileCreation(snap, context, role) {
   const data = snap.data() || {};
+
+  if (data.welcomeEmailMailId || data.welcomeEmailQueuedBy) {
+    functions.logger.info("Boas-vindas já enfileiradas no momento da criação", {
+      role,
+      sourcePath: context.resource?.name,
+      welcomeEmailMailId: data.welcomeEmailMailId,
+      welcomeEmailQueuedBy: data.welcomeEmailQueuedBy,
+    });
+    return null;
+  }
+
   const email = data.email || data.contatoEmail || "";
   const name = data.nome || data.name || data.displayName || "";
 
-  const mailDocId = await enqueueWelcomeEmail({
-    email,
-    name,
-    role,
-    sourcePath: context.resource?.name,
-  });
+  try {
+    const mailDocId = await enqueueWelcomeEmail({
+      email,
+      name,
+      role,
+      sourcePath: context.resource?.name,
+      profileId: snap.id,
+      profilePath: snap.ref.path,
+    });
 
-  if (mailDocId) {
+    if (mailDocId) {
+      await snap.ref.set(
+        {
+          welcomeEmailQueuedAt: FieldValue.serverTimestamp(),
+          welcomeEmailQueuedBy: "cloud-function",
+          welcomeEmailMailId: mailDocId,
+        },
+        { merge: true },
+      );
+    }
+  } catch (error) {
+    functions.logger.error("Falha ao enfileirar boas-vindas", {
+      role,
+      sourcePath: context.resource?.name,
+      error: error?.message,
+    });
+
     await snap.ref.set(
       {
-        welcomeEmailQueuedAt: FieldValue.serverTimestamp(),
-        welcomeEmailQueuedBy: "cloud-function",
-        welcomeEmailMailId: mailDocId,
+        welcomeEmailError: {
+          message: error?.message || "unknown-error",
+          timestamp: FieldValue.serverTimestamp(),
+        },
       },
       { merge: true },
     );
+
+    throw error;
   }
 }
 
