@@ -7,7 +7,7 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 
 - Monitora criações nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures`.
 - Quando um novo cadastro aparece, gera uma mensagem de boas-vindas com assunto, texto e HTML em português.
-- Grava o documento na coleção `mail` com o formato esperado pela extensão instalada.
+- Grava o documento na coleção `mail` com o formato esperado pela extensão instalada (`to` como array e `message` contendo `subject`, `text` e `html`).
 - Marca o cadastro original com `welcomeEmailQueuedAt`, `welcomeEmailQueuedBy` e o `welcomeEmailMailId` criado.
 
 > 💡 Se o front-end conseguir gravar diretamente na coleção `mail`, a extensão continuará funcionando. As funções servem como

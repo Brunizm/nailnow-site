@@ -29,7 +29,7 @@ async function enqueueWelcomeEmail({ email, name, role, sourcePath }) {
 
   const trimmedEmail = email.trim();
   const payload = {
-    to: trimmedEmail,
+    to: [trimmedEmail],
     message: buildWelcomeMessage({ name, role }),
   };
 
