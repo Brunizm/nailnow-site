@@ -1,99 +1,57 @@
-# Funções Firebase para notificações por e-mail
+# Funções Firebase para fila de e-mails
 
-Este pacote contém a primeira versão das Cloud Functions responsáveis por disparar
-os e-mails transacionais do portal NailNow sempre que um atendimento muda de
-status dentro do Firestore.
+Este pacote contém Cloud Functions responsáveis por criar automaticamente os documentos na coleção `mail` do Firestore.
+Esses documentos acionam a extensão **Trigger Email from Firestore**, que então envia os e-mails de boas-vindas via SendGrid.
 
-## Visão geral
+## Como funciona
 
-- Observa as subcoleções `solicitacoes`, `confirmados` e `cancelados` em
-  `profissionais/{professionalId}`.
-- Sempre que um documento é criado ou muda de status (`pending`/`pendente`,
-  `confirmed`/`confirmado(a)` ou `cancelled`/`cancelado(a)`), envia um e-mail tanto
-  para a manicure quanto para a cliente.
-- Dispara um e-mail de confirmação para a profissional assim que um novo perfil é
-  criado na coleção `profissionais`.
-- O conteúdo utiliza templates transacionais do SendGrid. Caso nenhum template
-  seja configurado, a função envia um fallback em texto puro com as principais
-  informações do atendimento.
+- Monitora criações nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures`.
+- Quando um novo cadastro aparece, gera uma mensagem de boas-vindas com assunto, texto e HTML em português.
+- Grava o documento na coleção `mail` com o formato esperado pela extensão instalada.
+- Marca o cadastro original com `welcomeEmailQueuedAt`, `welcomeEmailQueuedBy` e o `welcomeEmailMailId` criado.
 
-## Configuração
+> 💡 Se o front-end conseguir gravar diretamente na coleção `mail`, a extensão continuará funcionando. As funções servem como
+> garantia extra para que o e-mail seja enfileirado mesmo quando as regras de segurança bloquearem a gravação pelo navegador.
 
-1. Instale as dependências na pasta `firebase/functions`:
+## Passo a passo para deploy
+
+1. Instale as dependências (apenas na primeira vez ou quando `package.json` mudar):
 
    ```bash
    cd firebase/functions
    npm install
    ```
 
-2. Cadastre as credenciais como secrets (recomendado a partir do Firebase Functions v2). Este é o único passo manual necessário para que os e-mails usem o remetente e os templates corretos:
-
-   ```bash
-   firebase functions:secrets:set SENDGRID_API_KEY
-   firebase functions:secrets:set SENDGRID_SENDER --data-file sender.txt
-   firebase functions:secrets:set SENDGRID_TEMPLATE_CLIENT --data-file template_client.txt
-   firebase functions:secrets:set SENDGRID_TEMPLATE_PROFESSIONAL --data-file template_professional.txt
-   firebase functions:secrets:set SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP --data-file template_professional_signup.txt
-   ```
-
-   > Os arquivos `sender.txt`, `template_client.txt` e `template_professional.txt` devem conter apenas o valor correspondente.
-
-   Se preferir utilizar variáveis de ambiente locais no momento do deploy, exporte-as antes de rodar o comando:
-
-   ```bash
-   export SENDGRID_API_KEY="<API_KEY>"
-   export SENDGRID_SENDER="contato@nailnow.app"
-   export SENDGRID_TEMPLATE_CLIENT="d-xxxxxxxx"
-   export SENDGRID_TEMPLATE_PROFESSIONAL="d-yyyyyyyy"
-   export SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP="d-zzzzzzzz"
-   ```
-
-3. Faça o deploy das funções (os secrets são montados automaticamente graças à configuração da função). Depois desse passo, nenhum envio precisa ser disparado manualmente — as funções ficam escutando o Firestore continuamente:
+2. Faça o deploy das funções:
 
    ```bash
    firebase deploy --only functions
    ```
 
+   Não é necessário configurar secrets — a extensão Trigger Email from Firestore já possui as credenciais do SendGrid.
+
+## Testando
+
+- Crie manualmente um documento na coleção `clientes` (ou `profissionais`) com os campos mínimos:
+
+  ```json
+  {
+    "nome": "Bruna Teste",
+    "email": "bruna@example.com"
+  }
+  ```
+
+- A função `queueClienteWelcomeEmail` criará um documento em `mail` em poucos segundos.
+- A extensão enviará o e-mail e marcará o documento `mail` como `delivered` (pode levar até 1 minuto).
+- Consulte os logs em tempo real para acompanhar cada envio:
+
+  ```bash
+  firebase functions:log --only queueClienteWelcomeEmail,queueProfessionalWelcomeEmail
+  ```
+
 ## Estrutura
 
-- `src/index.js` — definição das Cloud Functions observando o Firestore (funções
-  `onProfessionalRequestChange` e `onProfessionalProfileCreated`).
-- `src/mail/sendEmail.js` — wrapper de envio com SendGrid.
+- `index.js` — definição das Cloud Functions e utilitários para montar a mensagem de boas-vindas.
+- `firebase.json` (na raiz do repositório) — aponta o diretório `firebase/functions` como origem do deploy.
 
-Com isso, manicure e cliente passam a receber notificações assim que uma
-solicitação é criada, confirmada ou cancelada.
-
-## Dúvidas frequentes
-
-### Preciso enviar os e-mails manualmente?
-
-Não. Depois que os segredos do SendGrid estiverem configurados e o deploy das
-funções for realizado, os disparos acontecem automaticamente:
-
-- Assim que um documento é criado ou atualizado nas subcoleções de agenda,
-  a função `onProfessionalRequestChange` envia os e-mails para manicure e
-  cliente.
-- Quando um novo documento é adicionado à coleção `profissionais`, a função
-  `onProfessionalProfileCreated` envia o e-mail de boas-vindas.
-
-Para testar, crie um documento de exemplo diretamente pelo console do
-Firestore. Em seguida, acompanhe os logs em tempo real com:
-
-```bash
-firebase functions:log --only onProfessionalRequestChange,onProfessionalProfileCreated
-```
-
-Os logs exibem qual e-mail foi gerado e apontam a causa caso algum destinatário
-ou credencial esteja ausente.
-
-### Em resumo, o que eu preciso fazer manualmente?
-
-1. Instalar as dependências de `firebase/functions` na primeira vez (ou quando
-   houver novas bibliotecas).
-2. Cadastrar/atualizar os secrets do SendGrid sempre que o remetente ou os
-   templates mudarem.
-3. Executar `firebase deploy --only functions` quando houver alterações nas
-   funções.
-
-Todo o restante — escutar o Firestore, gerar os dados do e-mail e enviá-lo para
-manicures, clientes e profissionais recém-cadastrados — é automático.
+Depois do deploy, os cadastros criados pelos formulários da NailNow já terão o e-mail disparado automaticamente sem ações manuais.

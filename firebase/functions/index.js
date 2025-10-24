@@ -1,89 +1,92 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const sgMail = require("@sendgrid/mail");
-const { defineSecret } = require("firebase-functions/params");
 
-// Inicializa Firebase Admin (necessário para Functions)
 admin.initializeApp();
 
-// Secrets (vamos cadastrar no PASSO 2, no Console do Firebase)
-const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
-const SENDGRID_FROM = defineSecret("SENDGRID_FROM");
-const TEMPLATE_CLIENT = defineSecret("TEMPLATE_CLIENT");
-const TEMPLATE_PRO = defineSecret("TEMPLATE_PRO");
+const firestore = admin.firestore();
+const { FieldValue } = admin.firestore;
 
-// Função utilitária para enviar email com ou sem template
-async function sendEmail(opts) {
-  const from = opts.from ?? SENDGRID_FROM.value();
-  const templateId = opts.templateId;
-  sgMail.setApiKey(SENDGRID_API_KEY.value());
+const APP_URL = "https://www.nailnow.app";
 
-  if (templateId) {
-    await sgMail.send({
-      to: opts.to,
-      from,
-      templateId,
-      dynamicTemplateData: opts.dynamicTemplateData ?? {}
-    });
-  } else {
-    await sgMail.send({
-      to: opts.to,
-      from,
-      subject: opts.subjectFallback ?? "Bem-vindo(a)!",
-      text: "Cadastro concluído. Obrigado por se registrar no NailKnow!"
-    });
+function buildWelcomeMessage({ name, role }) {
+  const safeName = (name || (role === "profissional" ? "Profissional" : "Cliente")).trim();
+  const roleLabel = role === "profissional" ? "profissional" : "cliente";
+  const subject = "Bem-vinda ao NailNow 💅";
+  const text = `Olá, ${safeName}! Seu cadastro foi realizado com sucesso no NailNow.`;
+  const html = [
+    `<p>Olá, <strong>${safeName}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+    `<p>Agora você pode acessar sua conta como ${roleLabel} em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
+  ].join("");
+
+  return { subject, text, html };
+}
+
+async function enqueueWelcomeEmail({ email, name, role, sourcePath }) {
+  if (!email) {
+    functions.logger.warn("Ignorando envio de boas-vindas: documento sem email", { role, sourcePath });
+    return null;
+  }
+
+  const trimmedEmail = email.trim();
+  const payload = {
+    to: trimmedEmail,
+    message: buildWelcomeMessage({ name, role }),
+  };
+
+  const ref = await firestore.collection("mail").add(payload);
+  functions.logger.info("Documento mail criado para boas-vindas", {
+    role,
+    sourcePath,
+    mailDocumentId: ref.id,
+  });
+  return ref.id;
+}
+
+async function handleProfileCreation(snap, context, role) {
+  const data = snap.data() || {};
+  const email = data.email || data.contatoEmail || "";
+  const name = data.nome || data.name || data.displayName || "";
+
+  const mailDocId = await enqueueWelcomeEmail({
+    email,
+    name,
+    role,
+    sourcePath: context.resource?.name,
+  });
+
+  if (mailDocId) {
+    await snap.ref.set(
+      {
+        welcomeEmailQueuedAt: FieldValue.serverTimestamp(),
+        welcomeEmailQueuedBy: "cloud-function",
+        welcomeEmailMailId: mailDocId,
+      },
+      { merge: true },
+    );
   }
 }
 
-/**
- * Dispara quando um CLIENTE é criado no Firestore
- * Coleção: clients/{clientId}
- */
-exports.onClientCreated = functions
+exports.queueClienteWelcomeEmail = functions
   .region("southamerica-east1")
-  .runWith({ secrets: ["SENDGRID_API_KEY", "SENDGRID_FROM", "TEMPLATE_CLIENT"] })
-  .firestore.document("clients/{clientId}")
-  .onCreate(async (snap) => {
-    const data = snap.data() || {};
-    if (!data.email) {
-      console.warn("Documento de cliente sem email.");
-      return;
-    }
-    await sendEmail({
-      to: data.email,
-      templateId: TEMPLATE_CLIENT.value(),
-      subjectFallback: "Bem-vindo(a) ao NailKnow!",
-      dynamicTemplateData: {
-        name: data.name ?? "Cliente",
-        appUrl: "https://nailknow.app",
-        role: "cliente"
-      }
-    });
-  });
+  .firestore.document("clientes/{clienteId}")
+  .onCreate((snap, context) => handleProfileCreation(snap, context, "cliente"));
 
-/**
- * Dispara quando uma PROFISSIONAL/MANICURE é criada no Firestore
- * Coleção: professionals/{proId}
- * (se você usa 'manicures/{id}', troque o caminho abaixo)
- */
-exports.onProfessionalCreated = functions
+exports.queueClientWelcomeEmail = functions
   .region("southamerica-east1")
-  .runWith({ secrets: ["SENDGRID_API_KEY", "SENDGRID_FROM", "TEMPLATE_PRO"] })
-  .firestore.document("professionals/{proId}")
-  .onCreate(async (snap) => {
-    const data = snap.data() || {};
-    if (!data.email) {
-      console.warn("Documento de profissional sem email.");
-      return;
-    }
-    await sendEmail({
-      to: data.email,
-      templateId: TEMPLATE_PRO.value(),
-      subjectFallback: "Bem-vinda ao NailKnow!",
-      dynamicTemplateData: {
-        name: data.name ?? "Profissional",
-        appUrl: "https://nailknow.app",
-        role: "profissional"
-      }
-    });
-  });
+  .firestore.document("clients/{clientId}")
+  .onCreate((snap, context) => handleProfileCreation(snap, context, "cliente"));
+
+exports.queueProfessionalWelcomeEmail = functions
+  .region("southamerica-east1")
+  .firestore.document("profissionais/{profissionalId}")
+  .onCreate((snap, context) => handleProfileCreation(snap, context, "profissional"));
+
+exports.queueManicureWelcomeEmail = functions
+  .region("southamerica-east1")
+  .firestore.document("manicures/{manicureId}")
+  .onCreate((snap, context) => handleProfileCreation(snap, context, "profissional"));
+
+exports.queueProfessionalWelcomeEmailEn = functions
+  .region("southamerica-east1")
+  .firestore.document("professionals/{professionalId}")
+  .onCreate((snap, context) => handleProfileCreation(snap, context, "profissional"));
