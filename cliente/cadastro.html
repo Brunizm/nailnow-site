@@ -54,7 +54,14 @@
         signInWithEmailAndPassword,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        serverTimestamp,
+        collection,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -164,6 +171,21 @@
           }
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
+
+          if (isNew) {
+            try {
+              await addDoc(collection(db, "mail"), {
+                to: [email],
+                message: {
+                  subject: "Bem-vinda ao NailNow 💅",
+                  text: `Olá, ${nome}! Seu cadastro foi realizado com sucesso no NailNow.`,
+                  html: `<p>Olá, <strong>${nome}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+                },
+              });
+            } catch (mailError) {
+              console.error("Falha ao criar documento na coleção mail:", mailError);
+            }
+          }
 
           feedback.textContent = isNew
             ? "✅ Conta criada com sucesso!"
