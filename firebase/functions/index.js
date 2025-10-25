@@ -8,7 +8,10 @@ const firestore = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
 
 const APP_URL = "https://www.nailnow.app";
-const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+const SUPPORT_SENDER = {
+  email: "suporte@nailnow.app",
+  name: "NailNow",
+};
 
 function buildConfirmationUrl(profilePath, token) {
   const params = new URLSearchParams({
@@ -25,14 +28,14 @@ function buildWelcomeMessage({ name, role, confirmationUrl }) {
   const text = [
     `Olá, ${safeName}!`,
     `Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.`,
-    "Para liberar o acesso ao portal, clique no link abaixo:",
+    "Para confirmar sua conta e liberar o acesso ao portal, clique no link abaixo:",
     confirmationUrl,
     "Se você não solicitou este cadastro, pode ignorar esta mensagem.",
     "Com carinho, equipe NailNow",
   ].join("\n\n");
   const html = [
     `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.</p>`,
-    `<p>Para liberar o acesso ao portal, confirme seu cadastro clicando no botão abaixo:</p>`,
+    `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
     `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
     `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`,
     "<p>Com carinho, equipe NailNow 💅</p>",

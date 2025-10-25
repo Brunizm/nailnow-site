@@ -7,7 +7,7 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 
 - Monitora criações nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures`.
 - Quando um novo cadastro aparece, gera uma mensagem de boas-vindas com assunto, texto e HTML em português.
-- Grava o documento na coleção `mail` com o formato esperado pela extensão instalada (`to` como array e `message` contendo `subject`, `text` e `html`).
+- Grava o documento na coleção `mail` com o formato esperado pela extensão instalada (`to` como array, `from` com `name`/`email` e `message` contendo `subject`, `text` e `html`).
 - Marca o cadastro original com `welcomeEmailQueuedAt`, `welcomeEmailQueuedBy` e o `welcomeEmailMailId` criado.
 - Se o documento já possuir `welcomeEmailMailId`/`welcomeEmailQueuedBy` (por exemplo, porque o formulário web conseguiu criar o documento em `mail`), a função apenas registra o evento e evita duplicar o envio.
 
@@ -85,7 +85,8 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 
 ## Estrutura
 
-- `index.js` — definição das Cloud Functions e utilitários para montar a mensagem de boas-vindas.
+- `index.js` — definição das Cloud Functions e utilitários para montar a mensagem de boas-vindas (incluindo o CTA “Confirmar cadastro”).
+- `templates/confirmacao.html` — referência de template HTML que pode ser copiada para o SendGrid caso queira criar um template transacional.
 - `firebase.json` (na raiz do repositório) — aponta o diretório `firebase/functions` como origem do deploy.
 
 Depois do deploy, os cadastros criados pelos formulários da NailNow já terão o e-mail disparado automaticamente sem ações manuais.
