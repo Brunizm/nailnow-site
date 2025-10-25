@@ -83,6 +83,7 @@
       const auth = getAuth(app);
       const db = getFirestore(app);
       const storage = getStorage(app);
+      const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
 
       const APP_URL = "https://www.nailnow.app";
       const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
@@ -152,6 +153,45 @@
         element.textContent = "";
         element.removeAttribute("data-variant");
         element.style.removeProperty("color");
+      }
+
+      function buildWelcomeEmail(nome) {
+        const safeName = nome?.trim() || "Profissional";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Recebemos o seu cadastro profissional na NailNow e entraremos em contato pelo e-mail informado.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos o seu cadastro profissional na NailNow.</p>`,
+            '<p>Nossa equipe revisará suas informações e enviaremos as próximas orientações para o e-mail cadastrado.</p>',
+          ].join(""),
+        };
+      }
+
+      async function enqueueWelcomeEmail({ uid, nome, email }) {
+        const trimmedEmail = email?.trim().toLowerCase();
+        if (!trimmedEmail) {
+          console.warn("Cadastro profissional sem email válido para boas-vindas");
+          return null;
+        }
+
+        try {
+          const mailRef = await addDoc(collection(db, "mail"), {
+            to: [trimmedEmail],
+            from: SUPPORT_EMAIL,
+            message: buildWelcomeEmail(nome),
+            metadata: {
+              role: "profissional",
+              source: "profissional-cadastro-form",
+              profileId: uid,
+              profileCollection: "profissionais",
+              profilePath: `profissionais/${uid}`,
+            },
+          });
+          return mailRef.id;
+        } catch (error) {
+          console.error("Falha ao enfileirar e-mail profissional", error);
+          return null;
+        }
       }
 
       function normalizarExtensao(nomeArquivo = "") {
@@ -576,6 +616,8 @@
             payload.fotoTamanhoBytes = foto.size || 0;
             payload.fotoAtualizadaEm = serverTimestamp();
           }
+
+          let welcomeEmailQueued = null;
 
           if (isNew) {
             payload.status = "pendente";
