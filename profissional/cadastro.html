@@ -85,6 +85,40 @@
       const storage = getStorage(app);
       const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
 
+      const APP_URL = "https://www.nailnow.app";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+      const MAIL_COLLECTION = "mail";
+
+      function buildWelcomeMessage(nome) {
+        const safeName = nome?.trim() || "Profissional";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Recebemos seu cadastro profissional na NailNow.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro profissional na NailNow.</p>`,
+            `<p>Agora você pode acessar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
+          ].join(""),
+        };
+      }
+
+      async function queueWelcomeEmail({ email, nome, profilePath }) {
+        const trimmedEmail = email?.trim();
+        if (!trimmedEmail) return null;
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
+          to: [trimmedEmail],
+          from: SUPPORT_SENDER,
+          message: buildWelcomeMessage(nome),
+          metadata: {
+            role: "profissional",
+            source: "web",
+            profilePath,
+          },
+        });
+
+        return mailRef.id;
+      }
+
       const FEEDBACK_COLORS = {
         info: "#4527a0",
         error: "#c62828",
@@ -519,6 +553,24 @@
           const uid = user.uid;
           btn.textContent = "Processando cadastro…";
 
+          let mailDocId = null;
+          if (isNew) {
+            try {
+              mailDocId = await queueWelcomeEmail({
+                email,
+                nome,
+                profilePath: `profissionais/${uid}`,
+              });
+            } catch (queueError) {
+              console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
+              setFeedbackMessage(
+                feedback,
+                "⚠️ Cadastro recebido, mas não foi possível enfileirar o e-mail de confirmação. Nossa equipe validará manualmente.",
+                "info",
+              );
+            }
+          }
+
           let fotoUpload = null;
           if (foto) {
             setFeedbackMessage(feedback, "Enviando foto (0%)…", "info");
@@ -570,15 +622,11 @@
           if (isNew) {
             payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
-
-            const mailDocId = await enqueueWelcomeEmail({ uid, nome, email });
+            payload.emailVerificado = false;
             if (mailDocId) {
-              payload.welcomeEmailMailId = mailDocId;
-              payload.welcomeEmailQueuedBy = "profissional-cadastro-form";
               payload.welcomeEmailQueuedAt = serverTimestamp();
-              welcomeEmailQueued = true;
-            } else {
-              welcomeEmailQueued = false;
+              payload.welcomeEmailQueuedBy = "web";
+              payload.welcomeEmailMailId = mailDocId;
             }
           }
 

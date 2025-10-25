@@ -52,6 +52,8 @@
       doc,
       setDoc,
       serverTimestamp,
+      collection,
+      addDoc,
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
@@ -71,6 +73,40 @@
     const db = getFirestore(app);
     const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
     const storage = getStorage(app);
+
+    const APP_URL = "https://www.nailnow.app";
+    const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+    const MAIL_COLLECTION = "mail";
+
+    function buildWelcomeMessage(nome) {
+      const safeName = nome?.trim() || "Profissional";
+      return {
+        subject: "Bem-vinda ao NailNow 💅",
+        text: `Olá, ${safeName}! Seu cadastro profissional foi recebido pela NailNow.`,
+        html: [
+          `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro profissional na NailNow.</p>`,
+          `<p>Agora você pode acompanhar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
+        ].join(""),
+      };
+    }
+
+    async function queueWelcomeEmail({ email, nome, profilePath }) {
+      const trimmedEmail = email?.trim();
+      if (!trimmedEmail) return null;
+
+      const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
+        to: [trimmedEmail],
+        from: SUPPORT_SENDER,
+        message: buildWelcomeMessage(nome),
+        metadata: {
+          role: "profissional",
+          source: "web",
+          profilePath,
+        },
+      });
+
+      return mailRef.id;
+    }
 
     // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
@@ -206,6 +242,19 @@
 
         // 3) Firestore
         console.log(">> Gravando no Firestore…");
+        let mailDocId = null;
+        if (isNew) {
+          try {
+            mailDocId = await queueWelcomeEmail({
+              email,
+              nome,
+              profilePath: `profissionais/${uid}`,
+            });
+          } catch (queueError) {
+            console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
+          }
+        }
+
         const payload = {
           nome,
           email,
@@ -221,14 +270,10 @@
           payload.createdAt = serverTimestamp();
           payload.status = "pendente";
           payload.fotoUrl = fotoUrl || null;
-          const mailDocId = await enqueueWelcomeEmail({ uid, nome, email });
           if (mailDocId) {
-            payload.welcomeEmailMailId = mailDocId;
-            payload.welcomeEmailQueuedBy = "profissional-form";
             payload.welcomeEmailQueuedAt = serverTimestamp();
-            welcomeEmailQueued = true;
-          } else {
-            welcomeEmailQueued = false;
+            payload.welcomeEmailQueuedBy = "web";
+            payload.welcomeEmailMailId = mailDocId;
           }
         } else if (fotoUrl) {
           payload.fotoUrl = fotoUrl;

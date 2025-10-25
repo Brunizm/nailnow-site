@@ -59,6 +59,8 @@
         doc,
         setDoc,
         serverTimestamp,
+        collection,
+        addDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -74,6 +76,40 @@
       const auth = getAuth(app);
       const db = getFirestore(app);
       const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
+
+      const APP_URL = "https://www.nailnow.app";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+      const MAIL_COLLECTION = "mail";
+
+      function buildWelcomeMessage(nome) {
+        const safeName = nome?.trim() || "Cliente";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Seu cadastro foi realizado com sucesso no NailNow.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+            `<p>Agora você pode acessar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
+          ].join(""),
+        };
+      }
+
+      async function queueWelcomeEmail({ email, nome, profilePath }) {
+        const trimmedEmail = email?.trim();
+        if (!trimmedEmail) return null;
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
+          to: [trimmedEmail],
+          from: SUPPORT_SENDER,
+          message: buildWelcomeMessage(nome),
+          metadata: {
+            role: "cliente",
+            source: "web",
+            profilePath,
+          },
+        });
+
+        return mailRef.id;
+      }
 
       async function ensureAuthAccount(email, senha) {
         try {
@@ -185,6 +221,20 @@
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
 
+          let mailDocId = null;
+
+          if (isNew) {
+            try {
+              mailDocId = await queueWelcomeEmail({
+                email,
+                nome,
+                profilePath: `clientes/${uid}`,
+              });
+            } catch (queueError) {
+              console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
+            }
+          }
+
           const payload = {
             uid,
             nome,
@@ -206,14 +256,10 @@
           let welcomeEmailQueued = null;
           if (isNew) {
             payload.criadoEm = serverTimestamp();
-            const mailDocId = await enqueueWelcomeEmail({ uid, nome, email });
             if (mailDocId) {
-              payload.welcomeEmailMailId = mailDocId;
-              payload.welcomeEmailQueuedBy = "cliente-form";
               payload.welcomeEmailQueuedAt = serverTimestamp();
-              welcomeEmailQueued = true;
-            } else {
-              welcomeEmailQueued = false;
+              payload.welcomeEmailQueuedBy = "web";
+              payload.welcomeEmailMailId = mailDocId;
             }
           }
 
