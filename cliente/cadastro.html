@@ -54,7 +54,14 @@
         signInWithEmailAndPassword,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        serverTimestamp,
+        collection,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -68,6 +75,40 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+
+      const APP_URL = "https://www.nailnow.app";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+      const MAIL_COLLECTION = "mail";
+
+      function buildWelcomeMessage(nome) {
+        const safeName = nome?.trim() || "Cliente";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Seu cadastro foi realizado com sucesso no NailNow.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+            `<p>Agora você pode acessar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
+          ].join(""),
+        };
+      }
+
+      async function queueWelcomeEmail({ email, nome, profilePath }) {
+        const trimmedEmail = email?.trim();
+        if (!trimmedEmail) return null;
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
+          to: [trimmedEmail],
+          from: SUPPORT_SENDER,
+          message: buildWelcomeMessage(nome),
+          metadata: {
+            role: "cliente",
+            source: "web",
+            profilePath,
+          },
+        });
+
+        return mailRef.id;
+      }
 
       async function ensureAuthAccount(email, senha) {
         try {
@@ -141,6 +182,20 @@
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
 
+          let mailDocId = null;
+
+          if (isNew) {
+            try {
+              mailDocId = await queueWelcomeEmail({
+                email,
+                nome,
+                profilePath: `clientes/${uid}`,
+              });
+            } catch (queueError) {
+              console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
+            }
+          }
+
           const payload = {
             uid,
             nome,
@@ -161,12 +216,17 @@
 
           if (isNew) {
             payload.criadoEm = serverTimestamp();
+            if (mailDocId) {
+              payload.welcomeEmailQueuedAt = serverTimestamp();
+              payload.welcomeEmailQueuedBy = "web";
+              payload.welcomeEmailMailId = mailDocId;
+            }
           }
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
           feedback.textContent = isNew
-            ? "✅ Conta criada com sucesso!"
+            ? "✅ Conta criada com sucesso! Seu e-mail de boas-vindas chegará em instantes."
             : "✅ Dados atualizados!";
           feedback.style.color = "#2e7d32";
           form.reset();
@@ -398,7 +458,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
+          <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
