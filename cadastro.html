@@ -186,7 +186,11 @@
         // 4) Sair (opcional)
         await signOut(auth);
 
-        alert(isNew ? "✅ Cadastro enviado com sucesso!" : "✅ Dados profissionais atualizados!");
+        alert(
+          isNew
+            ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso ao portal profissional."
+            : "✅ Dados profissionais atualizados!",
+        );
         $("cadastroForm").reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
