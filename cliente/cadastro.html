@@ -221,6 +221,21 @@
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
+          if (isNew) {
+            try {
+              await addDoc(collection(db, "mail"), {
+                to: [email],
+                message: {
+                  subject: "Bem-vinda ao NailNow 💅",
+                  text: `Olá, ${nome}! Seu cadastro foi realizado com sucesso no NailNow.`,
+                  html: `<p>Olá, <strong>${nome}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+                },
+              });
+            } catch (mailError) {
+              console.error("Falha ao criar documento na coleção mail:", mailError);
+            }
+          }
+
           feedback.textContent = isNew
             ? welcomeEmailQueued === false
               ? "✅ Conta criada com sucesso! Não foi possível agendar o e-mail automático, nossa equipe será notificada."

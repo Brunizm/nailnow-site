@@ -239,7 +239,22 @@
         await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
         console.log(">> Firestore OK");
 
-        // 4) Sair (opcional)
+        // 4) Cria documento na coleção mail para disparar e-mail de boas-vindas
+        try {
+          await addDoc(collection(db, "mail"), {
+            to: [email],
+            message: {
+              subject: "Bem-vinda ao NailNow 💅",
+              text: `Olá, ${nome}! Seu cadastro foi realizado com sucesso no NailNow.`,
+              html: `<p>Olá, <strong>${nome}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`
+            },
+          });
+          console.log(">> Documento mail criado para envio de boas-vindas");
+        } catch (mailError) {
+          console.error("Falha ao criar documento na coleção mail:", mailError);
+        }
+
+        // 5) Sair (opcional)
         await signOut(auth);
 
         if (isNew) {
