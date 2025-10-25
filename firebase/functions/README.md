@@ -23,13 +23,22 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
    npm install
    ```
 
-2. Faça o deploy das funções:
+2. Confirme que o remetente configurado na extensão está verificado no SendGrid:
+
+   - Acesse [Sender Authentication](https://app.sendgrid.com/settings/sender_auth) com a mesma conta usada para gerar a API key.
+   - Se estiver fazendo a autenticação de domínio (recomendado), clique em **Authenticate Your Domain** e copie os registros `CNAME`/`TXT` exibidos.
+     Esses registros precisam ser criados **no painel de DNS do provedor do seu domínio** (por exemplo: Registro.br, GoDaddy, Cloudflare, HostGator). No painel do provedor, adicione cada registro exatamente como o SendGrid mostra (tipo, host e valor).
+     Após salvar, aguarde a propagação e volte ao SendGrid para clicar em **Verify** — o status deve mudar para **Verified**.
+   - Como alternativa, você pode cadastrar um **Single Sender** diretamente no SendGrid. Esse fluxo envia um e-mail de confirmação para o endereço informado; só depois de confirmar o link o remetente fica verificado.
+   - A extensão só consegue enviar mensagens depois que o status do remetente estiver como **Verified**; caso contrário, o log do Firebase exibirá o erro `The from address does not match a verified Sender Identity`.
+
+3. Faça o deploy das funções:
 
    ```bash
    firebase deploy --only functions
    ```
 
-   Não é necessário configurar secrets — a extensão Trigger Email from Firestore já possui as credenciais do SendGrid.
+   Não é necessário configurar secrets — a extensão Trigger Email from Firestore já possui as credenciais do SendGrid, desde que o remetente esteja verificado.
 
 ## Testando
 
