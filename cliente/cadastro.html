@@ -54,7 +54,14 @@
         signInWithEmailAndPassword,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        serverTimestamp,
+        collection,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -89,6 +96,43 @@
           }
         } catch (error) {
           console.warn("Não foi possível encerrar a sessão após o cadastro", error);
+        }
+      }
+
+      function buildWelcomeEmail(nome) {
+        const safeName = nome?.trim() || "Cliente";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Seu cadastro foi realizado com sucesso no NailNow.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+            '<p>Agora você pode acessar sua conta em <a href="https://www.nailnow.app">https://www.nailnow.app</a>.</p>',
+          ].join(""),
+        };
+      }
+
+      async function enqueueWelcomeEmail({ uid, nome, email }) {
+        const trimmedEmail = email?.trim().toLowerCase();
+        if (!trimmedEmail) {
+          console.warn("Cadastro de cliente sem email válido para envio de boas-vindas");
+          return null;
+        }
+
+        try {
+          const mailRef = await addDoc(collection(db, "mail"), {
+            to: [trimmedEmail],
+            message: buildWelcomeEmail(nome),
+            metadata: {
+              role: "cliente",
+              source: "cliente-cadastro-form",
+              profileId: uid,
+              profileCollection: "clientes",
+            },
+          });
+          return mailRef.id;
+        } catch (error) {
+          console.error("Falha ao criar documento na coleção mail", error);
+          return null;
         }
       }
 
@@ -159,14 +203,26 @@
             atualizadoEm: serverTimestamp(),
           };
 
+          let welcomeEmailQueued = null;
           if (isNew) {
             payload.criadoEm = serverTimestamp();
+            const mailDocId = await enqueueWelcomeEmail({ uid, nome, email });
+            if (mailDocId) {
+              payload.welcomeEmailMailId = mailDocId;
+              payload.welcomeEmailQueuedBy = "cliente-form";
+              payload.welcomeEmailQueuedAt = serverTimestamp();
+              welcomeEmailQueued = true;
+            } else {
+              welcomeEmailQueued = false;
+            }
           }
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
           feedback.textContent = isNew
-            ? "✅ Conta criada com sucesso!"
+            ? welcomeEmailQueued === false
+              ? "✅ Conta criada com sucesso! Não foi possível agendar o e-mail automático, nossa equipe será notificada."
+              : "✅ Conta criada com sucesso! Seu e-mail de boas-vindas chegará em instantes."
             : "✅ Dados atualizados!";
           feedback.style.color = "#2e7d32";
           form.reset();
@@ -398,7 +454,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
+          <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
