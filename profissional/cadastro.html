@@ -76,40 +76,6 @@
       const auth = getAuth(app);
       const db = getFirestore(app);
 
-      const APP_URL = "https://www.nailnow.app";
-      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
-      const MAIL_COLLECTION = "mail";
-
-      function buildWelcomeMessage(nome) {
-        const safeName = nome?.trim() || "Profissional";
-        return {
-          subject: "Bem-vinda ao NailNow 💅",
-          text: `Olá, ${safeName}! Recebemos seu cadastro profissional na NailNow.`,
-          html: [
-            `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro profissional na NailNow.</p>`,
-            `<p>Agora você pode acessar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
-          ].join(""),
-        };
-      }
-
-      async function queueWelcomeEmail({ email, nome, profilePath }) {
-        const trimmedEmail = email?.trim();
-        if (!trimmedEmail) return null;
-
-        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
-          to: [trimmedEmail],
-          from: SUPPORT_SENDER,
-          message: buildWelcomeMessage(nome),
-          metadata: {
-            role: "profissional",
-            source: "web",
-            profilePath,
-          },
-        });
-
-        return mailRef.id;
-      }
-
       const FEEDBACK_COLORS = {
         info: "#4527a0",
         error: "#c62828",
@@ -207,23 +173,6 @@
           const uid = user.uid;
           btn.textContent = "Processando cadastro…";
 
-          let mailDocId = null;
-          if (isNew) {
-            try {
-              mailDocId = await queueWelcomeEmail({
-                email,
-                nome,
-                profilePath: `profissionais/${uid}`,
-              });
-            } catch (queueError) {
-              console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
-              setFeedbackMessage(
-                feedback,
-                "⚠️ Cadastro recebido, mas não foi possível enfileirar o e-mail de confirmação. Nossa equipe validará manualmente.",
-                "info",
-              );
-            }
-          }
           btn.textContent = "Finalizando cadastro…";
 
           const payload = {
@@ -246,19 +195,13 @@
             payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
             payload.emailVerificado = false;
-            if (mailDocId) {
-              payload.welcomeEmailQueuedAt = serverTimestamp();
-              payload.welcomeEmailQueuedBy = "web";
-              payload.welcomeEmailMailId = mailDocId;
-            }
           }
 
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
-          let successMessage = "✅ Perfil profissional atualizado!";
-          if (isNew) {
-            successMessage = "✅ Cadastro enviado com sucesso! Você receberá um e-mail de confirmação em instantes.";
-          }
+          const successMessage = isNew
+            ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso ao portal profissional."
+            : "✅ Perfil profissional atualizado!";
 
           setFeedbackMessage(feedback, successMessage, "success");
           if (feedback) {

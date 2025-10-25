@@ -59,8 +59,6 @@
         doc,
         setDoc,
         serverTimestamp,
-        collection,
-        addDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -324,11 +322,7 @@
           let welcomeEmailQueued = null;
           if (isNew) {
             payload.criadoEm = serverTimestamp();
-            if (mailDocId) {
-              payload.welcomeEmailQueuedAt = serverTimestamp();
-              payload.welcomeEmailQueuedBy = "web";
-              payload.welcomeEmailMailId = mailDocId;
-            }
+            payload.status = "pendente";
           }
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
@@ -349,7 +343,7 @@
           }
 
           feedback.textContent = isNew
-            ? "✅ Conta criada com sucesso! Seu e-mail de boas-vindas chegará em instantes."
+            ? "✅ Conta criada! Verifique seu e-mail para confirmar o cadastro e liberar o acesso."
             : "✅ Dados atualizados!";
           feedback.style.color = "#2e7d32";
           form.reset();

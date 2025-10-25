@@ -300,11 +300,11 @@
         // 5) Sair (opcional)
         await signOut(auth);
 
-        if (isNew) {
-          alert("✅ Cadastro enviado com sucesso! Você receberá um e-mail de confirmação em instantes.");
-        } else {
-          alert("✅ Dados profissionais atualizados!");
-        }
+        alert(
+          isNew
+            ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso ao portal profissional."
+            : "✅ Dados profissionais atualizados!",
+        );
         $("cadastroForm").reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
