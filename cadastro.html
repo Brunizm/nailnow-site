@@ -47,7 +47,14 @@
       signInWithEmailAndPassword,
       signOut,
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      serverTimestamp,
+      collection,
+      addDoc,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     // 🔧 Config do seu projeto
@@ -64,6 +71,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const SUPPORT_EMAIL = "suporte@nailnow.app";
     const storage = getStorage(app);
 
     // ---------- Utils ----------
@@ -103,6 +111,44 @@
           return { user: cred.user, isNew: false };
         }
         throw error;
+      }
+    }
+
+    function buildWelcomeEmail(nome) {
+      const safeName = nome?.trim() || "Profissional";
+      return {
+        subject: "Bem-vinda ao NailNow 💅",
+        text: `Olá, ${safeName}! Seu cadastro profissional foi recebido pela NailNow.`,
+        html: [
+          `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos o seu cadastro profissional na NailNow.</p>`,
+          '<p>Nossa equipe revisará suas informações e entraremos em contato pelo e-mail cadastrado.</p>',
+        ].join(""),
+      };
+    }
+
+    async function enqueueWelcomeEmail({ uid, nome, email }) {
+      const trimmedEmail = email?.trim().toLowerCase();
+      if (!trimmedEmail) {
+        console.warn("Cadastro profissional sem email válido para boas-vindas");
+        return null;
+      }
+
+      try {
+        const mailRef = await addDoc(collection(db, "mail"), {
+          to: [trimmedEmail],
+          from: SUPPORT_EMAIL,
+          message: buildWelcomeEmail(nome),
+          metadata: {
+            role: "profissional",
+            source: "profissional-cadastro-form",
+            profileId: uid,
+            profileCollection: "profissionais",
+          },
+        });
+        return mailRef.id;
+      } catch (error) {
+        console.error("Falha ao enfileirar e-mail profissional", error);
+        return null;
       }
     }
 
@@ -172,10 +218,20 @@
           updatedAt: serverTimestamp(),
         };
 
+        let welcomeEmailQueued = null;
         if (isNew) {
           payload.createdAt = serverTimestamp();
           payload.status = "pendente";
           payload.fotoUrl = fotoUrl || null;
+          const mailDocId = await enqueueWelcomeEmail({ uid, nome, email });
+          if (mailDocId) {
+            payload.welcomeEmailMailId = mailDocId;
+            payload.welcomeEmailQueuedBy = "profissional-form";
+            payload.welcomeEmailQueuedAt = serverTimestamp();
+            welcomeEmailQueued = true;
+          } else {
+            welcomeEmailQueued = false;
+          }
         } else if (fotoUrl) {
           payload.fotoUrl = fotoUrl;
         }
@@ -186,7 +242,15 @@
         // 4) Sair (opcional)
         await signOut(auth);
 
-        alert(isNew ? "✅ Cadastro enviado com sucesso!" : "✅ Dados profissionais atualizados!");
+        if (isNew) {
+          if (welcomeEmailQueued === false) {
+            alert("✅ Cadastro enviado com sucesso! Não foi possível agendar o e-mail automático, mas a equipe será avisada.");
+          } else {
+            alert("✅ Cadastro enviado com sucesso! Você receberá um e-mail de confirmação em instantes.");
+          }
+        } else {
+          alert("✅ Dados profissionais atualizados!");
+        }
         $("cadastroForm").reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
