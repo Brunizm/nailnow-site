@@ -75,6 +75,75 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+      const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
+
+      const APP_URL = "https://www.nailnow.app";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+      const MAIL_COLLECTION = "mail";
+
+      function buildWelcomeMessage(nome) {
+        const safeName = nome?.trim() || "Cliente";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Seu cadastro foi realizado com sucesso no NailNow.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+            `<p>Agora você pode acessar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
+          ].join(""),
+        };
+      }
+
+      async function queueWelcomeEmail({ email, nome, profilePath }) {
+        const trimmedEmail = email?.trim();
+        if (!trimmedEmail) return null;
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
+          to: [trimmedEmail],
+          from: SUPPORT_SENDER,
+          message: buildWelcomeMessage(nome),
+          metadata: {
+            role: "cliente",
+            source: "web",
+            profilePath,
+          },
+        });
+
+        return mailRef.id;
+      }
+
+      const APP_URL = "https://www.nailnow.app";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+      const MAIL_COLLECTION = "mail";
+
+      function buildWelcomeMessage(nome) {
+        const safeName = nome?.trim() || "Cliente";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Seu cadastro foi realizado com sucesso no NailNow.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+            `<p>Agora você pode acessar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
+          ].join(""),
+        };
+      }
+
+      async function queueWelcomeEmail({ email, nome, profilePath }) {
+        const trimmedEmail = email?.trim();
+        if (!trimmedEmail) return null;
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
+          to: [trimmedEmail],
+          from: SUPPORT_SENDER,
+          message: buildWelcomeMessage(nome),
+          metadata: {
+            role: "cliente",
+            source: "web",
+            profilePath,
+          },
+        });
+
+        return mailRef.id;
+      }
 
       const APP_URL = "https://www.nailnow.app";
       const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
@@ -130,6 +199,44 @@
           }
         } catch (error) {
           console.warn("Não foi possível encerrar a sessão após o cadastro", error);
+        }
+      }
+
+      function buildWelcomeEmail(nome) {
+        const safeName = nome?.trim() || "Cliente";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Seu cadastro foi realizado com sucesso no NailNow.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+            '<p>Agora você pode acessar sua conta em <a href="https://www.nailnow.app">https://www.nailnow.app</a>.</p>',
+          ].join(""),
+        };
+      }
+
+      async function enqueueWelcomeEmail({ uid, nome, email }) {
+        const trimmedEmail = email?.trim().toLowerCase();
+        if (!trimmedEmail) {
+          console.warn("Cadastro de cliente sem email válido para envio de boas-vindas");
+          return null;
+        }
+
+        try {
+          const mailRef = await addDoc(collection(db, "mail"), {
+            to: [trimmedEmail],
+            from: SUPPORT_EMAIL,
+            message: buildWelcomeEmail(nome),
+            metadata: {
+              role: "cliente",
+              source: "cliente-cadastro-form",
+              profileId: uid,
+              profileCollection: "clientes",
+            },
+          });
+          return mailRef.id;
+        } catch (error) {
+          console.error("Falha ao criar documento na coleção mail", error);
+          return null;
         }
       }
 
@@ -214,6 +321,7 @@
             atualizadoEm: serverTimestamp(),
           };
 
+          let welcomeEmailQueued = null;
           if (isNew) {
             payload.criadoEm = serverTimestamp();
             if (mailDocId) {
@@ -224,6 +332,21 @@
           }
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
+
+          if (isNew) {
+            try {
+              await addDoc(collection(db, "mail"), {
+                to: [email],
+                message: {
+                  subject: "Bem-vinda ao NailNow 💅",
+                  text: `Olá, ${nome}! Seu cadastro foi realizado com sucesso no NailNow.`,
+                  html: `<p>Olá, <strong>${nome}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+                },
+              });
+            } catch (mailError) {
+              console.error("Falha ao criar documento na coleção mail:", mailError);
+            }
+          }
 
           feedback.textContent = isNew
             ? "✅ Conta criada com sucesso! Seu e-mail de boas-vindas chegará em instantes."
