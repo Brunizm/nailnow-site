@@ -7,6 +7,7 @@ const firestore = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
 
 const APP_URL = "https://www.nailnow.app";
+const SUPPORT_EMAIL = "suporte@nailnow.app";
 
 function buildWelcomeMessage({ name, role }) {
   const safeName = (name || (role === "profissional" ? "Profissional" : "Cliente")).trim();
@@ -34,6 +35,7 @@ async function enqueueWelcomeEmail({ email, name, role, sourcePath, profileId, p
   }
   const payload = {
     to: [trimmedEmail],
+    from: SUPPORT_EMAIL,
     message: buildWelcomeMessage({ name, role }),
     metadata: {
       role,

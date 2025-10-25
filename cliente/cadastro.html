@@ -75,6 +75,7 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+      const SUPPORT_EMAIL = "suporte@nailnow.app";
 
       async function ensureAuthAccount(email, senha) {
         try {
@@ -121,6 +122,7 @@
         try {
           const mailRef = await addDoc(collection(db, "mail"), {
             to: [trimmedEmail],
+            from: SUPPORT_EMAIL,
             message: buildWelcomeEmail(nome),
             metadata: {
               role: "cliente",
