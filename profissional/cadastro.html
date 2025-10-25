@@ -60,6 +60,8 @@
         doc,
         setDoc,
         serverTimestamp,
+        collection,
+        addDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
       import {
         getStorage,
@@ -81,6 +83,7 @@
       const auth = getAuth(app);
       const db = getFirestore(app);
       const storage = getStorage(app);
+      const SUPPORT_EMAIL = "Suporte NailNow <suporte@nailnow.app>";
 
       const FEEDBACK_COLORS = {
         info: "#4527a0",
@@ -116,6 +119,45 @@
         element.textContent = "";
         element.removeAttribute("data-variant");
         element.style.removeProperty("color");
+      }
+
+      function buildWelcomeEmail(nome) {
+        const safeName = nome?.trim() || "Profissional";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Recebemos o seu cadastro profissional na NailNow e entraremos em contato pelo e-mail informado.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos o seu cadastro profissional na NailNow.</p>`,
+            '<p>Nossa equipe revisará suas informações e enviaremos as próximas orientações para o e-mail cadastrado.</p>',
+          ].join(""),
+        };
+      }
+
+      async function enqueueWelcomeEmail({ uid, nome, email }) {
+        const trimmedEmail = email?.trim().toLowerCase();
+        if (!trimmedEmail) {
+          console.warn("Cadastro profissional sem email válido para boas-vindas");
+          return null;
+        }
+
+        try {
+          const mailRef = await addDoc(collection(db, "mail"), {
+            to: [trimmedEmail],
+            from: SUPPORT_EMAIL,
+            message: buildWelcomeEmail(nome),
+            metadata: {
+              role: "profissional",
+              source: "profissional-cadastro-form",
+              profileId: uid,
+              profileCollection: "profissionais",
+              profilePath: `profissionais/${uid}`,
+            },
+          });
+          return mailRef.id;
+        } catch (error) {
+          console.error("Falha ao enfileirar e-mail profissional", error);
+          return null;
+        }
       }
 
       function normalizarExtensao(nomeArquivo = "") {
@@ -523,20 +565,33 @@
             payload.fotoAtualizadaEm = serverTimestamp();
           }
 
+          let welcomeEmailQueued = null;
+
           if (isNew) {
             payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
+
+            const mailDocId = await enqueueWelcomeEmail({ uid, nome, email });
+            if (mailDocId) {
+              payload.welcomeEmailMailId = mailDocId;
+              payload.welcomeEmailQueuedBy = "profissional-cadastro-form";
+              payload.welcomeEmailQueuedAt = serverTimestamp();
+              welcomeEmailQueued = true;
+            } else {
+              welcomeEmailQueued = false;
+            }
           }
 
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
-          setFeedbackMessage(
-            feedback,
-            isNew
-              ? "✅ Cadastro enviado com sucesso! Nossa equipe entrará em contato em breve."
-              : "✅ Perfil profissional atualizado!",
-            "success",
-          );
+          let successMessage = "✅ Perfil profissional atualizado!";
+          if (isNew) {
+            successMessage = welcomeEmailQueued === false
+              ? "✅ Cadastro enviado com sucesso! Não foi possível agendar o e-mail automático, mas nossa equipe foi avisada."
+              : "✅ Cadastro enviado com sucesso! Você receberá um e-mail de confirmação em instantes.";
+          }
+
+          setFeedbackMessage(feedback, successMessage, "success");
           if (feedback) {
             feedback.focus();
             feedback.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -873,7 +928,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
+          <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
