@@ -52,8 +52,6 @@
       doc,
       setDoc,
       serverTimestamp,
-      collection,
-      addDoc,
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
@@ -258,11 +256,7 @@
         await signOut(auth);
 
         if (isNew) {
-          if (welcomeEmailQueued === false) {
-            alert("✅ Cadastro enviado com sucesso! Não foi possível agendar o e-mail automático, mas a equipe será avisada.");
-          } else {
-            alert("✅ Cadastro enviado com sucesso! Você receberá um e-mail de confirmação em instantes.");
-          }
+          alert("✅ Cadastro enviado com sucesso! Você receberá um e-mail de confirmação em instantes.");
         } else {
           alert("✅ Dados profissionais atualizados!");
         }

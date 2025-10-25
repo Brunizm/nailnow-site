@@ -586,9 +586,7 @@
 
           let successMessage = "✅ Perfil profissional atualizado!";
           if (isNew) {
-            successMessage = welcomeEmailQueued === false
-              ? "✅ Cadastro enviado com sucesso! Não foi possível agendar o e-mail automático, mas nossa equipe foi avisada."
-              : "✅ Cadastro enviado com sucesso! Você receberá um e-mail de confirmação em instantes.";
+            successMessage = "✅ Cadastro enviado com sucesso! Você receberá um e-mail de confirmação em instantes.";
           }
 
           setFeedbackMessage(feedback, successMessage, "success");

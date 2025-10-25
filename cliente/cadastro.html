@@ -59,8 +59,6 @@
         doc,
         setDoc,
         serverTimestamp,
-        collection,
-        addDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -237,9 +235,7 @@
           }
 
           feedback.textContent = isNew
-            ? welcomeEmailQueued === false
-              ? "✅ Conta criada com sucesso! Não foi possível agendar o e-mail automático, nossa equipe será notificada."
-              : "✅ Conta criada com sucesso! Seu e-mail de boas-vindas chegará em instantes."
+            ? "✅ Conta criada com sucesso! Seu e-mail de boas-vindas chegará em instantes."
             : "✅ Dados atualizados!";
           feedback.style.color = "#2e7d32";
           form.reset();
