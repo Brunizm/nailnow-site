@@ -145,6 +145,40 @@
         return mailRef.id;
       }
 
+      const APP_URL = "https://www.nailnow.app";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+      const MAIL_COLLECTION = "mail";
+
+      function buildWelcomeMessage(nome) {
+        const safeName = nome?.trim() || "Cliente";
+        return {
+          subject: "Bem-vinda ao NailNow 💅",
+          text: `Olá, ${safeName}! Seu cadastro foi realizado com sucesso no NailNow.`,
+          html: [
+            `<p>Olá, <strong>${safeName}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`,
+            `<p>Agora você pode acessar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
+          ].join(""),
+        };
+      }
+
+      async function queueWelcomeEmail({ email, nome, profilePath }) {
+        const trimmedEmail = email?.trim();
+        if (!trimmedEmail) return null;
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
+          to: [trimmedEmail],
+          from: SUPPORT_SENDER,
+          message: buildWelcomeMessage(nome),
+          metadata: {
+            role: "cliente",
+            source: "web",
+            profilePath,
+          },
+        });
+
+        return mailRef.id;
+      }
+
       async function ensureAuthAccount(email, senha) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, senha);
