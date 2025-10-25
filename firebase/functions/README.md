@@ -59,6 +59,30 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
   firebase functions:log --only queueClienteWelcomeEmail,queueProfessionalWelcomeEmail
   ```
 
+## Como confirmar que o gatilho foi executado
+
+1. **Coleção `mail` no Firestore**
+   - Abra *Firestore Database → Coleções de dados* e selecione `mail`.
+   - Cada vez que a função roda, aparece um documento com os campos `to`, `from`, `message` e `metadata`.
+   - Enquanto a extensão processa o documento, o campo `delivery.status` fica como `processing`. Quando o e-mail é aceito pelo SendGrid ele muda para `sent` ou `success`.
+
+2. **Histórico da extensão Trigger Email from Firestore**
+   - Acesse *Extensões → Trigger Email from Firestore → Executions*.
+   - Ali você vê cada execução da extensão e eventuais erros (por exemplo, remetente não verificado ou template ausente).
+
+3. **Logs das Cloud Functions**
+   - Ainda em *Firebase → Functions*, abra os logs da função (`queueClienteWelcomeEmail`, `queueProfessionalWelcomeEmail` etc.).
+   - Procure mensagens como `Documento mail criado para boas-vindas` com o ID gerado; isso confirma que o gatilho disparou.
+
+4. **Linha de comando (opcional)**
+   - Se preferir, rode:
+
+     ```bash
+     firebase functions:log --only queueClienteWelcomeEmail,queueProfessionalWelcomeEmail
+     ```
+
+   - O terminal mostrará cada execução e qualquer erro lançado.
+
 ## Estrutura
 
 - `index.js` — definição das Cloud Functions e utilitários para montar a mensagem de boas-vindas.
