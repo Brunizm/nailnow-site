@@ -107,11 +107,21 @@
       }
       async function safeSignOut() {
         try {
-          if (auth.currentUser) {
-            await signOut(auth);
-          }
+          const mailRef = await addDoc(collection(db, "mail"), payload);
+          await setDoc(
+            doc(db, collectionName, uid),
+            {
+              confirmationMailId: mailRef.id,
+              confirmationMailQueuedAt: serverTimestamp(),
+              confirmationMailQueuedBy: "web-client",
+            },
+            { merge: true },
+          );
+
+          return mailRef.id;
         } catch (error) {
-          console.warn("Não foi possível encerrar a sessão após o cadastro", error);
+          console.error("Falha ao enfileirar e-mail de confirmação", error);
+          return null;
         }
       }
 
@@ -189,6 +199,10 @@
             payload.emailVerificado = false;
           }
 
+          let confirmationQueued = false;
+          let queueStatus = "not-requested";
+
+          const profilePath = `profissionais/${uid}`;
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
           const successMessage = isNew
