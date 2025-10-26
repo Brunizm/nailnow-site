@@ -53,20 +53,8 @@
         createUserWithEmailAndPassword,
         signInWithEmailAndPassword,
         signOut,
-        updateCurrentUser,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import {
-        getFirestore,
-        doc,
-        setDoc,
-        serverTimestamp,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-      import {
-        getStorage,
-        ref,
-        uploadBytesResumable,
-        getDownloadURL,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -80,271 +68,6 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
-      const storage = getStorage(app);
-
-      const FEEDBACK_COLORS = {
-        info: "#4527a0",
-        error: "#c62828",
-        success: "#2e7d32",
-      };
-
-      const MAX_FOTO_BYTES = 5 * 1024 * 1024; // 5 MB
-      const ALLOWED_IMAGE_TYPES = new Set([
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/heic",
-        "image/heif",
-      ]);
-      const ALLOWED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "heic", "heif"]);
-
-      function setFeedbackMessage(element, message, variant = "info") {
-        if (!element) return;
-        element.textContent = message;
-        if (!message) {
-          element.removeAttribute("data-variant");
-          element.style.removeProperty("color");
-          return;
-        }
-
-        element.dataset.variant = variant;
-        element.style.color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
-      }
-
-      function clearFeedback(element) {
-        if (!element) return;
-        element.textContent = "";
-        element.removeAttribute("data-variant");
-        element.style.removeProperty("color");
-      }
-
-      function normalizarExtensao(nomeArquivo = "") {
-        const partes = nomeArquivo.split(".");
-        if (partes.length <= 1) return "";
-        return partes.pop().toLowerCase().replace(/[^a-z0-9]/g, "");
-      }
-
-      function obterExtensaoSegura(file) {
-        if (!file) return "jpeg";
-        const mimeType = (file.type || "").toLowerCase();
-        const fromMime = mimeType.includes("/") ? mimeType.split("/").pop() : "";
-        const extension = normalizarExtensao(file.name);
-
-        if (extension && ALLOWED_IMAGE_EXTENSIONS.has(extension)) {
-          return extension === "jpg" ? "jpeg" : extension;
-        }
-
-        if (fromMime && ALLOWED_IMAGE_EXTENSIONS.has(fromMime)) {
-          return fromMime === "jpg" ? "jpeg" : fromMime;
-        }
-
-        if (mimeType === "image/jpeg") return "jpeg";
-
-        return "jpeg";
-      }
-
-      function validarFoto(file, feedback) {
-        if (!file) return true;
-
-        const mimeType = (file.type || "").toLowerCase();
-        const extension = normalizarExtensao(file.name);
-
-        if (file.size > MAX_FOTO_BYTES) {
-          setFeedbackMessage(
-            feedback,
-            `❌ Erro: A foto precisa ter até ${(MAX_FOTO_BYTES / (1024 * 1024)).toFixed(1)} MB.`,
-            "error",
-          );
-          atualizarPreviewFoto(null);
-          return false;
-        }
-
-        if (mimeType && !ALLOWED_IMAGE_TYPES.has(mimeType)) {
-          setFeedbackMessage(
-            feedback,
-            "❌ Erro: Utilize uma imagem nos formatos JPG, PNG, WEBP ou HEIC.",
-            "error",
-          );
-          atualizarPreviewFoto(null);
-          return false;
-        }
-
-        if (!mimeType && extension && !ALLOWED_IMAGE_EXTENSIONS.has(extension)) {
-          setFeedbackMessage(
-            feedback,
-            "❌ Erro: Utilize uma imagem nos formatos JPG, PNG, WEBP ou HEIC.",
-            "error",
-          );
-          atualizarPreviewFoto(null);
-          return false;
-        }
-
-        return true;
-      }
-
-      const UPLOAD_STALL_TIMEOUT_MS = 45000;
-      const UPLOAD_INITIAL_TIMEOUT_MS = 120000;
-      const UPLOAD_PROGRESS_HEARTBEAT_MS = 2000;
-
-      function uploadFotoPerfil({ storageInstance, file, uid, onProgress }) {
-        if (!file) return Promise.resolve(null);
-
-        const extensao = obterExtensaoSegura(file);
-        const caminho = `profissionais/${uid}/perfil_${Date.now()}.${extensao}`;
-        const metadata = {
-          contentType: file.type || `image/${extensao}`,
-          customMetadata: {
-            nomeOriginal: file.name || "",
-          },
-        };
-
-        return new Promise((resolve, reject) => {
-          const uploadTask = uploadBytesResumable(ref(storageInstance, caminho), file, metadata);
-          let stallTimer = null;
-          let initialTimer = null;
-          let heartbeatTimer = null;
-          let settled = false;
-          let ultimoPercentual = 0;
-
-          const clearStallTimer = () => {
-            if (stallTimer) {
-              clearTimeout(stallTimer);
-              stallTimer = null;
-            }
-          };
-
-          const clearInitialTimer = () => {
-            if (initialTimer) {
-              clearTimeout(initialTimer);
-              initialTimer = null;
-            }
-          };
-
-          const restartStallTimer = () => {
-            clearStallTimer();
-            stallTimer = setTimeout(() => {
-              if (settled) return;
-              try {
-                uploadTask.cancel();
-              } catch (cancelError) {
-                console.warn("Falha ao cancelar upload estagnado", cancelError);
-              }
-              const timeoutError = new Error("Tempo limite de upload atingido.");
-              timeoutError.code = "storage/upload-timeout";
-              clearHeartbeat();
-              clearInitialTimer();
-              settled = true;
-              reject(timeoutError);
-            }, UPLOAD_STALL_TIMEOUT_MS);
-          };
-
-          const startInitialTimer = () => {
-            clearInitialTimer();
-            initialTimer = setTimeout(() => {
-              if (settled) return;
-              try {
-                uploadTask.cancel();
-              } catch (cancelError) {
-                console.warn("Falha ao cancelar upload sem início", cancelError);
-              }
-              const timeoutError = new Error("Tempo limite para iniciar o upload atingido.");
-              timeoutError.code = "storage/upload-initial-timeout";
-              clearHeartbeat();
-              settled = true;
-              reject(timeoutError);
-            }, UPLOAD_INITIAL_TIMEOUT_MS);
-          };
-
-          const clearHeartbeat = () => {
-            if (heartbeatTimer) {
-              clearInterval(heartbeatTimer);
-              heartbeatTimer = null;
-            }
-          };
-
-          const ensureHeartbeat = () => {
-            if (heartbeatTimer || typeof onProgress !== "function") return;
-            heartbeatTimer = setInterval(() => {
-              if (settled) return;
-              if (ultimoPercentual === 0) {
-                ultimoPercentual = 1;
-                onProgress(ultimoPercentual);
-              }
-            }, UPLOAD_PROGRESS_HEARTBEAT_MS);
-          };
-
-          const emitirProgresso = (valor) => {
-            if (typeof onProgress !== "function") return;
-            const valorNormalizado = Math.min(100, Math.max(0, Math.round(valor)));
-            if (valorNormalizado <= ultimoPercentual && valorNormalizado !== 100) {
-              return;
-            }
-            ultimoPercentual = valorNormalizado;
-            onProgress(ultimoPercentual);
-          };
-
-          startInitialTimer();
-          ensureHeartbeat();
-
-          uploadTask.on(
-            "state_changed",
-            (snapshot) => {
-              ensureHeartbeat();
-              const totalBytes = snapshot.totalBytes || file.size || 0;
-              const bytesTransferidos = snapshot.bytesTransferred || 0;
-
-              if (bytesTransferidos > 0) {
-                clearInitialTimer();
-                restartStallTimer();
-              }
-
-              if (typeof onProgress === "function") {
-                let progresso = 0;
-                if (totalBytes > 0) {
-                  progresso = (bytesTransferidos / totalBytes) * 100;
-                } else if (bytesTransferidos > 0) {
-                  progresso = 1;
-                }
-
-                if (bytesTransferidos > 0 && progresso < 1) {
-                  progresso = 1;
-                }
-
-                if (progresso >= 100 || (totalBytes > 0 && bytesTransferidos >= totalBytes)) {
-                  emitirProgresso(100);
-                } else {
-                  emitirProgresso(Math.min(99, progresso));
-                }
-              }
-            },
-            (error) => {
-              clearStallTimer();
-              clearInitialTimer();
-              clearHeartbeat();
-              if (settled) return;
-              settled = true;
-              reject(error);
-            },
-            async () => {
-              try {
-                const url = await getDownloadURL(uploadTask.snapshot.ref);
-                emitirProgresso(100);
-                settled = true;
-                resolve({ url, caminho });
-              } catch (erroDownload) {
-                if (!settled) {
-                  settled = true;
-                  reject(erroDownload);
-                }
-              } finally {
-                clearStallTimer();
-                clearInitialTimer();
-                clearHeartbeat();
-              }
-            },
-          );
-        });
-      }
 
       async function ensureAuthAccount(email, senha) {
         try {
@@ -357,51 +80,6 @@
           }
           throw error;
         }
-      }
-
-      async function ensureUserReadyForStorage(authInstance, user) {
-        if (!user) {
-          const missingUserError = new Error("Não foi possível confirmar a sessão do cadastro.");
-          missingUserError.code = "auth/current-user-missing";
-          throw missingUserError;
-        }
-
-        const MAX_ATTEMPTS = 4;
-        const BASE_DELAY = 400;
-
-        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-          try {
-            if (attempt > 0) {
-              try {
-                await user.reload();
-              } catch (reloadError) {
-                console.warn("Falha ao atualizar usuário antes do upload", reloadError);
-              }
-            }
-            await user.getIdToken(attempt > 0);
-            const current = authInstance.currentUser;
-            if (current?.uid === user.uid) {
-              return;
-            }
-            await updateCurrentUser(authInstance, user);
-            if (authInstance.currentUser?.uid === user.uid) {
-              return;
-            }
-          } catch (tokenError) {
-            if (attempt === MAX_ATTEMPTS - 1) {
-              const wrapped = new Error("Não foi possível preparar a sessão para enviar a foto. Tente novamente.");
-              wrapped.code = "auth/id-token-unavailable";
-              wrapped.cause = tokenError;
-              throw wrapped;
-            }
-          }
-
-          await new Promise((resolve) => setTimeout(resolve, BASE_DELAY * (attempt + 1)));
-        }
-
-        const finalError = new Error("Não foi possível preparar a sessão para enviar a foto. Tente novamente.");
-        finalError.code = "auth/id-token-unavailable";
-        throw finalError;
       }
 
       async function safeSignOut() {
@@ -419,7 +97,7 @@
         const form = e.target;
         const btn = form.querySelector("button[type='submit']");
         const feedback = document.getElementById("signup-feedback");
-        clearFeedback(feedback);
+        feedback.textContent = "";
 
         try {
           const nome = form.nome.value.trim();
@@ -431,7 +109,6 @@
           const endereco = form.endereco_text.value.trim();
           const cidade = form.cidade.value.trim();
           const bio = form.bio.value.trim();
-          const foto = form.foto.files[0] || null;
           const servicos = Array.from(form.querySelectorAll('input[name="servicos"]:checked')).map((el) => el.value);
 
           const endereco_formatado = form.endereco_formatado.value || "";
@@ -440,68 +117,29 @@
           const lng = form.lng.value || "";
 
           if (!nome || !cpf || !email || !senha || !confirmar || !cidade) {
-            setFeedbackMessage(feedback, "❌ Erro: Preencha os campos obrigatórios (*).", "error");
-            if (feedback) {
-              feedback.focus();
-            }
+            feedback.textContent = "Preencha os campos obrigatórios (*).";
+            feedback.style.color = "#c62828";
             return;
           }
           if (senha !== confirmar) {
-            setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
+            feedback.textContent = "As senhas não coincidem.";
+            feedback.style.color = "#c62828";
             form.confirmarSenha.focus();
-            if (feedback) {
-              feedback.focus();
-            }
-            return;
-          }
-
-          if (foto && !validarFoto(foto, feedback)) {
-            const fotoInput = document.getElementById("foto");
-            if (fotoInput) {
-              fotoInput.focus();
-            }
-            if (feedback) {
-              feedback.focus();
-            }
             return;
           }
 
           btn.disabled = true;
-          btn.setAttribute("aria-busy", "true");
           btn.textContent = "Criando conta…";
 
-          setFeedbackMessage(feedback, "Validando seus dados…", "info");
-
           const { user, isNew } = await ensureAuthAccount(email, senha);
-          await ensureUserReadyForStorage(auth, user);
           const uid = user.uid;
-          btn.textContent = "Processando cadastro…";
-
-          let fotoUpload = null;
-          if (foto) {
-            setFeedbackMessage(feedback, "Enviando foto (0%)…", "info");
-            fotoUpload = await uploadFotoPerfil({
-              storageInstance: storage,
-              file: foto,
-              uid,
-              onProgress: (percentual) => {
-                setFeedbackMessage(feedback, `Enviando foto (${percentual}%)…`, "info");
-                btn.textContent = percentual < 100 ? `Enviando foto ${percentual}%` : "Processando cadastro…";
-              },
-            });
-            setFeedbackMessage(feedback, "Foto recebida! Finalizando cadastro…", "info");
-            btn.textContent = "Finalizando cadastro…";
-          }
-
-          if (!foto) {
-            btn.textContent = "Finalizando cadastro…";
-          }
 
           const payload = {
             uid,
             nome,
             cpf,
             email,
+            senha,
             telefone,
             endereco,
             endereco_formatado,
@@ -514,15 +152,6 @@
             atualizadoEm: serverTimestamp(),
           };
 
-          if (fotoUpload?.url) {
-            payload.fotoUrl = fotoUpload.url;
-            payload.fotoPath = fotoUpload.caminho;
-            payload.fotoTipo = foto.type || `image/${obterExtensaoSegura(foto)}`;
-            payload.fotoNomeOriginal = foto.name || "";
-            payload.fotoTamanhoBytes = foto.size || 0;
-            payload.fotoAtualizadaEm = serverTimestamp();
-          }
-
           if (isNew) {
             payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
@@ -530,118 +159,51 @@
 
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
-          setFeedbackMessage(
-            feedback,
-            isNew
-              ? "✅ Cadastro enviado com sucesso! Nossa equipe entrará em contato em breve."
-              : "✅ Perfil profissional atualizado!",
-            "success",
-          );
-          if (feedback) {
-            feedback.focus();
-            feedback.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
+          feedback.textContent = isNew
+            ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso."
+            : "✅ Perfil profissional atualizado!";
+          feedback.style.color = "#2e7d32";
           form.reset();
-          const fotoPreview = document.getElementById("foto-preview");
-          if (fotoPreview) {
-            fotoPreview.src = "";
-            fotoPreview.hidden = true;
-            fotoPreview.removeAttribute("data-has-image");
-          }
         } catch (err) {
           console.error(err);
-          const errorCode = err?.code || "erro-desconhecido";
-          let friendlyMessage = `❌ Erro: ${errorCode}`;
-
-          const errorMessages = {
-            "auth/email-already-in-use": "❌ Erro: Já existe uma conta com este e-mail. Faça login com a mesma senha informada anteriormente.",
-            "auth/invalid-email": "❌ Erro: Informe um e-mail válido para prosseguir.",
-            "auth/weak-password": "❌ Erro: Use uma senha com pelo menos 6 caracteres.",
-            "auth/wrong-password": "❌ Erro: A senha informada não confere com a conta existente.",
-            "auth/invalid-login-credentials": "❌ Erro: Não foi possível confirmar seus dados de acesso.",
-            "auth/current-user-missing": "❌ Erro: Não foi possível confirmar sua sessão. Atualize a página e tente novamente.",
-            "auth/id-token-unavailable": "❌ Erro: Não conseguimos preparar sua sessão para enviar a foto. Atualize a página e tente novamente.",
-            "storage/unauthorized": "❌ Erro: Não foi possível enviar a foto. Verifique sua conexão e tente novamente.",
-            "storage/canceled": "❌ Erro: O envio da foto foi cancelado.",
-            "storage/retry-limit-exceeded": "❌ Erro: Não foi possível concluir o upload da foto. Tente novamente em instantes.",
-            "storage/quota-exceeded": "❌ Erro: Limite de armazenamento atingido. Entre em contato com a equipe NailNow.",
-            "storage/upload-timeout": "❌ Erro: O envio da foto demorou demais. Verifique sua conexão e tente novamente.",
-            "storage/upload-initial-timeout": "❌ Erro: Não conseguimos iniciar o envio da foto. Verifique sua conexão e tente novamente.",
-          };
-
-          if (errorMessages[errorCode]) {
-            friendlyMessage = errorMessages[errorCode];
+          let message = err.code || "erro-desconhecido";
+          if (err.code === "auth/wrong-password") {
+            message = "auth/senha-incorreta";
+            feedback.textContent = "❌ Erro: A senha informada não confere com a conta existente.";
+          } else if (err.code === "auth/invalid-login-credentials") {
+            message = "auth/invalid-login-credentials";
+            feedback.textContent = "❌ Erro: Não foi possível confirmar seus dados de acesso.";
+          } else {
+            feedback.textContent = `❌ Erro: ${message}`;
           }
-
-          if (!errorMessages[errorCode] && err?.message) {
-            friendlyMessage = `❌ Erro: ${err.message.replace(/^Firebase: /, "")}`;
-          }
-
-          setFeedbackMessage(feedback, friendlyMessage, "error");
-          if (feedback) {
-            feedback.focus();
-            feedback.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
+          feedback.style.color = "#c62828";
         } finally {
           await safeSignOut();
           btn.disabled = false;
-          btn.removeAttribute("aria-busy");
           btn.textContent = "Cadastrar profissional";
         }
       }
 
       window.enviarCadastro = enviarCadastro;
 
-      function atualizarPreviewFoto(file) {
-        const preview = document.getElementById("foto-preview");
-        if (!preview) return;
-
-        if (!file) {
-          preview.src = "";
-          preview.hidden = true;
-          preview.removeAttribute("data-has-image");
-          return;
-        }
-
-        if (!(file.type || "").startsWith("image")) {
-          preview.src = "";
-          preview.hidden = true;
-          preview.removeAttribute("data-has-image");
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const result = event?.target?.result;
-          if (typeof result === "string") {
-            preview.src = result;
-            preview.hidden = false;
-            preview.setAttribute("data-has-image", "true");
-          }
-        };
-        reader.onerror = () => {
-          preview.src = "";
-          preview.hidden = true;
-          preview.removeAttribute("data-has-image");
-        };
-        reader.readAsDataURL(file);
-      }
-
       document.addEventListener("DOMContentLoaded", () => {
-        const fotoInput = document.getElementById("foto");
-        if (fotoInput) {
-          fotoInput.addEventListener("change", (event) => {
-            const arquivo = event.target?.files?.[0];
-            atualizarPreviewFoto(arquivo || null);
-          });
+        const form = document.getElementById("cadastroForm");
+        if (!form) {
+          console.error("Formulário de cadastro profissional não encontrado na página.");
+          return;
         }
+
+        form.addEventListener("submit", enviarCadastro);
+        form.setAttribute("novalidate", "novalidate");
+        form.removeAttribute("action");
+        console.info("📄 Formulário de cadastro profissional pronto para enviar dados ao Firebase.");
       });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
-    <script src="/assets/js/menu-toggle.js" defer></script>
   </head>
 
   <body>
+    <div class="promo-banner">Profissionais NailNow: receba clientes qualificadas sem mensalidade.</div>
 
     <header class="site-header">
       <div class="header-inner">
@@ -649,20 +211,7 @@
           <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
-        <button
-          class="mobile-menu-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="site-navigation"
-        >
-          <span class="sr-only">Alternar menu</span>
-          <span class="mobile-menu-toggle__bars" aria-hidden="true">
-            <span class="mobile-menu-toggle__bar"></span>
-            <span class="mobile-menu-toggle__bar"></span>
-            <span class="mobile-menu-toggle__bar"></span>
-          </span>
-        </button>
-        <div class="header-navigation" id="site-navigation">
+        <div class="header-navigation">
           <nav class="primary-nav" aria-label="Principal">
             <a href="/" class="nav-link">Home</a>
             <a href="../como-funciona.html" class="nav-link">Como funciona</a>
@@ -708,7 +257,7 @@
           <div class="pro-signup-card">
             <h2 class="pro-signup-card__title">Criar conta profissional</h2>
             <p class="pro-signup-card__subtitle">Leva menos de 3 minutos para começar a receber convites exclusivos.</p>
-            <form id="cadastroForm" class="signup-form" onsubmit="enviarCadastro(event)" autocomplete="off">
+            <form id="cadastroForm" class="signup-form" autocomplete="off">
               <div class="signup-field">
                 <label for="nome">Nome completo *</label>
                 <input id="nome" name="nome" type="text" required />
@@ -807,27 +356,8 @@
                 <textarea id="bio" name="bio" rows="3" placeholder="Ex.: 5 anos de experiência, especializada em gel..."></textarea>
               </div>
 
-              <div class="signup-field">
-                <label for="foto">Foto de perfil</label>
-                <input id="foto" name="foto" type="file" accept="image/*" />
-                <p class="signup-field__hint">Formatos aceitos: JPG, PNG, WEBP ou HEIC com até 5&nbsp;MB.</p>
-                <img
-                  id="foto-preview"
-                  class="signup-photo-preview"
-                  alt="Prévia da foto de perfil selecionada"
-                  hidden
-                  loading="lazy"
-                />
-              </div>
-
               <button id="enviar" class="signup-submit" type="submit">Cadastrar profissional</button>
-              <p
-                id="signup-feedback"
-                class="signup-feedback"
-                role="status"
-                aria-live="polite"
-                tabindex="-1"
-              ></p>
+              <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
             </form>
           </div>
         </div>
@@ -873,7 +403,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
+          <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
