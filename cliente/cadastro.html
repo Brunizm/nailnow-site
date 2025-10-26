@@ -169,6 +169,20 @@
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
 
+          let mailDocId = null;
+
+          if (isNew) {
+            try {
+              mailDocId = await queueWelcomeEmail({
+                email,
+                nome,
+                profilePath: `clientes/${uid}`,
+              });
+            } catch (queueError) {
+              console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
+            }
+          }
+
           const payload = {
             uid,
             nome,
@@ -187,6 +201,7 @@
             atualizadoEm: serverTimestamp(),
           };
 
+          let welcomeEmailQueued = null;
           if (isNew) {
             payload.criadoEm = serverTimestamp();
             payload.status = "pendente";

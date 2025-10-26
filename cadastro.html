@@ -47,7 +47,14 @@
       signInWithEmailAndPassword,
       signOut,
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      serverTimestamp,
+      collection,
+      addDoc,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     // 🔧 Config do seu projeto
@@ -64,9 +71,44 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
     const storage = getStorage(app);
     const REQUEST_CONFIRMATION_URL =
       "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
+
+    const APP_URL = "https://www.nailnow.app";
+    const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+    const MAIL_COLLECTION = "mail";
+
+    function buildWelcomeMessage(nome) {
+      const safeName = nome?.trim() || "Profissional";
+      return {
+        subject: "Bem-vinda ao NailNow 💅",
+        text: `Olá, ${safeName}! Seu cadastro profissional foi recebido pela NailNow.`,
+        html: [
+          `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro profissional na NailNow.</p>`,
+          `<p>Agora você pode acompanhar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
+        ].join(""),
+      };
+    }
+
+    async function queueWelcomeEmail({ email, nome, profilePath }) {
+      const trimmedEmail = email?.trim();
+      if (!trimmedEmail) return null;
+
+      const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
+        to: [trimmedEmail],
+        from: SUPPORT_SENDER,
+        message: buildWelcomeMessage(nome),
+        metadata: {
+          role: "profissional",
+          source: "web",
+          profilePath,
+        },
+      });
+
+      return mailRef.id;
+    }
 
     // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
@@ -185,6 +227,19 @@
 
         // 3) Firestore
         console.log(">> Gravando no Firestore…");
+        let mailDocId = null;
+        if (isNew) {
+          try {
+            mailDocId = await queueWelcomeEmail({
+              email,
+              nome,
+              profilePath: `profissionais/${uid}`,
+            });
+          } catch (queueError) {
+            console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
+          }
+        }
+
         const payload = {
           nome,
           email,
@@ -195,10 +250,16 @@
           updatedAt: serverTimestamp(),
         };
 
+        let welcomeEmailQueued = null;
         if (isNew) {
           payload.createdAt = serverTimestamp();
           payload.status = "pendente";
           payload.fotoUrl = fotoUrl || null;
+          if (mailDocId) {
+            payload.welcomeEmailQueuedAt = serverTimestamp();
+            payload.welcomeEmailQueuedBy = "web";
+            payload.welcomeEmailMailId = mailDocId;
+          }
         } else if (fotoUrl) {
           payload.fotoUrl = fotoUrl;
         }
