@@ -90,6 +90,20 @@
         } catch (error) {
           console.warn("Não foi possível encerrar a sessão após o cadastro", error);
         }
+
+      function getCheckedValues(form, selector) {
+        return Array.from(form.querySelectorAll(selector)).map((el) => el.value);
+      }
+
+      function setSubmittingState(button, isSubmitting, idleLabel) {
+        if (!button) return;
+        button.disabled = isSubmitting;
+        if (isSubmitting) {
+          button.setAttribute("aria-busy", "true");
+        } else {
+          button.removeAttribute("aria-busy");
+        }
+        button.textContent = isSubmitting ? "Enviando…" : idleLabel;
       }
 
       async function enviarCadastro(e) {
@@ -134,6 +148,7 @@
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
 
+          const profilePath = `profissionais/${uid}`;
           const payload = {
             uid,
             nome,
@@ -142,8 +157,8 @@
             senha,
             telefone,
             endereco,
-            endereco_formatado,
-            place_id,
+            endereco_formatado: enderecoFormatado,
+            place_id: placeId,
             lat,
             lng,
             cidade,
@@ -155,6 +170,13 @@
           if (isNew) {
             payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
+            payload.emailVerificado = false;
+            payload.signupConfirmation = {
+              status: "pending",
+              role: "profissional",
+              preparedBy: "professional-signup-form",
+              preparedAt: serverTimestamp(),
+            };
           }
 
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });

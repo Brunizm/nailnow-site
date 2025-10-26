@@ -315,6 +315,32 @@
         return "";
       };
 
+      const CONFIRMED_STATUS_VALUES = new Set([
+        "confirmado",
+        "confirmada",
+        "confirmed",
+        "ativo",
+        "ativa",
+        "aprovado",
+        "aprovada",
+        "active",
+      ]);
+
+      const isProfileConfirmed = (profile) => {
+        const statusValue = (resolveStatusValue(profile) || "").toLowerCase();
+        const confirmationStatus = (profile.signupConfirmation?.status || "").toLowerCase();
+
+        if (CONFIRMED_STATUS_VALUES.has(statusValue)) {
+          return true;
+        }
+
+        if (CONFIRMED_STATUS_VALUES.has(confirmationStatus)) {
+          return true;
+        }
+
+        return false;
+      };
+
       const persistSession = (profile, user) => {
         const payload = {
           uid: user?.uid || profile.uid || "",
@@ -534,6 +560,18 @@
         try {
           const user = await authenticateWithEmail(email, password);
           const profile = await resolveProfileForUser(user, email);
+          if (!isProfileConfirmed(profile)) {
+            setStatus(
+              `Seu cadastro profissional ainda está pendente. Procure pelo e-mail "Confirme seu cadastro" enviado para ${email} e finalize a confirmação para acessar o portal.`,
+              "error",
+            );
+            try {
+              await signOut(auth);
+            } catch (signOutError) {
+              console.warn("Não foi possível encerrar a sessão após detectar status pendente", signOutError);
+            }
+            return;
+          }
           persistSession(profile, user);
           setStatus("Login realizado com sucesso! Redirecionando para o portal...", "success");
           loginForm.reset();
@@ -579,6 +617,20 @@
           const session = getStoredSession();
           if (!session || session.uid !== user.uid) {
             const profile = await resolveProfileForUser(user, session?.email || user.email || "");
+            if (!isProfileConfirmed(profile)) {
+              const displayEmail = session?.email || user.email || profile.email || "seu e-mail";
+              setStatus(
+                `Seu cadastro profissional ainda está pendente. Procure pelo e-mail "Confirme seu cadastro" enviado para ${displayEmail} e finalize a confirmação para acessar o portal.`,
+                "error",
+              );
+              clearSession();
+              try {
+                await signOut(auth);
+              } catch (signOutError) {
+                console.warn("Não foi possível encerrar a sessão pendente", signOutError);
+              }
+              return;
+            }
             persistSession(profile, user);
           }
           setStatus("Você já está conectada! Redirecionando para o portal...", "success");
