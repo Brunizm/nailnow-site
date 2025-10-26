@@ -47,7 +47,14 @@
       signInWithEmailAndPassword,
       signOut,
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      serverTimestamp,
+      collection,
+      addDoc,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     // 🔧 Config do seu projeto
@@ -64,6 +71,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
     const storage = getStorage(app);
     const CONFIRMATION_ENDPOINT =
       "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
@@ -141,6 +149,95 @@
       }
     }
 
+    async function solicitarConfirmacao(profilePath) {
+      try {
+        const response = await fetch(REQUEST_CONFIRMATION_URL, {
+          method: "POST",
+          mode: "cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile: profilePath }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "");
+          throw new Error(`request-failed-${response.status}-${errorText}`);
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        return payload || {};
+      } catch (error) {
+        console.error("Falha ao solicitar e-mail de confirmação", error);
+        throw error;
+      }
+    }
+
+    async function enfileirarEmailConfirmacao(mailPayload, profilePath, collectionName, uid, fallback = {}) {
+      const basePayload = mailPayload && typeof mailPayload === "object" ? mailPayload : {};
+      const confirmedEmail =
+        Array.isArray(basePayload.to) && basePayload.to.length > 0
+          ? basePayload.to.find((value) => typeof value === "string" && value.trim())
+          : null;
+      const fallbackEmail = typeof fallback.email === "string" ? fallback.email.trim().toLowerCase() : "";
+
+      const to = confirmedEmail ? [confirmedEmail.trim().toLowerCase()] : fallbackEmail ? [fallbackEmail] : [];
+
+      if (to.length === 0 || !fallback.confirmationUrl) {
+        return null;
+      }
+
+      const message =
+        basePayload.message && typeof basePayload.message === "object"
+          ? basePayload.message
+          : buildConfirmationMailContent({
+              name: fallback.name,
+              role: fallback.role,
+              confirmationUrl: fallback.confirmationUrl,
+            });
+
+      const payload = {
+        ...basePayload,
+        to,
+        from:
+          basePayload.from && typeof basePayload.from === "string" && basePayload.from.trim()
+            ? basePayload.from
+            : SUPPORT_SENDER,
+        message: {
+          subject: message.subject,
+          text: message.text,
+          html: message.html,
+        },
+        metadata: {
+          ...(basePayload.metadata || {}),
+          source: "web-client",
+          queuedBy: "web-client",
+          profilePath,
+          profileCollection: collectionName,
+          role: fallback.role,
+          name: fallback.name || null,
+          confirmationUrl: fallback.confirmationUrl,
+          confirmationToken: fallback.token || null,
+        },
+      };
+
+      try {
+        const mailRef = await addDoc(collection(db, "mail"), payload);
+        await setDoc(
+          doc(db, collectionName, uid),
+          {
+            confirmationMailId: mailRef.id,
+            confirmationMailQueuedAt: serverTimestamp(),
+            confirmationMailQueuedBy: "web-client",
+          },
+          { merge: true },
+        );
+
+        return mailRef.id;
+      } catch (error) {
+        console.error("Falha ao enfileirar e-mail de confirmação", error);
+        return null;
+      }
+    }
+
     async function enviarCadastro(event) {
       event.preventDefault();
       console.log(">> enviarCadastro DISPAROU");
@@ -201,6 +298,19 @@
 
         // 3) Firestore
         console.log(">> Gravando no Firestore…");
+        let mailDocId = null;
+        if (isNew) {
+          try {
+            mailDocId = await queueWelcomeEmail({
+              email,
+              nome,
+              profilePath: `profissionais/${uid}`,
+            });
+          } catch (queueError) {
+            console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
+          }
+        }
+
         const payload = {
           nome,
           email,
@@ -211,6 +321,7 @@
           updatedAt: serverTimestamp(),
         };
 
+        let welcomeEmailQueued = null;
         if (isNew) {
           payload.createdAt = serverTimestamp();
           payload.status = "pendente";
@@ -226,6 +337,10 @@
           payload.fotoUrl = fotoUrl;
         }
 
+        let confirmationQueued = false;
+        let queueStatus = "not-requested";
+
+        const profilePath = `profissionais/${uid}`;
         await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
         console.log(">> Firestore OK");
 

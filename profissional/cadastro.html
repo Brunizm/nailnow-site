@@ -143,11 +143,21 @@
       }
       async function safeSignOut() {
         try {
-          if (auth.currentUser) {
-            await signOut(auth);
-          }
+          const mailRef = await addDoc(collection(db, "mail"), payload);
+          await setDoc(
+            doc(db, collectionName, uid),
+            {
+              confirmationMailId: mailRef.id,
+              confirmationMailQueuedAt: serverTimestamp(),
+              confirmationMailQueuedBy: "web-client",
+            },
+            { merge: true },
+          );
+
+          return mailRef.id;
         } catch (error) {
-          console.warn("Não foi possível encerrar a sessão após o cadastro", error);
+          console.error("Falha ao enfileirar e-mail de confirmação", error);
+          return null;
         }
       }
 
@@ -211,6 +221,8 @@
           let confirmationResult = null;
           let confirmationError = null;
 
+          btn.textContent = "Finalizando cadastro…";
+
           const payload = {
             uid,
             nome,
@@ -239,6 +251,10 @@
             };
           }
 
+          let confirmationQueued = false;
+          let queueStatus = "not-requested";
+
+          const profilePath = `profissionais/${uid}`;
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
           if (isNew) {
