@@ -311,6 +311,32 @@
         return "";
       };
 
+      const CONFIRMED_STATUS_VALUES = new Set([
+        "confirmado",
+        "confirmada",
+        "confirmed",
+        "ativo",
+        "ativa",
+        "aprovado",
+        "aprovada",
+        "active",
+      ]);
+
+      const isProfileConfirmed = (profile) => {
+        const statusValue = (resolveStatusValue(profile) || "").toLowerCase();
+        const confirmationStatus = (profile.signupConfirmation?.status || "").toLowerCase();
+
+        if (CONFIRMED_STATUS_VALUES.has(statusValue)) {
+          return true;
+        }
+
+        if (CONFIRMED_STATUS_VALUES.has(confirmationStatus)) {
+          return true;
+        }
+
+        return false;
+      };
+
       const persistSession = (profile, user) => {
         const payload = {
           uid: user?.uid || profile.uid || "",
@@ -491,6 +517,19 @@
       const ensureAuthForUser = async (user, emailHint = "") => {
         setStatus("Validando seus dados...");
         const profile = await resolveProfileForUser(user, emailHint);
+        if (!isProfileConfirmed(profile)) {
+          const displayEmail = emailHint || profile.email || profile.emailLowercase || user?.email || "seu e-mail";
+          setStatus(
+            `Seu cadastro ainda está pendente. Procure pelo e-mail "Confirme seu cadastro" enviado para ${displayEmail} e finalize a confirmação para acessar o portal.`,
+            "error",
+          );
+          try {
+            await signOut(auth);
+          } catch (signOutError) {
+            console.warn("Não foi possível encerrar a sessão após detectar status pendente", signOutError);
+          }
+          return;
+        }
         persistSession(profile, user);
         setStatus("Tudo certo! Redirecionando...", "success");
         submitButton.disabled = true;
