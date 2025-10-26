@@ -59,6 +59,8 @@
         doc,
         setDoc,
         serverTimestamp,
+        collection,
+        addDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -123,6 +125,45 @@
         } catch (error) {
           console.error("Falha ao solicitar e-mail de confirmação", error);
           throw error;
+        }
+      }
+
+      function normalizarDestinatarios(valor) {
+        if (!valor) return [];
+        if (Array.isArray(valor)) {
+          return valor.map((item) => `${item}`.trim()).filter(Boolean);
+        }
+        return [`${valor}`.trim()].filter(Boolean);
+      }
+
+      async function queueWelcomeEmail(mailPayload) {
+        try {
+          if (!mailPayload || typeof mailPayload !== "object") {
+            throw new Error("mail-payload-invalido");
+          }
+
+          const to = normalizarDestinatarios(mailPayload.to);
+          if (!to.length) {
+            throw new Error("mail-sem-destinatario");
+          }
+
+          const message = mailPayload.message || {};
+          if (!message.subject && !message.templateId) {
+            throw new Error("mail-sem-assunto");
+          }
+
+          const payload = {
+            ...mailPayload,
+            to,
+            message,
+            from: mailPayload.from || "NailNow <suporte@nailnow.app>",
+          };
+
+          const docRef = await addDoc(collection(db, "mail"), payload);
+          return docRef.id;
+        } catch (error) {
+          console.error("Falha ao criar fallback do e-mail de confirmação", error);
+          return null;
         }
       }
 
@@ -220,6 +261,8 @@
           }
 
           let confirmationQueued = false;
+          let mailPayload = null;
+          let mailDocId = null;
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
@@ -227,8 +270,19 @@
             try {
               const result = await solicitarConfirmacao(`clientes/${uid}`);
               confirmationQueued = ["queued", "already-queued"].includes(result?.status);
+              if (result?.mailPayload) {
+                mailPayload = result.mailPayload;
+              }
             } catch (error) {
               confirmationQueued = false;
+            }
+          }
+
+          if (isNew && !confirmationQueued && mailPayload) {
+            mailDocId = await queueWelcomeEmail(mailPayload);
+            confirmationQueued = Boolean(mailDocId);
+            if (mailDocId) {
+              console.info("E-mail de confirmação enfileirado via fallback", mailDocId);
             }
           }
 
