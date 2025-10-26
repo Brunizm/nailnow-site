@@ -73,6 +73,8 @@
     const db = getFirestore(app);
     const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
     const storage = getStorage(app);
+    const REQUEST_CONFIRMATION_URL =
+      "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
 
     const APP_URL = "https://www.nailnow.app";
     const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
@@ -148,41 +150,24 @@
       }
     }
 
-    function buildWelcomeEmail(nome) {
-      const safeName = nome?.trim() || "Profissional";
-      return {
-        subject: "Bem-vinda ao NailNow 💅",
-        text: `Olá, ${safeName}! Seu cadastro profissional foi recebido pela NailNow.`,
-        html: [
-          `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos o seu cadastro profissional na NailNow.</p>`,
-          '<p>Nossa equipe revisará suas informações e entraremos em contato pelo e-mail cadastrado.</p>',
-        ].join(""),
-      };
-    }
-
-    async function enqueueWelcomeEmail({ uid, nome, email }) {
-      const trimmedEmail = email?.trim().toLowerCase();
-      if (!trimmedEmail) {
-        console.warn("Cadastro profissional sem email válido para boas-vindas");
-        return null;
-      }
-
+    async function solicitarConfirmacao(profilePath) {
       try {
-        const mailRef = await addDoc(collection(db, "mail"), {
-          to: [trimmedEmail],
-          from: SUPPORT_EMAIL,
-          message: buildWelcomeEmail(nome),
-          metadata: {
-            role: "profissional",
-            source: "profissional-cadastro-form",
-            profileId: uid,
-            profileCollection: "profissionais",
-          },
+        const response = await fetch(REQUEST_CONFIRMATION_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile: profilePath }),
         });
-        return mailRef.id;
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "");
+          throw new Error(`request-failed-${response.status}-${errorText}`);
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        return payload || {};
       } catch (error) {
-        console.error("Falha ao enfileirar e-mail profissional", error);
-        return null;
+        console.error("Falha ao solicitar e-mail de confirmação", error);
+        throw error;
       }
     }
 
@@ -279,30 +264,29 @@
           payload.fotoUrl = fotoUrl;
         }
 
+        let confirmationQueued = false;
+
         await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
         console.log(">> Firestore OK");
 
-        // 4) Cria documento na coleção mail para disparar e-mail de boas-vindas
-        try {
-          await addDoc(collection(db, "mail"), {
-            to: [email],
-            message: {
-              subject: "Bem-vinda ao NailNow 💅",
-              text: `Olá, ${nome}! Seu cadastro foi realizado com sucesso no NailNow.`,
-              html: `<p>Olá, <strong>${nome}</strong>! 💖 Seu cadastro foi realizado com sucesso no NailNow.</p>`
-            },
-          });
-          console.log(">> Documento mail criado para envio de boas-vindas");
-        } catch (mailError) {
-          console.error("Falha ao criar documento na coleção mail:", mailError);
+        if (isNew) {
+          try {
+            const result = await solicitarConfirmacao(`profissionais/${uid}`);
+            confirmationQueued = ["queued", "already-queued"].includes(result?.status);
+          } catch (error) {
+            confirmationQueued = false;
+          }
         }
 
-        // 5) Sair (opcional)
+        // 4) Sair (opcional)
         await signOut(auth);
 
         alert(
           isNew
-            ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso ao portal profissional."
+            ? confirmationQueued
+              ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso ao portal profissional."
+              :
+                "✅ Cadastro enviado! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
             : "✅ Dados profissionais atualizados!",
         );
         $("cadastroForm").reset();

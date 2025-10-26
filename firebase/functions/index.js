@@ -183,17 +183,22 @@ async function persistSignupState(snap, data, role) {
   };
 }
 
-async function handleProfileCreation(snap, context, role) {
+async function queueConfirmationForSnapshot(snap, role, sourcePath, queuedBy) {
   const data = snap.data() || {};
 
   if (data.welcomeEmailMailId || data.welcomeEmailQueuedBy) {
-    functions.logger.info("Boas-vindas já enfileiradas no momento da criação", {
+    functions.logger.info("Boas-vindas já enfileiradas", {
       role,
-      sourcePath: context.resource?.name,
+      sourcePath,
       welcomeEmailMailId: data.welcomeEmailMailId,
       welcomeEmailQueuedBy: data.welcomeEmailQueuedBy,
     });
-    return null;
+
+    return {
+      status: "already-queued",
+      mailDocumentId: data.welcomeEmailMailId || null,
+      confirmationUrl: data.signupConfirmation?.confirmationUrl || null,
+    };
   }
 
   const email = data.email || data.contatoEmail || "";
@@ -208,7 +213,7 @@ async function handleProfileCreation(snap, context, role) {
       email,
       name,
       role,
-      sourcePath: context.resource?.name,
+      sourcePath,
       profileId: snap.id,
       profilePath: snap.ref.path,
       message: buildConfirmationMessage({ name, role, confirmationUrl }),
@@ -216,6 +221,7 @@ async function handleProfileCreation(snap, context, role) {
         emailType: "confirmation",
         confirmationUrl,
         confirmationToken: signupConfirmation.token,
+        requestedBy: queuedBy,
       },
     });
 
@@ -223,16 +229,27 @@ async function handleProfileCreation(snap, context, role) {
       await snap.ref.set(
         {
           welcomeEmailQueuedAt: FieldValue.serverTimestamp(),
-          welcomeEmailQueuedBy: "cloud-function",
+          welcomeEmailQueuedBy: queuedBy,
           welcomeEmailMailId: mailDocId,
+          signupConfirmation: {
+            ...signupConfirmation,
+            confirmationUrl,
+          },
         },
         { merge: true },
       );
     }
+
+    return {
+      status: mailDocId ? "queued" : "skipped",
+      mailDocumentId: mailDocId || null,
+      confirmationUrl,
+    };
   } catch (error) {
     functions.logger.error("Falha ao enfileirar boas-vindas", {
       role,
-      sourcePath: context.resource?.name,
+      sourcePath,
+      queuedBy,
       error: error?.message,
     });
 
@@ -248,6 +265,22 @@ async function handleProfileCreation(snap, context, role) {
 
     throw error;
   }
+}
+
+async function handleProfileCreation(snap, context, role) {
+  return queueConfirmationForSnapshot(snap, role, context.resource?.name, "firestore-trigger");
+}
+
+async function queueConfirmationByRef(docRef, role, sourcePath, queuedBy) {
+  const snap = await docRef.get();
+
+  if (!snap.exists) {
+    const error = new Error("profile-not-found");
+    error.code = "profile-not-found";
+    throw error;
+  }
+
+  return queueConfirmationForSnapshot(snap, role, sourcePath, queuedBy);
 }
 
 exports.queueClienteWelcomeEmail = functions
@@ -445,6 +478,78 @@ exports.verifySignupConfirmation = functions
         profilePath,
         error: error?.message,
       });
+      res.status(500).json({ error: "internal-error" });
+    }
+  });
+
+exports.requestSignupConfirmation = functions
+  .region("southamerica-east1")
+  .https.onRequest(async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+
+    if (req.method !== "POST" && req.method !== "GET") {
+      res.status(405).json({ error: "method-not-allowed" });
+      return;
+    }
+
+    const payload = req.method === "POST" ? req.body || {} : req.query || {};
+    const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
+
+    if (!rawProfile) {
+      res.status(400).json({ error: "missing-profile" });
+      return;
+    }
+
+    const profilePath = decodeURIComponent(rawProfile);
+    const parts = profilePath.split("/");
+
+    if (parts.length !== 2) {
+      res.status(400).json({ error: "invalid-profile-path" });
+      return;
+    }
+
+    const [collection, documentId] = parts;
+    const mapping = CONFIRMATION_COLLECTIONS[collection];
+
+    if (!mapping) {
+      res.status(400).json({ error: "unsupported-profile" });
+      return;
+    }
+
+    try {
+      const docRef = firestore.collection(collection).doc(documentId);
+      const result = await queueConfirmationByRef(
+        docRef,
+        mapping.role,
+        `requestSignupConfirmation:${profilePath}`,
+        "requestSignupConfirmation",
+      );
+
+      res.status(200).json({
+        status: result.status,
+        mailDocumentId: result.mailDocumentId,
+        confirmationUrl: result.confirmationUrl,
+      });
+    } catch (error) {
+      const errorCode = error?.code || error?.message;
+
+      if (errorCode === "profile-not-found") {
+        res.status(404).json({ error: "profile-not-found" });
+        return;
+      }
+
+      functions.logger.error("Falha ao solicitar confirmação", {
+        profilePath,
+        error: error?.message,
+      });
+
       res.status(500).json({ error: "internal-error" });
     }
   });

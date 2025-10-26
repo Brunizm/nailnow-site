@@ -13,8 +13,8 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 - O perfil confirmado recebe os campos `postConfirmationEmailMailId`, `postConfirmationEmailQueuedAt` e `postConfirmationEmailQueuedBy` (ou `postConfirmationEmailError` em caso de falha), facilitando auditoria.
 - Se o documento já possuir `welcomeEmailMailId`/`welcomeEmailQueuedBy` (por exemplo, porque o formulário web conseguiu criar o documento em `mail`), a função apenas registra o evento e evita duplicar o envio.
 
-> 💡 Os formulários web da NailNow já tentam gravar diretamente na coleção `mail`.
-> As funções atuam como garantia extra para que o e-mail seja enfileirado mesmo quando as regras de segurança bloquearem a gravação pelo navegador.
+> 💡 Os formulários web da NailNow chamam o endpoint HTTPS `requestSignupConfirmation` logo após salvar o cadastro.
+> Esse endpoint dispara a mesma lógica das funções `onCreate`, garantindo que o documento seja criado na coleção `mail` mesmo se o gatilho de Firestore ainda não tiver sido atualizado no ambiente de produção.
 
 ## Passo a passo para deploy
 
@@ -55,10 +55,21 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 
    Em poucos segundos a função `queueClienteWelcomeEmail` criará um documento em `mail` contendo o e-mail de confirmação.
 
+   Se preferir acionar manualmente o mesmo fluxo que o formulário usa, faça uma requisição HTTP para a função `requestSignupConfirmation`:
+
+   ```bash
+   curl -X POST \
+     -H "Content-Type: application/json" \
+     -d '{"profile": "clientes/<ID>"}' \
+     https://southamerica-east1-<seu-projeto>.cloudfunctions.net/requestSignupConfirmation
+   ```
+
+   Substitua `<seu-projeto>` e `<ID>` pelos valores reais. A resposta indicará se o documento foi enfileirado (`queued`), reaproveitado (`already-queued`) ou se ocorreu algum erro.
+
 2. Copie o `signupConfirmation.token` salvo no documento do cliente e acesse:
 
    ```text
-   https://us-central1-<seu-projeto>.cloudfunctions.net/verifySignupConfirmation?profile=clientes/<ID>&token=<TOKEN>
+   https://southamerica-east1-<seu-projeto>.cloudfunctions.net/verifySignupConfirmation?profile=clientes/<ID>&token=<TOKEN>
    ```
 
    (Troque `<seu-projeto>`, `<ID>` e `<TOKEN>` pelos valores reais.)
