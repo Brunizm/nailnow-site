@@ -76,40 +76,6 @@
     const REQUEST_CONFIRMATION_URL =
       "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
 
-    const APP_URL = "https://www.nailnow.app";
-    const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
-    const MAIL_COLLECTION = "mail";
-
-    function buildWelcomeMessage(nome) {
-      const safeName = nome?.trim() || "Profissional";
-      return {
-        subject: "Bem-vinda ao NailNow 💅",
-        text: `Olá, ${safeName}! Seu cadastro profissional foi recebido pela NailNow.`,
-        html: [
-          `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro profissional na NailNow.</p>`,
-          `<p>Agora você pode acompanhar sua conta em <a href="${APP_URL}">${APP_URL}</a>.</p>`,
-        ].join(""),
-      };
-    }
-
-    async function queueWelcomeEmail({ email, nome, profilePath }) {
-      const trimmedEmail = email?.trim();
-      if (!trimmedEmail) return null;
-
-      const mailRef = await addDoc(collection(db, MAIL_COLLECTION), {
-        to: [trimmedEmail],
-        from: SUPPORT_SENDER,
-        message: buildWelcomeMessage(nome),
-        metadata: {
-          role: "profissional",
-          source: "web",
-          profilePath,
-        },
-      });
-
-      return mailRef.id;
-    }
-
     // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
 
@@ -168,6 +134,41 @@
       } catch (error) {
         console.error("Falha ao solicitar e-mail de confirmação", error);
         throw error;
+      }
+    }
+
+    async function enfileirarEmailConfirmacao(mailPayload, profilePath, collectionName, uid) {
+      if (!mailPayload || !Array.isArray(mailPayload.to) || mailPayload.to.length === 0) {
+        return null;
+      }
+
+      try {
+        const payload = {
+          ...mailPayload,
+          metadata: {
+            ...(mailPayload.metadata || {}),
+            source: "web-client",
+            queuedBy: "web-client",
+            profilePath,
+            profileCollection: collectionName,
+          },
+        };
+
+        const mailRef = await addDoc(collection(db, "mail"), payload);
+        await setDoc(
+          doc(db, collectionName, uid),
+          {
+            welcomeEmailMailId: mailRef.id,
+            welcomeEmailQueuedAt: serverTimestamp(),
+            welcomeEmailQueuedBy: "web-client",
+          },
+          { merge: true },
+        );
+
+        return mailRef.id;
+      } catch (error) {
+        console.error("Falha ao enfileirar e-mail de confirmação", error);
+        return null;
       }
     }
 
@@ -266,13 +267,19 @@
 
         let confirmationQueued = false;
 
+        const profilePath = `profissionais/${uid}`;
         await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
         console.log(">> Firestore OK");
 
         if (isNew) {
           try {
-            const result = await solicitarConfirmacao(`profissionais/${uid}`);
-            confirmationQueued = ["queued", "already-queued"].includes(result?.status);
+            const result = await solicitarConfirmacao(profilePath);
+            if (result?.status === "prepared" && result.mailPayload) {
+              const mailId = await enfileirarEmailConfirmacao(result.mailPayload, profilePath, "profissionais", uid);
+              confirmationQueued = Boolean(mailId);
+            } else {
+              confirmationQueued = false;
+            }
           } catch (error) {
             confirmationQueued = false;
           }

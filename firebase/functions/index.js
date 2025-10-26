@@ -46,82 +46,45 @@ function buildConfirmationMessage({ name, role, confirmationUrl }) {
   return { subject, text, html };
 }
 
-function buildPostConfirmationMessage({ name, role }) {
-  const safeName = (name || (role === "profissional" ? "Profissional" : "Cliente")).trim();
-  const roleLabel = role === "profissional" ? "profissional" : "cliente";
-  const loginPath = ROLE_LOGIN_PATH[role] || "/";
-  const loginUrl = `${APP_URL}${loginPath}`;
-  const subject = "Bem-vindo(a) ao NailNow 💜";
-  const text = [
-    `Olá, ${safeName}!`,
-    `Sua conta como ${roleLabel} no NailNow foi confirmada com sucesso.`,
-    "Agora você já pode acessar o portal e aproveitar todos os benefícios da plataforma.",
-    `Acesse: ${loginUrl}`,
-    "Estamos muito felizes por ter você com a gente!",
-    "Com carinho, equipe NailNow",
-  ].join("\n\n");
-
-  const html = [
-    `<p>Olá, <strong>${safeName}</strong>! 💜 Sua conta como ${roleLabel} no NailNow foi confirmada com sucesso.</p>`,
-    "<p>Agora você já pode acessar o portal e aproveitar todos os benefícios da plataforma.</p>",
-    `<p style="margin: 24px 0;"><a href="${loginUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Acessar o portal</a></p>`,
-    `<p>Se o botão não funcionar, copie e cole este link no navegador:<br /><span style=\"word-break:break-all;\">${loginUrl}</span></p>`,
-    "<p>Estamos muito felizes por ter você com a gente!</p>",
-    "<p>Com carinho, equipe NailNow 💅</p>",
-  ].join("");
-
-  return { subject, text, html, loginUrl };
-}
-
-async function enqueueMailDocument({
+function buildConfirmationMailPayload({
   email,
   name,
   role,
+  confirmationUrl,
+  confirmationToken,
   sourcePath,
   profileId,
   profilePath,
-  message,
-  metadata = {},
+  requestedBy,
 }) {
   if (!email) {
-    functions.logger.warn("Ignorando envio de email: documento sem email", { role, sourcePath });
     return null;
   }
 
   const trimmedEmail = email.trim();
   if (!trimmedEmail) {
-    functions.logger.warn("Ignorando envio de email: endereço vazio após trim", { role, sourcePath });
     return null;
   }
 
-  if (!message || typeof message !== "object") {
-    functions.logger.warn("Ignorando envio de email: mensagem ausente", { role, sourcePath });
-    return null;
-  }
+  const message = buildConfirmationMessage({ name, role, confirmationUrl });
 
-  const payload = {
+  return {
     to: [trimmedEmail],
     from: SUPPORT_SENDER,
     message,
     metadata: {
       role,
-      source: "cloud-function",
+      source: requestedBy || "cloud-function",
       profileId: profileId || null,
       profilePath: profilePath || null,
       sourcePath: sourcePath || null,
+      confirmationUrl,
+      confirmationToken,
+      emailType: "confirmation",
+      requestedBy: requestedBy || null,
       name: name || null,
-      emailType: metadata.emailType || "unspecified",
-      ...metadata,
     },
   };
-
-  const ref = await firestore.collection("mail").add(payload);
-  functions.logger.info("Documento mail criado para boas-vindas", {
-    role,
-    sourcePath,
-    mailDocumentId: ref.id,
-  });
-  return ref.id;
 }
 
 function ensureSignupConfirmation(data, role) {
@@ -185,22 +148,6 @@ async function persistSignupState(snap, data, role) {
 
 async function queueConfirmationForSnapshot(snap, role, sourcePath, queuedBy) {
   const data = snap.data() || {};
-
-  if (data.welcomeEmailMailId || data.welcomeEmailQueuedBy) {
-    functions.logger.info("Boas-vindas já enfileiradas", {
-      role,
-      sourcePath,
-      welcomeEmailMailId: data.welcomeEmailMailId,
-      welcomeEmailQueuedBy: data.welcomeEmailQueuedBy,
-    });
-
-    return {
-      status: "already-queued",
-      mailDocumentId: data.welcomeEmailMailId || null,
-      confirmationUrl: data.signupConfirmation?.confirmationUrl || null,
-    };
-  }
-
   const email = data.email || data.contatoEmail || "";
   const name = data.nome || data.name || data.displayName || "";
 
@@ -209,44 +156,56 @@ async function queueConfirmationForSnapshot(snap, role, sourcePath, queuedBy) {
     data.signupConfirmation = signupConfirmation;
 
     const confirmationUrl = buildConfirmationUrl(snap.ref.path, signupConfirmation.token);
-    const mailDocId = await enqueueMailDocument({
+    const mailPayload = buildConfirmationMailPayload({
       email,
       name,
       role,
+      confirmationUrl,
+      confirmationToken: signupConfirmation.token,
       sourcePath,
       profileId: snap.id,
       profilePath: snap.ref.path,
-      message: buildConfirmationMessage({ name, role, confirmationUrl }),
-      metadata: {
-        emailType: "confirmation",
-        confirmationUrl,
-        confirmationToken: signupConfirmation.token,
-        requestedBy: queuedBy,
-      },
+      requestedBy: queuedBy,
     });
 
-    if (mailDocId) {
-      await snap.ref.set(
-        {
-          welcomeEmailQueuedAt: FieldValue.serverTimestamp(),
-          welcomeEmailQueuedBy: queuedBy,
-          welcomeEmailMailId: mailDocId,
-          signupConfirmation: {
-            ...signupConfirmation,
-            confirmationUrl,
-          },
+    await snap.ref.set(
+      {
+        signupConfirmation: {
+          ...signupConfirmation,
+          confirmationUrl,
+          preparedBy: queuedBy,
+          preparedAt: FieldValue.serverTimestamp(),
         },
-        { merge: true },
-      );
+      },
+      { merge: true },
+    );
+
+    if (!mailPayload) {
+      functions.logger.warn("Confirmação preparada sem email disponível", {
+        role,
+        sourcePath,
+        queuedBy,
+      });
+      return {
+        status: "missing-email",
+        confirmationUrl,
+        mailPayload: null,
+      };
     }
 
+    functions.logger.info("Confirmação preparada", {
+      role,
+      sourcePath,
+      queuedBy,
+    });
+
     return {
-      status: mailDocId ? "queued" : "skipped",
-      mailDocumentId: mailDocId || null,
+      status: "prepared",
       confirmationUrl,
+      mailPayload,
     };
   } catch (error) {
-    functions.logger.error("Falha ao enfileirar boas-vindas", {
+    functions.logger.error("Falha ao preparar confirmação", {
       role,
       sourcePath,
       queuedBy,
@@ -412,62 +371,6 @@ exports.verifySignupConfirmation = functions
         role: mapping.role,
       });
 
-      let postConfirmationMailId = profileData.postConfirmationEmailMailId;
-      if (!postConfirmationMailId) {
-        try {
-          const email = profileData.email || profileData.contatoEmail || "";
-          const name = profileData.nome || profileData.name || profileData.displayName || "";
-          if (!email) {
-            functions.logger.warn("Perfil confirmado sem email cadastrado", {
-              profilePath,
-              role: mapping.role,
-            });
-          } else {
-            const messagePayload = buildPostConfirmationMessage({ name, role: mapping.role });
-            const { loginUrl, ...message } = messagePayload;
-            postConfirmationMailId = await enqueueMailDocument({
-              email,
-              name,
-              role: mapping.role,
-              sourcePath: `verifySignupConfirmation:${profilePath}`,
-              profileId: documentId,
-              profilePath,
-              message,
-              metadata: {
-                emailType: "post-confirmation",
-                loginUrl,
-              },
-            });
-
-            if (postConfirmationMailId) {
-              await docRef.set(
-                {
-                  postConfirmationEmailQueuedAt: FieldValue.serverTimestamp(),
-                  postConfirmationEmailQueuedBy: "verifySignupConfirmation",
-                  postConfirmationEmailMailId: postConfirmationMailId,
-                },
-                { merge: true },
-              );
-            }
-          }
-        } catch (emailError) {
-          functions.logger.error("Falha ao enviar email pós-confirmação", {
-            profilePath,
-            role: mapping.role,
-            error: emailError?.message,
-          });
-          await docRef.set(
-            {
-              postConfirmationEmailError: {
-                message: emailError?.message || "unknown-error",
-                timestamp: FieldValue.serverTimestamp(),
-              },
-            },
-            { merge: true },
-          );
-        }
-      }
-
       res.status(200).json({
         status: "confirmed",
         role: mapping.role,
@@ -534,8 +437,8 @@ exports.requestSignupConfirmation = functions
 
       res.status(200).json({
         status: result.status,
-        mailDocumentId: result.mailDocumentId,
         confirmationUrl: result.confirmationUrl,
+        mailPayload: result.mailPayload || null,
       });
     } catch (error) {
       const errorCode = error?.code || error?.message;

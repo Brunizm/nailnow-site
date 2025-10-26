@@ -1,20 +1,16 @@
-# Funções Firebase para fila de e-mails
+# Funções Firebase para confirmação de cadastro
 
-Este pacote contém Cloud Functions responsáveis por criar automaticamente os documentos na coleção `mail` do Firestore.
-Esses documentos acionam a extensão **Trigger Email from Firestore**, que então envia os e-mails de confirmação e boas-vindas via SendGrid.
+Este pacote contém Cloud Functions que gerenciam o estado de confirmação de contas e preparam as mensagens que serão disparadas pela extensão **Trigger Email from Firestore**.
 
 ## Como funciona
 
-- Monitora criações nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures`.
-- Quando um novo cadastro aparece, gera a mensagem de **confirmação de cadastro** com CTA para validar a conta e grava o documento na coleção `mail`.
-- Marca o cadastro original com `welcomeEmailQueuedAt`, `welcomeEmailQueuedBy` e o `welcomeEmailMailId` criado (aproveitando os mesmos campos já utilizados nos formulários web para evitar duplicidade).
-- Assim que a usuária acessa o link de confirmação, a função HTTPS `verifySignupConfirmation` altera o status do perfil para `confirmado` e cria um segundo documento em `mail` com o e-mail de **boas-vindas/liberação de acesso**.
-- Cada mensagem criada segue o formato exigido pela extensão (`to` como array, `from` como string no formato `Nome <email>` e `message` contendo `subject`, `text` e `html`).
-- O perfil confirmado recebe os campos `postConfirmationEmailMailId`, `postConfirmationEmailQueuedAt` e `postConfirmationEmailQueuedBy` (ou `postConfirmationEmailError` em caso de falha), facilitando auditoria.
-- Se o documento já possuir `welcomeEmailMailId`/`welcomeEmailQueuedBy` (por exemplo, porque o formulário web conseguiu criar o documento em `mail`), a função apenas registra o evento e evita duplicar o envio.
+- Monitora criações nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures` para garantir que todo perfil comece como `pendente` e receba um `signupConfirmation.token` único.
+- A função HTTPS `requestSignupConfirmation` consolida a mesma lógica do gatilho, retornando para o front-end o `confirmationUrl` e o `mailPayload` pronto para ser salvo na coleção `mail`.
+- Os formulários da NailNow chamam esse endpoint após gravar o cadastro e, com a resposta, criam o documento `mail` diretamente pelo SDK Web (`addDoc(collection(db, "mail"), mailPayload)`), definindo também `welcomeEmailMailId`, `welcomeEmailQueuedAt` e `welcomeEmailQueuedBy` no perfil correspondente.
+- A extensão Trigger Email from Firestore envia a mensagem de confirmação usando o payload salvo pelo front-end.
+- Quando a usuária acessa o link do e-mail, a função HTTPS `verifySignupConfirmation` valida o token e altera o status do perfil para `confirmado`. A confirmação é exibida na página `confirmar-cadastro.html`, dispensando um segundo e-mail.
 
-> 💡 Os formulários web da NailNow chamam o endpoint HTTPS `requestSignupConfirmation` logo após salvar o cadastro.
-> Esse endpoint dispara a mesma lógica das funções `onCreate`, garantindo que o documento seja criado na coleção `mail` mesmo se o gatilho de Firestore ainda não tiver sido atualizado no ambiente de produção.
+> 💡 Caso o gatilho `onCreate` ainda não tenha sido atualizado no ambiente, o endpoint `requestSignupConfirmation` garante que o token seja gerado e retornado ao front-end para montar o documento `mail` corretamente.
 
 ## Passo a passo para deploy
 
@@ -44,44 +40,24 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 
 ## Testando
 
-1. Crie manualmente um documento na coleção `clientes` (ou `profissionais`) com os campos mínimos:
+1. Cadastre um cliente (ou profissional) pelo site de homologação/produção.
+2. No Firestore, confirme que o perfil foi criado com `status: "pendente"` e um objeto `signupConfirmation` contendo `token`.
+3. Ainda no Firestore, abra a coleção `mail` e verifique se existe um documento recém-criado com `metadata.emailType = "confirmation"` e `metadata.profilePath` apontando para o cadastro.
+   - Caso não exista, use o endpoint manual para gerar o payload:
 
-   ```json
-   {
-     "nome": "Bruna Teste",
-     "email": "bruna@example.com"
-   }
-   ```
+     ```bash
+     curl -X POST \
+       -H "Content-Type: application/json" \
+       -d '{"profile": "clientes/<ID>"}' \
+       https://southamerica-east1-<seu-projeto>.cloudfunctions.net/requestSignupConfirmation
+     ```
 
-   Em poucos segundos a função `queueClienteWelcomeEmail` criará um documento em `mail` contendo o e-mail de confirmação.
-
-   Se preferir acionar manualmente o mesmo fluxo que o formulário usa, faça uma requisição HTTP para a função `requestSignupConfirmation`:
-
-   ```bash
-   curl -X POST \
-     -H "Content-Type: application/json" \
-     -d '{"profile": "clientes/<ID>"}' \
-     https://southamerica-east1-<seu-projeto>.cloudfunctions.net/requestSignupConfirmation
-   ```
-
-   Substitua `<seu-projeto>` e `<ID>` pelos valores reais. A resposta indicará se o documento foi enfileirado (`queued`), reaproveitado (`already-queued`) ou se ocorreu algum erro.
-
-2. Copie o `signupConfirmation.token` salvo no documento do cliente e acesse:
-
-   ```text
-   https://southamerica-east1-<seu-projeto>.cloudfunctions.net/verifySignupConfirmation?profile=clientes/<ID>&token=<TOKEN>
-   ```
-
-   (Troque `<seu-projeto>`, `<ID>` e `<TOKEN>` pelos valores reais.)
-
-   O endpoint mudará o status para `confirmado` e criará automaticamente um novo documento em `mail` com o e-mail de boas-vindas/liberação de acesso.
-
-3. A extensão enviará as duas mensagens e marcará cada documento `mail` como `delivered`/`sent` (pode levar até 1 minuto por mensagem).
-
-4. Para acompanhar os envios em tempo real, execute:
+     O JSON de resposta inclui `confirmationUrl` e `mailPayload`; salve esse payload com `addDoc(collection(db, "mail"), mailPayload)` para acionar a extensão.
+4. Abra o link de confirmação (`confirmationUrl`) em uma aba anônima. A função `verifySignupConfirmation` mudará o status para `confirmado`.
+5. Para acompanhar logs em tempo real, execute:
 
    ```bash
-   firebase functions:log --only queueClienteWelcomeEmail,queueProfessionalWelcomeEmail,verifySignupConfirmation
+   firebase functions:log --only queueClienteWelcomeEmail,queueProfessionalWelcomeEmail,verifySignupConfirmation,requestSignupConfirmation
    ```
 
 ## Como confirmar que o gatilho foi executado
@@ -95,9 +71,9 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
    - Acesse *Extensões → Trigger Email from Firestore → Executions*.
    - Ali você vê cada execução da extensão e eventuais erros (por exemplo, remetente não verificado ou template ausente).
 
-3. **Logs das Cloud Functions**
-   - Ainda em *Firebase → Functions*, abra os logs da função (`queueClienteWelcomeEmail`, `queueProfessionalWelcomeEmail` etc.).
-   - Procure mensagens como `Documento mail criado para boas-vindas` com o ID gerado; isso confirma que o gatilho disparou.
+  3. **Logs das Cloud Functions**
+     - Ainda em *Firebase → Functions*, abra os logs da função (`queueClienteWelcomeEmail`, `queueProfessionalWelcomeEmail` etc.).
+     - Procure mensagens como `Confirmação preparada` acompanhadas do `profilePath`; isso confirma que o token e o payload foram gerados com sucesso.
 
 4. **Linha de comando (opcional)**
    - Se preferir, rode:
@@ -110,8 +86,6 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 
 ## Estrutura
 
-- `index.js` — definição das Cloud Functions, utilitários para montar os e-mails de confirmação e boas-vindas e endpoint HTTPS de confirmação de cadastro.
+- `index.js` — definição das Cloud Functions, utilitários para montar os e-mails de confirmação e endpoint HTTPS de confirmação de cadastro.
 - `templates/confirmacao.html` — referência de template HTML que pode ser copiada para o SendGrid caso queira criar um template transacional.
 - `firebase.json` (na raiz do repositório) — aponta o diretório `firebase/functions` como origem do deploy.
-
-Depois do deploy, os cadastros criados pelos formulários da NailNow já terão o e-mail disparado automaticamente sem ações manuais.

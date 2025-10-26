@@ -59,6 +59,8 @@
         doc,
         setDoc,
         serverTimestamp,
+        collection,
+        addDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -117,6 +119,41 @@
         } catch (error) {
           console.error("Falha ao solicitar e-mail de confirmação", error);
           throw error;
+        }
+      }
+
+      async function enfileirarEmailConfirmacao(mailPayload, profilePath, collectionName, uid) {
+        if (!mailPayload || !Array.isArray(mailPayload.to) || mailPayload.to.length === 0) {
+          return null;
+        }
+
+        try {
+          const payload = {
+            ...mailPayload,
+            metadata: {
+              ...(mailPayload.metadata || {}),
+              source: "web-client",
+              queuedBy: "web-client",
+              profilePath,
+              profileCollection: collectionName,
+            },
+          };
+
+          const mailRef = await addDoc(collection(db, "mail"), payload);
+          await setDoc(
+            doc(db, collectionName, uid),
+            {
+              welcomeEmailMailId: mailRef.id,
+              welcomeEmailQueuedAt: serverTimestamp(),
+              welcomeEmailQueuedBy: "web-client",
+            },
+            { merge: true },
+          );
+
+          return mailRef.id;
+        } catch (error) {
+          console.error("Falha ao enfileirar e-mail de confirmação", error);
+          return null;
         }
       }
 
@@ -209,12 +246,18 @@
 
           let confirmationQueued = false;
 
+          const profilePath = `clientes/${uid}`;
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
           if (isNew) {
             try {
-              const result = await solicitarConfirmacao(`clientes/${uid}`);
-              confirmationQueued = ["queued", "already-queued"].includes(result?.status);
+              const result = await solicitarConfirmacao(profilePath);
+              if (result?.status === "prepared" && result.mailPayload) {
+                const mailId = await enfileirarEmailConfirmacao(result.mailPayload, profilePath, "clientes", uid);
+                confirmationQueued = Boolean(mailId);
+              } else {
+                confirmationQueued = false;
+              }
             } catch (error) {
               confirmationQueued = false;
             }
