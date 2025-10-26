@@ -72,6 +72,12 @@
         appId: "1:726392294571:web:a363a40231f7ac162e7bee",
       };
 
+      const FEEDBACK_COLORS = {
+        info: "#4527a0",
+        success: "#2e7d32",
+        error: "#c62828",
+      };
+
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
@@ -166,70 +172,90 @@
         const form = event.target;
         const btn = form.querySelector("button[type='submit']");
         const feedback = document.getElementById("signup-feedback");
-        feedback.textContent = "";
+        clearFeedback(feedback);
 
         try {
-          const nome = form.nome.value.trim();
-          const email = form.email.value.trim().toLowerCase();
+          const nome = sanitize(form.nome.value);
+          const email = sanitize(form.email.value).toLowerCase();
           const senha = form.senha.value;
           const confirmarSenha = form.confirmarSenha.value;
-          const telefone = form.telefone.value.trim();
-          const endereco = form.endereco_text.value.trim();
-          const complemento = form.complemento.value.trim();
-          const preferencias = [];
-          const newsletter = false;
+          const telefone = sanitize(form.telefone.value);
+          const endereco = sanitize(form.endereco_text.value);
+          const complemento = sanitize(form.complemento.value);
           const aceiteTermos = form.aceiteTermos.checked;
 
-          const endereco_formatado = form.endereco_formatado.value || "";
-          const place_id = form.place_id.value || "";
-          const lat = form.lat.value || "";
-          const lng = form.lng.value || "";
+          const endereco_formatado = sanitize(form.endereco_formatado.value);
+          const place_id = sanitize(form.place_id.value);
+          const lat = sanitize(form.lat.value);
+          const lng = sanitize(form.lng.value);
 
           if (!nome || !email || !senha || !confirmarSenha || !endereco) {
-            feedback.textContent = "Preencha os campos obrigatórios (*).";
-            feedback.style.color = "#c62828";
+            setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
             return;
           }
 
           if (senha !== confirmarSenha) {
-            feedback.textContent = "As senhas não coincidem.";
-            feedback.style.color = "#c62828";
+            setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
             form.confirmarSenha.focus();
             return;
           }
 
           if (!aceiteTermos) {
-            feedback.textContent = "É necessário aceitar os termos para continuar.";
-            feedback.style.color = "#c62828";
+            setFeedbackMessage(feedback, "❌ É necessário aceitar os termos para continuar.", "error");
             return;
           }
 
           btn.disabled = true;
+          btn.setAttribute("aria-busy", "true");
           btn.textContent = "Criando conta…";
+          setFeedbackMessage(feedback, "Validando seus dados…", "info");
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
+          btn.textContent = "Salvando cadastro…";
+
+          const profilePath = `clientes/${uid}`;
+          let confirmationQueued = false;
+          let confirmationError = null;
+
+          const profilePath = `clientes/${uid}`;
+          const confirmationToken = generateConfirmationToken();
+          const confirmationUrl = buildConfirmationUrl(profilePath, confirmationToken);
+
+          let mailDocId = null;
+
+          if (isNew) {
+            try {
+              mailDocId = await queueWelcomeEmail({
+                email,
+                nome,
+                profilePath: `clientes/${uid}`,
+              });
+            } catch (queueError) {
+              console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
+            }
+          }
 
           const payload = {
             uid,
             nome,
             email,
-            senha,
             telefone,
             endereco,
             complemento,
-            endereco_formatado,
-            place_id,
+            endereco_formatado: enderecoFormatado,
+            place_id: placeId,
             lat,
             lng,
-            preferencias,
-            newsletter,
-            aceiteTermos,
+            preferencias: [],
+            newsletter: false,
+            aceiteTermos: Boolean(aceiteTermos),
             atualizadoEm: serverTimestamp(),
           };
 
           let welcomeEmailQueued = null;
           if (isNew) {
+            payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
             payload.status = "pendente";
           }
@@ -265,33 +291,53 @@
               ? "✅ Conta criada! Verifique seu e-mail para confirmar o cadastro e liberar o acesso."
               : "✅ Conta criada! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
             : "✅ Dados atualizados!";
-          feedback.style.color = "#2e7d32";
+          setFeedbackMessage(feedback, successMessage, "success");
           form.reset();
-          form.querySelector("[name='aceiteTermos']").checked = false;
+          const termos = form.querySelector("[name='aceiteTermos']");
+          if (termos) {
+            termos.checked = false;
+          }
         } catch (error) {
           console.error(error);
-          if (error.code === "auth/wrong-password") {
-            feedback.textContent = "❌ Erro: A senha informada não confere com a conta existente.";
-          } else if (error.code === "auth/invalid-login-credentials") {
-            feedback.textContent = "❌ Erro: Não foi possível confirmar seus dados de acesso.";
-          } else {
-            feedback.textContent = `❌ Erro: ${error.code || "erro-desconhecido"}`;
-          }
-          feedback.style.color = "#c62828";
+          const code = error?.code || "erro-desconhecido";
+          const mensagemPorCodigo = {
+            "auth/email-already-in-use": "❌ Erro: Já existe uma conta com este e-mail. Utilize a mesma senha cadastrada anteriormente.",
+            "auth/invalid-email": "❌ Erro: Informe um e-mail válido para continuar.",
+            "auth/weak-password": "❌ Erro: Use uma senha com pelo menos 6 caracteres.",
+            "auth/wrong-password": "❌ Erro: A senha informada não confere com a conta existente.",
+            "auth/invalid-login-credentials": "❌ Erro: Não foi possível confirmar seus dados de acesso.",
+          };
+
+          const friendly = mensagemPorCodigo[code] ?? `❌ Erro: ${code}`;
+          setFeedbackMessage(feedback, friendly, "error");
         } finally {
           await safeSignOut();
-          btn.disabled = false;
-          btn.textContent = "Criar conta cliente";
+          if (btn) {
+            btn.disabled = false;
+            btn.removeAttribute("aria-busy");
+            btn.textContent = "Criar conta cliente";
+          }
         }
       }
 
-      window.cadastrarCliente = cadastrarCliente;
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("cadastroClienteForm");
+        if (!form) {
+          console.error("Formulário de cadastro de cliente não encontrado na página.");
+          return;
+        }
+
+        form.addEventListener("submit", cadastrarCliente);
+        form.setAttribute("novalidate", "novalidate");
+        form.setAttribute("action", "javascript:void(0);");
+        console.info("📄 Formulário de cadastro de cliente pronto para enviar dados ao Firebase.");
+      });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
-    <script src="/assets/js/menu-toggle.js" defer></script>
   </head>
 
   <body>
+    <div class="promo-banner">Clientes NailNow: agende profissionais verificadas com conforto e segurança.</div>
 
     <header class="site-header">
       <div class="header-inner">
@@ -299,20 +345,7 @@
           <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
-        <button
-          class="mobile-menu-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="site-navigation"
-        >
-          <span class="sr-only">Alternar menu</span>
-          <span class="mobile-menu-toggle__bars" aria-hidden="true">
-            <span class="mobile-menu-toggle__bar"></span>
-            <span class="mobile-menu-toggle__bar"></span>
-            <span class="mobile-menu-toggle__bar"></span>
-          </span>
-        </button>
-        <div class="header-navigation" id="site-navigation">
+        <div class="header-navigation">
           <nav class="primary-nav" aria-label="Principal">
             <a href="/" class="nav-link">Home</a>
             <a href="../como-funciona.html" class="nav-link">Como funciona</a>
@@ -359,7 +392,7 @@
           <div class="client-signup-card">
             <h2 class="client-signup-card__title">Comece agora</h2>
             <p class="client-signup-card__subtitle">Preencha seus dados para desbloquear ofertas e agendar sem filas.</p>
-            <form class="signup-form" onsubmit="cadastrarCliente(event)" autocomplete="off">
+            <form id="cadastroClienteForm" class="signup-form" autocomplete="off">
               <div class="signup-field">
                 <label for="nome">Nome completo *</label>
                 <input id="nome" name="nome" type="text" required />
@@ -448,7 +481,7 @@
                 </span>
               </label>
 
-              <button type="submit" class="signup-submit">Criar conta cliente</button>
+              <button id="signup-submit" type="submit" class="signup-submit">Criar conta cliente</button>
               <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
             </form>
           </div>

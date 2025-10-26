@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Confirme seu cadastro NailNow para liberar o acesso ao portal de clientes ou profissionais."
+    />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://www.nailnow.app/confirmar-cadastro.html" />
+    <meta property="og:site_name" content="NailNow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Confirmação de cadastro | NailNow" />
+    <meta
+      property="og:description"
+      content="Finalize a confirmação do seu cadastro NailNow para liberar o acesso ao portal."
+    />
+    <meta property="og:url" content="https://www.nailnow.app/confirmar-cadastro.html" />
+    <meta property="og:image" content="https://www.nailnow.app/assets/nail1.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Confirmação de cadastro | NailNow" />
+    <meta
+      name="twitter:description"
+      content="Finalize a confirmação do seu cadastro NailNow para liberar o acesso ao portal."
+    />
+    <meta name="twitter:image" content="https://www.nailnow.app/assets/nail1.png" />
+    <title>Confirmação de cadastro | NailNow</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "NailNow",
+        "url": "https://www.nailnow.app/",
+        "logo": "https://www.nailnow.app/assets/nailnow-logo.svg",
+        "sameAs": ["https://www.instagram.com/nailnowbr/"]
+      }
+    </script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
+          <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
+          <span class="brand-mark__text">NailNow</span>
+        </a>
+        <button class="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="site-navigation">
+          <span class="sr-only">Alternar menu</span>
+          <span class="mobile-menu-toggle__bars" aria-hidden="true">
+            <span class="mobile-menu-toggle__bar"></span>
+            <span class="mobile-menu-toggle__bar"></span>
+            <span class="mobile-menu-toggle__bar"></span>
+          </span>
+        </button>
+        <div class="header-navigation" id="site-navigation">
+          <nav class="primary-nav" aria-label="Principal">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/como-funciona.html" class="nav-link">Como funciona</a>
+            <a href="/servicos.html" class="nav-link">Serviços</a>
+          </nav>
+          <div class="header-actions">
+            <a href="/cliente/index.html" class="header-cta">Sou Cliente</a>
+            <a href="/profissional/index.html" class="header-cta">Sou Profissional</a>
+            <a
+              class="social-link social-link--instagram"
+              href="https://www.instagram.com/nailnowbr/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram da NailNow"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <section class="auth-layout" aria-labelledby="confirmation-heading">
+        <div class="auth-hero auth-hero--illustrated">
+          <p class="auth-kicker">Confirmação NailNow</p>
+          <h1 id="confirmation-heading">Estamos validando seu cadastro</h1>
+          <p class="auth-intro">
+            Por segurança, toda nova conta começa como pendente. Assim que você confirma o e-mail cadastrado, liberamos o acesso
+            completo ao portal de clientes ou profissionais.
+          </p>
+          <ul class="auth-benefits">
+            <li>Confirmação rápida em um clique, direto no seu e-mail.</li>
+            <li>Protegemos sua conta e evitamos cadastros não autorizados.</li>
+            <li>Após a confirmação, o login é liberado automaticamente.</li>
+          </ul>
+        </div>
+
+        <section class="auth-card" aria-live="polite">
+          <div class="auth-card__inner">
+            <p class="auth-kicker auth-card__kicker">Etapa final</p>
+            <h2>Validando seu link de confirmação</h2>
+            <p class="auth-card__hint">
+              Este processo pode levar alguns segundos. Você pode manter esta janela aberta até exibirmos o resultado.
+            </p>
+            <div id="confirmation-status" class="auth-status auth-status--info" role="status">
+              Validando informações…
+            </div>
+            <p id="confirmation-details" class="auth-card__hint"></p>
+            <div id="confirmation-actions" class="auth-actions auth-actions--stacked" hidden></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer" aria-label="Rodapé do site">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <img src="/assets/nailnow-logo.svg" alt="" class="footer-brand__logo" />
+          <p class="footer-brand__copy">Profissionais de beleza sob medida para seu dia com suporte NailNow.</p>
+        </div>
+        <div class="footer-column footer-links" aria-label="Links úteis">
+          <h3>Links rápidos</h3>
+          <a href="/cliente/index.html">Acesso cliente</a>
+          <a href="/profissional/index.html">Acesso profissional</a>
+          <a href="/faq.html">Perguntas frequentes</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Contato">
+          <h3>Suporte NailNow</h3>
+          <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
+        </div>
+        <div class="footer-column footer-links" aria-label="Termos e políticas">
+          <h3>Termos & políticas</h3>
+          <a href="#">Termos de uso</a>
+          <a href="#">Política de privacidade</a>
+          <a href="#">Cookies e preferências</a>
+        </div>
+      </div>
+      <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="/assets/js/menu-toggle.js" defer></script>
+    <script type="module">
+      const statusEl = document.getElementById("confirmation-status");
+      const detailsEl = document.getElementById("confirmation-details");
+      const actionsEl = document.getElementById("confirmation-actions");
+      const params = new URLSearchParams(window.location.search);
+      const profile = params.get("profile") || "";
+      const token = params.get("token") || "";
+      const APP_URL = "https://www.nailnow.app";
+      const FUNCTION_URL = "https://southamerica-east1-nailnow-site.cloudfunctions.net/verifySignupConfirmation";
+
+      const ERROR_MESSAGES = {
+        "missing-parameters": "O link de confirmação está incompleto. Solicite um novo e-mail de confirmação.",
+        "invalid-profile-path": "Não identificamos qual cadastro deve ser confirmado. Peça um novo link.",
+        "unsupported-profile": "Este link não corresponde a um cadastro de cliente ou profissional válido.",
+        "profile-not-found": "Não encontramos o cadastro relacionado a este link. Verifique se já foi removido ou cadastre-se novamente.",
+        "confirmation-missing": "Ainda não geramos um token de confirmação para este perfil. Aguarde alguns minutos e tente novamente.",
+        "invalid-token": "Este link de confirmação já foi utilizado ou está incorreto. Solicite um novo e-mail de confirmação.",
+        "internal-error": "Não foi possível validar o cadastro agora. Tente novamente em instantes.",
+      };
+
+      const setStatus = (type, message) => {
+        statusEl.textContent = message;
+        statusEl.classList.remove("auth-status--error", "auth-status--success", "auth-status--info");
+        statusEl.classList.add(`auth-status--${type}`);
+      };
+
+      const showActions = (loginUrl, role) => {
+        actionsEl.innerHTML = "";
+        const button = document.createElement("a");
+        button.className = "auth-link-button auth-link-button--primary";
+        button.href = loginUrl;
+        button.textContent = role === "profissional" ? "Ir para o portal profissional" : "Ir para o portal da cliente";
+        actionsEl.appendChild(button);
+        actionsEl.hidden = false;
+      };
+
+      const confirmSignup = async () => {
+        if (!profile || !token) {
+          setStatus("error", "Link de confirmação inválido. Solicite um novo e-mail ou fale com o suporte NailNow.");
+          detailsEl.textContent = "Certifique-se de abrir o link completo recebido no e-mail.";
+          return;
+        }
+
+        setStatus("info", "Confirmando seu cadastro...");
+        detailsEl.textContent = "Estamos validando o token enviado pelo seu e-mail.";
+
+        try {
+          const response = await fetch(FUNCTION_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profile, token }),
+          });
+
+          const payload = await response.json().catch(() => ({}));
+
+          if (response.ok) {
+            const loginUrl = payload.loginUrl ||
+              (payload.role === "profissional"
+                ? `${APP_URL}/profissional/index.html`
+                : `${APP_URL}/cliente/index.html`);
+
+            if (payload.status === "confirmed") {
+              setStatus("success", "Cadastro confirmado com sucesso!" );
+              detailsEl.textContent = "Agora você já pode acessar o portal e aproveitar todos os recursos da NailNow.";
+              showActions(loginUrl, payload.role);
+              return;
+            }
+
+            if (payload.status === "already-confirmed") {
+              setStatus("success", "Cadastro já estava confirmado." );
+              detailsEl.textContent = "Você já tem acesso liberado. Se preferir, faça login novamente pelo portal.";
+              showActions(loginUrl, payload.role);
+              return;
+            }
+
+            setStatus("success", "Confirmação concluída." );
+            detailsEl.textContent = "Tudo certo! Caso não consiga acessar o portal, fale com o suporte NailNow.";
+            showActions(loginUrl, payload.role);
+            return;
+          }
+
+          const errorKey = payload?.error || "internal-error";
+          setStatus("error", ERROR_MESSAGES[errorKey] || ERROR_MESSAGES["internal-error"]);
+          detailsEl.textContent = "Se o problema persistir, envie um e-mail para suporte@nailnow.app com este código: " + errorKey;
+        } catch (error) {
+          console.error("Falha ao confirmar cadastro", error);
+          setStatus("error", "Não foi possível validar seu cadastro agora. Tente novamente em instantes." );
+          detailsEl.textContent = "Caso o erro continue, fale com suporte@nailnow.app informando que o link de confirmação falhou.";
+        }
+      };
+
+      confirmSignup();
+    </script>
+  </body>
+</html>
