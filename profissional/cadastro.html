@@ -65,9 +65,34 @@
         appId: "1:726392294571:web:a363a40231f7ac162e7bee",
       };
 
+      const FEEDBACK_COLORS = {
+        info: "#4527a0",
+        success: "#2e7d32",
+        error: "#c62828",
+      };
+
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+
+      function setFeedbackMessage(element, message, variant = "info") {
+        if (!element) return;
+        element.textContent = message;
+        if (!message) {
+          element.style.removeProperty("color");
+          return;
+        }
+        const color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
+        element.style.color = color;
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.focus?.();
+      }
+
+      function clearFeedback(element) {
+        if (!element) return;
+        element.textContent = "";
+        element.style.removeProperty("color");
+      }
 
       async function ensureAuthAccount(email, senha) {
         try {
@@ -106,35 +131,46 @@
         button.textContent = isSubmitting ? "Enviando…" : idleLabel;
       }
 
-      async function enviarCadastro(e) {
-        e.preventDefault();
-        const form = e.target;
+      function coletarServicos(form) {
+        return Array.from(
+          form.querySelectorAll("input[name='servicos']:checked"),
+          (el) => el.value,
+        );
+      }
+
+      function sanitize(value) {
+        return (value ?? "").toString().trim();
+      }
+
+      async function enviarCadastro(event) {
+        event.preventDefault();
+        const form = event.target;
         const btn = form.querySelector("button[type='submit']");
         const feedback = document.getElementById("signup-feedback");
         feedback.textContent = "";
 
         try {
-          const nome = form.nome.value.trim();
-          const cpf = form.cpf.value.trim();
-          const email = form.email.value.trim().toLowerCase();
+          const nome = sanitize(form.nome.value);
+          const cpf = sanitize(form.cpf.value);
+          const email = sanitize(form.email.value).toLowerCase();
           const senha = form.senha.value;
           const confirmar = form.confirmarSenha.value;
-          const telefone = form.telefone.value.trim();
-          const endereco = form.endereco_text.value.trim();
-          const cidade = form.cidade.value.trim();
-          const bio = form.bio.value.trim();
-          const servicos = Array.from(form.querySelectorAll('input[name="servicos"]:checked')).map((el) => el.value);
+          const telefone = sanitize(form.telefone.value);
+          const endereco = sanitize(form.endereco_text.value);
+          const cidade = sanitize(form.cidade.value);
+          const bio = sanitize(form.bio.value);
+          const servicos = coletarServicos(form);
 
-          const endereco_formatado = form.endereco_formatado.value || "";
-          const place_id = form.place_id.value || "";
-          const lat = form.lat.value || "";
-          const lng = form.lng.value || "";
+          const endereco_formatado = sanitize(form.endereco_formatado.value);
+          const place_id = sanitize(form.place_id.value);
+          const lat = sanitize(form.lat.value);
+          const lng = sanitize(form.lng.value);
 
           if (!nome || !cpf || !email || !senha || !confirmar || !cidade) {
-            feedback.textContent = "Preencha os campos obrigatórios (*).";
-            feedback.style.color = "#c62828";
+            setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
             return;
           }
+
           if (senha !== confirmar) {
             feedback.textContent = "As senhas não coincidem.";
             feedback.style.color = "#c62828";
@@ -144,6 +180,7 @@
 
           btn.disabled = true;
           btn.textContent = "Criando conta…";
+          setFeedbackMessage(feedback, "Validando seus dados…", "info");
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
@@ -181,32 +218,33 @@
 
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
-          feedback.textContent = isNew
+          const successMessage = isNew
             ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso."
             : "✅ Perfil profissional atualizado!";
-          feedback.style.color = "#2e7d32";
+          setFeedbackMessage(feedback, successMessage, "success");
           form.reset();
-        } catch (err) {
-          console.error(err);
-          let message = err.code || "erro-desconhecido";
-          if (err.code === "auth/wrong-password") {
-            message = "auth/senha-incorreta";
-            feedback.textContent = "❌ Erro: A senha informada não confere com a conta existente.";
-          } else if (err.code === "auth/invalid-login-credentials") {
-            message = "auth/invalid-login-credentials";
-            feedback.textContent = "❌ Erro: Não foi possível confirmar seus dados de acesso.";
-          } else {
-            feedback.textContent = `❌ Erro: ${message}`;
-          }
-          feedback.style.color = "#c62828";
+        } catch (error) {
+          console.error(error);
+          const code = error?.code || "erro-desconhecido";
+          const mensagemPorCodigo = {
+            "auth/email-already-in-use": "❌ Erro: Já existe uma conta com este e-mail. Utilize a mesma senha cadastrada anteriormente.",
+            "auth/invalid-email": "❌ Erro: Informe um e-mail válido para continuar.",
+            "auth/weak-password": "❌ Erro: Use uma senha com pelo menos 6 caracteres.",
+            "auth/wrong-password": "❌ Erro: A senha informada não confere com a conta existente.",
+            "auth/invalid-login-credentials": "❌ Erro: Não foi possível confirmar seus dados de acesso.",
+          };
+
+          const friendly = mensagemPorCodigo[code] ?? `❌ Erro: ${code}`;
+          setFeedbackMessage(feedback, friendly, "error");
         } finally {
           await safeSignOut();
-          btn.disabled = false;
-          btn.textContent = "Cadastrar profissional";
+          if (btn) {
+            btn.disabled = false;
+            btn.removeAttribute("aria-busy");
+            btn.textContent = "Cadastrar profissional";
+          }
         }
       }
-
-      window.enviarCadastro = enviarCadastro;
 
       document.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById("cadastroForm");
@@ -217,7 +255,7 @@
 
         form.addEventListener("submit", enviarCadastro);
         form.setAttribute("novalidate", "novalidate");
-        form.removeAttribute("action");
+        form.setAttribute("action", "javascript:void(0);");
         console.info("📄 Formulário de cadastro profissional pronto para enviar dados ao Firebase.");
       });
     </script>

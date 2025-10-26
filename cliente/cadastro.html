@@ -73,6 +73,12 @@
         appId: "1:726392294571:web:a363a40231f7ac162e7bee",
       };
 
+      const FEEDBACK_COLORS = {
+        info: "#4527a0",
+        success: "#2e7d32",
+        error: "#c62828",
+      };
+
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
@@ -221,9 +227,29 @@
           },
         };
 
-        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), payload);
-        return { mailId: mailRef.id };
+      function setFeedbackMessage(element, message, variant = "info") {
+        if (!element) return;
+        element.textContent = message;
+        if (!message) {
+          element.style.removeProperty("color");
+          return;
+        }
+        const color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
+        element.style.color = color;
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.focus?.();
       }
+
+      function clearFeedback(element) {
+        if (!element) return;
+        element.textContent = "";
+        element.style.removeProperty("color");
+      }
+
+      function sanitize(value) {
+        return (value ?? "").toString().trim();
+      }
+
       async function ensureAuthAccount(email, senha) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, senha);
@@ -247,111 +273,48 @@
         }
       }
 
-      async function requestConfirmation(profilePath) {
-        if (!profilePath) {
-          throw new Error("missing-profile-path");
-        }
+      async function cadastrarCliente(event) {
+        event.preventDefault();
+        const form = event.target;
+        const btn = form.querySelector("button[type='submit']");
+        const feedback = document.getElementById("signup-feedback");
+        clearFeedback(feedback);
 
         try {
-          const response = await fetch(CONFIRMATION_ENDPOINT, {
-            method: "POST",
-            mode: "cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ profile: profilePath }),
-          });
+          const nome = sanitize(form.nome.value);
+          const email = sanitize(form.email.value).toLowerCase();
+          const senha = form.senha.value;
+          const confirmarSenha = form.confirmarSenha.value;
+          const telefone = sanitize(form.telefone.value);
+          const endereco = sanitize(form.endereco_text.value);
+          const complemento = sanitize(form.complemento.value);
+          const aceiteTermos = form.aceiteTermos.checked;
 
-          if (!response.ok) {
-            let errorCode = `http-${response.status}`;
-            try {
-              const payload = await response.json();
-              if (payload?.error) {
-                errorCode = payload.error;
-              }
-            } catch (parseError) {
-              /* ignore parse error */
-            }
-            const httpError = new Error(errorCode);
-            httpError.code = errorCode;
-            throw httpError;
-          }
-
-          return await response.json();
-        } catch (error) {
-          console.error("Falha ao solicitar e-mail de confirmação para cliente", error);
-          throw error;
-        }
-      }
-
-      function setSubmittingState(button, isSubmitting, idleLabel) {
-        if (!button) return;
-        button.disabled = isSubmitting;
-        if (isSubmitting) {
-          button.setAttribute("aria-busy", "true");
-        } else {
-          button.removeAttribute("aria-busy");
-        }
-        button.textContent = isSubmitting ? "Enviando…" : idleLabel;
-      }
-
-      let isProcessing = false;
-
-      async function processClientSignup(event) {
-        event?.preventDefault();
-        if (isProcessing) {
-          return;
-        }
-
-        const form = document.getElementById(FORM_ID);
-        const button = document.getElementById(SUBMIT_ID);
-        const feedback = document.getElementById(FEEDBACK_ID);
-
-        if (!form || !button) {
-          console.warn("Formulário de cadastro de cliente não encontrado");
-          return;
-        }
-
-        isProcessing = true;
-        setFeedback(feedback, "");
-
-        try {
-          const formData = new FormData(form);
-          const nome = (formData.get("nome") || "").toString().trim();
-          const email = (formData.get("email") || "").toString().trim().toLowerCase();
-          const senha = (formData.get("senha") || "").toString();
-          const confirmarSenha = (formData.get("confirmarSenha") || "").toString();
-          const telefone = (formData.get("telefone") || "").toString().trim();
-          const endereco = (formData.get("endereco_text") || "").toString().trim();
-          const complemento = (formData.get("complemento") || "").toString().trim();
-          const enderecoFormatado = (formData.get("endereco_formatado") || "").toString();
-          const placeId = (formData.get("place_id") || "").toString();
-          const lat = (formData.get("lat") || "").toString();
-          const lng = (formData.get("lng") || "").toString();
-          const aceiteTermos = formData.get("aceiteTermos") === "on" || form.aceiteTermos?.checked;
+          const endereco_formatado = sanitize(form.endereco_formatado.value);
+          const place_id = sanitize(form.place_id.value);
+          const lat = sanitize(form.lat.value);
+          const lng = sanitize(form.lng.value);
 
           if (!nome || !email || !senha || !confirmarSenha || !endereco) {
-            setFeedback(feedback, "Preencha os campos obrigatórios (*).", "error");
-            feedback?.focus();
-            isProcessing = false;
+            setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
             return;
           }
 
           if (senha !== confirmarSenha) {
-            setFeedback(feedback, "As senhas não coincidem.", "error");
-            form.querySelector("#confirmarSenha")?.focus();
-            isProcessing = false;
+            setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
+            form.confirmarSenha.focus();
             return;
           }
 
           if (!aceiteTermos) {
-            setFeedback(feedback, "É necessário aceitar os termos para continuar.", "error");
-            form.aceiteTermos?.focus();
-            isProcessing = false;
+            setFeedbackMessage(feedback, "❌ É necessário aceitar os termos para continuar.", "error");
             return;
           }
 
-          setSubmittingState(button, true, "Criar conta cliente");
-          button.textContent = "Criando conta…";
-          setFeedback(feedback, "Validando seus dados…", "info");
+          btn.disabled = true;
+          btn.setAttribute("aria-busy", "true");
+          btn.textContent = "Criando conta…";
+          setFeedbackMessage(feedback, "Validando seus dados…", "info");
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
@@ -375,7 +338,6 @@
             uid,
             nome,
             email,
-            senha,
             telefone,
             endereco,
             complemento,
@@ -391,6 +353,7 @@
 
           let welcomeEmailQueued = null;
           if (isNew) {
+            payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
             payload.status = "pendente";
             payload.emailVerificado = false;
@@ -493,33 +456,37 @@
             setFeedback(feedback, "✅ Dados atualizados!", "success");
           }
 
-          feedback.textContent = isNew
+          const successMessage = isNew
             ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso."
             : "✅ Dados atualizados!";
-          feedback.style.color = "#2e7d32";
+          setFeedbackMessage(feedback, successMessage, "success");
           form.reset();
-          if (form.aceiteTermos) {
-            form.aceiteTermos.checked = false;
+          const termos = form.querySelector("[name='aceiteTermos']");
+          if (termos) {
+            termos.checked = false;
           }
         } catch (error) {
           console.error(error);
           const code = error?.code || "erro-desconhecido";
-          if (code === "auth/wrong-password") {
-            setFeedback(feedback, "❌ Erro: A senha informada não confere com a conta existente.", "error");
-          } else if (code === "auth/invalid-login-credentials") {
-            setFeedback(feedback, "❌ Erro: Não foi possível confirmar seus dados de acesso.", "error");
-          } else {
-            const message = error?.message ? error.message.replace(/^Firebase: /, "") : code;
-            setFeedback(feedback, `❌ Erro: ${message}`, "error");
-          }
+          const mensagemPorCodigo = {
+            "auth/email-already-in-use": "❌ Erro: Já existe uma conta com este e-mail. Utilize a mesma senha cadastrada anteriormente.",
+            "auth/invalid-email": "❌ Erro: Informe um e-mail válido para continuar.",
+            "auth/weak-password": "❌ Erro: Use uma senha com pelo menos 6 caracteres.",
+            "auth/wrong-password": "❌ Erro: A senha informada não confere com a conta existente.",
+            "auth/invalid-login-credentials": "❌ Erro: Não foi possível confirmar seus dados de acesso.",
+          };
+
+          const friendly = mensagemPorCodigo[code] ?? `❌ Erro: ${code}`;
+          setFeedbackMessage(feedback, friendly, "error");
         } finally {
           await safeSignOut();
-          setSubmittingState(document.getElementById(SUBMIT_ID), false, "Criar conta cliente");
-          isProcessing = false;
+          if (btn) {
+            btn.disabled = false;
+            btn.removeAttribute("aria-busy");
+            btn.textContent = "Criar conta cliente";
+          }
         }
       }
-
-      window.cadastrarCliente = cadastrarCliente;
 
       document.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById("cadastroClienteForm");
@@ -530,7 +497,7 @@
 
         form.addEventListener("submit", cadastrarCliente);
         form.setAttribute("novalidate", "novalidate");
-        form.removeAttribute("action");
+        form.setAttribute("action", "javascript:void(0);");
         console.info("📄 Formulário de cadastro de cliente pronto para enviar dados ao Firebase.");
       });
     </script>
