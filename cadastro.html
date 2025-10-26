@@ -65,7 +65,6 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
-
     // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
 
@@ -186,7 +185,11 @@
         // 4) Sair (opcional)
         await signOut(auth);
 
-        alert(isNew ? "✅ Cadastro enviado com sucesso!" : "✅ Dados profissionais atualizados!");
+        alert(
+          isNew
+            ? "✅ Cadastro enviado! Verifique seu e-mail (suporte@nailnow.app) para confirmar o acesso ao portal profissional."
+            : "✅ Dados profissionais atualizados!",
+        );
         $("cadastroForm").reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
@@ -206,6 +209,8 @@
     document.addEventListener("DOMContentLoaded", () => {
       const form = $("cadastroForm");
       if (form) {
+        form.setAttribute("method", "post");
+        form.setAttribute("novalidate", "novalidate");
         form.addEventListener("submit", enviarCadastro);
         console.log(">> Listener conectado ao form");
       } else {
@@ -239,7 +244,7 @@
   <div class="container">
     <h1>Cadastro de Profissional 💅</h1>
 
-    <form id="cadastroForm">
+    <form id="cadastroForm" method="post" novalidate>
       <label for="nome">Nome completo *</label>
       <input id="nome" type="text" required />
 
