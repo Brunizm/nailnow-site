@@ -10,6 +10,11 @@ const FieldValue = admin.firestore.FieldValue;
 const APP_URL = "https://www.nailnow.app";
 const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
 
+const ROLE_LOGIN_PATH = {
+  cliente: "/cliente/index.html",
+  profissional: "/profissional/index.html",
+};
+
 function buildConfirmationUrl(profilePath, token) {
   const params = new URLSearchParams({
     profile: profilePath,
@@ -18,7 +23,7 @@ function buildConfirmationUrl(profilePath, token) {
   return `${APP_URL}/confirmar-cadastro.html?${params.toString()}`;
 }
 
-function buildWelcomeMessage({ name, role, confirmationUrl }) {
+function buildConfirmationMessage({ name, role, confirmationUrl }) {
   const safeName = (name || (role === "profissional" ? "Profissional" : "Cliente")).trim();
   const roleLabel = role === "profissional" ? "profissional" : "cliente";
   const subject = "Confirme seu cadastro no NailNow 💅";
@@ -41,39 +46,72 @@ function buildWelcomeMessage({ name, role, confirmationUrl }) {
   return { subject, text, html };
 }
 
-async function enqueueWelcomeEmail({
+function buildPostConfirmationMessage({ name, role }) {
+  const safeName = (name || (role === "profissional" ? "Profissional" : "Cliente")).trim();
+  const roleLabel = role === "profissional" ? "profissional" : "cliente";
+  const loginPath = ROLE_LOGIN_PATH[role] || "/";
+  const loginUrl = `${APP_URL}${loginPath}`;
+  const subject = "Bem-vindo(a) ao NailNow 💜";
+  const text = [
+    `Olá, ${safeName}!`,
+    `Sua conta como ${roleLabel} no NailNow foi confirmada com sucesso.`,
+    "Agora você já pode acessar o portal e aproveitar todos os benefícios da plataforma.",
+    `Acesse: ${loginUrl}`,
+    "Estamos muito felizes por ter você com a gente!",
+    "Com carinho, equipe NailNow",
+  ].join("\n\n");
+
+  const html = [
+    `<p>Olá, <strong>${safeName}</strong>! 💜 Sua conta como ${roleLabel} no NailNow foi confirmada com sucesso.</p>`,
+    "<p>Agora você já pode acessar o portal e aproveitar todos os benefícios da plataforma.</p>",
+    `<p style="margin: 24px 0;"><a href="${loginUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Acessar o portal</a></p>`,
+    `<p>Se o botão não funcionar, copie e cole este link no navegador:<br /><span style=\"word-break:break-all;\">${loginUrl}</span></p>`,
+    "<p>Estamos muito felizes por ter você com a gente!</p>",
+    "<p>Com carinho, equipe NailNow 💅</p>",
+  ].join("");
+
+  return { subject, text, html, loginUrl };
+}
+
+async function enqueueMailDocument({
   email,
   name,
   role,
   sourcePath,
   profileId,
   profilePath,
-  confirmationUrl,
-  confirmationToken,
+  message,
+  metadata = {},
 }) {
   if (!email) {
-    functions.logger.warn("Ignorando envio de boas-vindas: documento sem email", { role, sourcePath });
+    functions.logger.warn("Ignorando envio de email: documento sem email", { role, sourcePath });
     return null;
   }
 
   const trimmedEmail = email.trim();
   if (!trimmedEmail) {
-    functions.logger.warn("Ignorando boas-vindas: email vazio após trim", { role, sourcePath });
+    functions.logger.warn("Ignorando envio de email: endereço vazio após trim", { role, sourcePath });
+    return null;
+  }
+
+  if (!message || typeof message !== "object") {
+    functions.logger.warn("Ignorando envio de email: mensagem ausente", { role, sourcePath });
     return null;
   }
 
   const payload = {
     to: [trimmedEmail],
     from: SUPPORT_SENDER,
-    message: buildWelcomeMessage({ name, role, confirmationUrl }),
+    message,
     metadata: {
       role,
       source: "cloud-function",
       profileId: profileId || null,
       profilePath: profilePath || null,
       sourcePath: sourcePath || null,
-      confirmationUrl,
-      confirmationToken,
+      name: name || null,
+      emailType: metadata.emailType || "unspecified",
+      ...metadata,
     },
   };
 
@@ -166,15 +204,19 @@ async function handleProfileCreation(snap, context, role) {
     data.signupConfirmation = signupConfirmation;
 
     const confirmationUrl = buildConfirmationUrl(snap.ref.path, signupConfirmation.token);
-    const mailDocId = await enqueueWelcomeEmail({
+    const mailDocId = await enqueueMailDocument({
       email,
       name,
       role,
       sourcePath: context.resource?.name,
       profileId: snap.id,
       profilePath: snap.ref.path,
-      confirmationUrl,
-      confirmationToken: signupConfirmation.token,
+      message: buildConfirmationMessage({ name, role, confirmationUrl }),
+      metadata: {
+        emailType: "confirmation",
+        confirmationUrl,
+        confirmationToken: signupConfirmation.token,
+      },
     });
 
     if (mailDocId) {
@@ -234,11 +276,11 @@ exports.queueProfessionalWelcomeEmailEn = functions
   .onCreate((snap, context) => handleProfileCreation(snap, context, "profissional"));
 
 const CONFIRMATION_COLLECTIONS = {
-  clientes: { role: "cliente", loginPath: "/cliente/index.html" },
-  clients: { role: "cliente", loginPath: "/cliente/index.html" },
-  profissionais: { role: "profissional", loginPath: "/profissional/index.html" },
-  professionals: { role: "profissional", loginPath: "/profissional/index.html" },
-  manicures: { role: "profissional", loginPath: "/profissional/index.html" },
+  clientes: { role: "cliente", loginPath: ROLE_LOGIN_PATH.cliente },
+  clients: { role: "cliente", loginPath: ROLE_LOGIN_PATH.cliente },
+  profissionais: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
+  professionals: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
+  manicures: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
 };
 
 exports.verifySignupConfirmation = functions
@@ -336,6 +378,62 @@ exports.verifySignupConfirmation = functions
         profilePath,
         role: mapping.role,
       });
+
+      let postConfirmationMailId = profileData.postConfirmationEmailMailId;
+      if (!postConfirmationMailId) {
+        try {
+          const email = profileData.email || profileData.contatoEmail || "";
+          const name = profileData.nome || profileData.name || profileData.displayName || "";
+          if (!email) {
+            functions.logger.warn("Perfil confirmado sem email cadastrado", {
+              profilePath,
+              role: mapping.role,
+            });
+          } else {
+            const messagePayload = buildPostConfirmationMessage({ name, role: mapping.role });
+            const { loginUrl, ...message } = messagePayload;
+            postConfirmationMailId = await enqueueMailDocument({
+              email,
+              name,
+              role: mapping.role,
+              sourcePath: `verifySignupConfirmation:${profilePath}`,
+              profileId: documentId,
+              profilePath,
+              message,
+              metadata: {
+                emailType: "post-confirmation",
+                loginUrl,
+              },
+            });
+
+            if (postConfirmationMailId) {
+              await docRef.set(
+                {
+                  postConfirmationEmailQueuedAt: FieldValue.serverTimestamp(),
+                  postConfirmationEmailQueuedBy: "verifySignupConfirmation",
+                  postConfirmationEmailMailId: postConfirmationMailId,
+                },
+                { merge: true },
+              );
+            }
+          }
+        } catch (emailError) {
+          functions.logger.error("Falha ao enviar email pós-confirmação", {
+            profilePath,
+            role: mapping.role,
+            error: emailError?.message,
+          });
+          await docRef.set(
+            {
+              postConfirmationEmailError: {
+                message: emailError?.message || "unknown-error",
+                timestamp: FieldValue.serverTimestamp(),
+              },
+            },
+            { merge: true },
+          );
+        }
+      }
 
       res.status(200).json({
         status: "confirmed",

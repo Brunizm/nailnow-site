@@ -1,14 +1,16 @@
 # Funções Firebase para fila de e-mails
 
 Este pacote contém Cloud Functions responsáveis por criar automaticamente os documentos na coleção `mail` do Firestore.
-Esses documentos acionam a extensão **Trigger Email from Firestore**, que então envia os e-mails de boas-vindas via SendGrid.
+Esses documentos acionam a extensão **Trigger Email from Firestore**, que então envia os e-mails de confirmação e boas-vindas via SendGrid.
 
 ## Como funciona
 
 - Monitora criações nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures`.
-- Quando um novo cadastro aparece, gera uma mensagem de boas-vindas com assunto, texto e HTML em português.
-- Grava o documento na coleção `mail` com o formato esperado pela extensão instalada (`to` como array, `from` como string no formato `Nome <email>` e `message` contendo `subject`, `text` e `html`).
-- Marca o cadastro original com `welcomeEmailQueuedAt`, `welcomeEmailQueuedBy` e o `welcomeEmailMailId` criado.
+- Quando um novo cadastro aparece, gera a mensagem de **confirmação de cadastro** com CTA para validar a conta e grava o documento na coleção `mail`.
+- Marca o cadastro original com `welcomeEmailQueuedAt`, `welcomeEmailQueuedBy` e o `welcomeEmailMailId` criado (aproveitando os mesmos campos já utilizados nos formulários web para evitar duplicidade).
+- Assim que a usuária acessa o link de confirmação, a função HTTPS `verifySignupConfirmation` altera o status do perfil para `confirmado` e cria um segundo documento em `mail` com o e-mail de **boas-vindas/liberação de acesso**.
+- Cada mensagem criada segue o formato exigido pela extensão (`to` como array, `from` como string no formato `Nome <email>` e `message` contendo `subject`, `text` e `html`).
+- O perfil confirmado recebe os campos `postConfirmationEmailMailId`, `postConfirmationEmailQueuedAt` e `postConfirmationEmailQueuedBy` (ou `postConfirmationEmailError` em caso de falha), facilitando auditoria.
 - Se o documento já possuir `welcomeEmailMailId`/`welcomeEmailQueuedBy` (por exemplo, porque o formulário web conseguiu criar o documento em `mail`), a função apenas registra o evento e evita duplicar o envio.
 
 > 💡 Os formulários web da NailNow já tentam gravar diretamente na coleção `mail`.
@@ -42,22 +44,34 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 
 ## Testando
 
-- Crie manualmente um documento na coleção `clientes` (ou `profissionais`) com os campos mínimos:
+1. Crie manualmente um documento na coleção `clientes` (ou `profissionais`) com os campos mínimos:
 
-  ```json
-  {
-    "nome": "Bruna Teste",
-    "email": "bruna@example.com"
-  }
-  ```
+   ```json
+   {
+     "nome": "Bruna Teste",
+     "email": "bruna@example.com"
+   }
+   ```
 
-- A função `queueClienteWelcomeEmail` criará um documento em `mail` em poucos segundos.
-- A extensão enviará o e-mail e marcará o documento `mail` como `delivered` (pode levar até 1 minuto).
-- Consulte os logs em tempo real para acompanhar cada envio:
+   Em poucos segundos a função `queueClienteWelcomeEmail` criará um documento em `mail` contendo o e-mail de confirmação.
 
-  ```bash
-  firebase functions:log --only queueClienteWelcomeEmail,queueProfessionalWelcomeEmail
-  ```
+2. Copie o `signupConfirmation.token` salvo no documento do cliente e acesse:
+
+   ```text
+   https://us-central1-<seu-projeto>.cloudfunctions.net/verifySignupConfirmation?profile=clientes/<ID>&token=<TOKEN>
+   ```
+
+   (Troque `<seu-projeto>`, `<ID>` e `<TOKEN>` pelos valores reais.)
+
+   O endpoint mudará o status para `confirmado` e criará automaticamente um novo documento em `mail` com o e-mail de boas-vindas/liberação de acesso.
+
+3. A extensão enviará as duas mensagens e marcará cada documento `mail` como `delivered`/`sent` (pode levar até 1 minuto por mensagem).
+
+4. Para acompanhar os envios em tempo real, execute:
+
+   ```bash
+   firebase functions:log --only queueClienteWelcomeEmail,queueProfessionalWelcomeEmail,verifySignupConfirmation
+   ```
 
 ## Como confirmar que o gatilho foi executado
 
@@ -85,7 +99,7 @@ Esses documentos acionam a extensão **Trigger Email from Firestore**, que entã
 
 ## Estrutura
 
-- `index.js` — definição das Cloud Functions e utilitários para montar a mensagem de boas-vindas (incluindo o CTA “Confirmar cadastro”).
+- `index.js` — definição das Cloud Functions, utilitários para montar os e-mails de confirmação e boas-vindas e endpoint HTTPS de confirmação de cadastro.
 - `templates/confirmacao.html` — referência de template HTML que pode ser copiada para o SendGrid caso queira criar um template transacional.
 - `firebase.json` (na raiz do repositório) — aponta o diretório `firebase/functions` como origem do deploy.
 
