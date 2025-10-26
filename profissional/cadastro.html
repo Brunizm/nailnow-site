@@ -181,6 +181,27 @@
         }
       }
 
+      async function solicitarConfirmacao(profilePath) {
+        try {
+          const response = await fetch(REQUEST_CONFIRMATION_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profile: profilePath }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => "");
+            throw new Error(`request-failed-${response.status}-${errorText}`);
+          }
+
+          const payload = await response.json().catch(() => ({}));
+          return payload || {};
+        } catch (error) {
+          console.error("Falha ao solicitar e-mail de confirmação", error);
+          throw error;
+        }
+      }
+
       async function enviarCadastro(e) {
         e.preventDefault();
         const form = e.target;
