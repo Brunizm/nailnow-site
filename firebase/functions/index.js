@@ -8,10 +8,7 @@ const firestore = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
 
 const APP_URL = "https://www.nailnow.app";
-const SUPPORT_SENDER = {
-  email: "suporte@nailnow.app",
-  name: "NailNow",
-};
+const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
 
 function buildConfirmationUrl(profilePath, token) {
   const params = new URLSearchParams({
