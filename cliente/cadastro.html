@@ -77,6 +77,31 @@
       const db = getFirestore(app);
       const REQUEST_CONFIRMATION_URL =
         "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+
+      function buildConfirmationMailContent({ name, role, confirmationUrl }) {
+        const safeName = (name || (role === "profissional" ? "Profissional" : "Cliente")).trim() ||
+          (role === "profissional" ? "Profissional" : "Cliente");
+        const roleLabel = role === "profissional" ? "profissional" : "cliente";
+        const subject = "Confirme seu cadastro no NailNow 💅";
+        const text = [
+          `Olá, ${safeName}!`,
+          `Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.`,
+          "Para confirmar sua conta e liberar o acesso ao portal, clique no link abaixo:",
+          confirmationUrl,
+          "Se você não solicitou este cadastro, pode ignorar esta mensagem.",
+          "Com carinho, equipe NailNow",
+        ].join("\n\n");
+        const html = [
+          `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.</p>`,
+          `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
+          `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
+          `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`,
+          "<p>Com carinho, equipe NailNow 💅</p>",
+        ].join("");
+
+        return { subject, text, html };
+      }
 
       async function ensureAuthAccount(email, senha) {
         try {
@@ -123,30 +148,62 @@
         }
       }
 
-      async function enfileirarEmailConfirmacao(mailPayload, profilePath, collectionName, uid) {
-        if (!mailPayload || !Array.isArray(mailPayload.to) || mailPayload.to.length === 0) {
+      async function enfileirarEmailConfirmacao(mailPayload, profilePath, collectionName, uid, fallback = {}) {
+        const basePayload = mailPayload && typeof mailPayload === "object" ? mailPayload : {};
+        const confirmedEmail =
+          Array.isArray(basePayload.to) && basePayload.to.length > 0
+            ? basePayload.to.find((value) => typeof value === "string" && value.trim())
+            : null;
+        const fallbackEmail = typeof fallback.email === "string" ? fallback.email.trim().toLowerCase() : "";
+
+        const to = confirmedEmail ? [confirmedEmail.trim().toLowerCase()] : fallbackEmail ? [fallbackEmail] : [];
+
+        if (to.length === 0 || !fallback.confirmationUrl) {
           return null;
         }
 
-        try {
-          const payload = {
-            ...mailPayload,
-            metadata: {
-              ...(mailPayload.metadata || {}),
-              source: "web-client",
-              queuedBy: "web-client",
-              profilePath,
-              profileCollection: collectionName,
-            },
-          };
+        const message =
+          basePayload.message && typeof basePayload.message === "object"
+            ? basePayload.message
+            : buildConfirmationMailContent({
+                name: fallback.name,
+                role: fallback.role,
+                confirmationUrl: fallback.confirmationUrl,
+              });
 
+        const payload = {
+          ...basePayload,
+          to,
+          from:
+            basePayload.from && typeof basePayload.from === "string" && basePayload.from.trim()
+              ? basePayload.from
+              : SUPPORT_SENDER,
+          message: {
+            subject: message.subject,
+            text: message.text,
+            html: message.html,
+          },
+          metadata: {
+            ...(basePayload.metadata || {}),
+            source: "web-client",
+            queuedBy: "web-client",
+            profilePath,
+            profileCollection: collectionName,
+            role: fallback.role,
+            name: fallback.name || null,
+            confirmationUrl: fallback.confirmationUrl,
+            confirmationToken: fallback.token || null,
+          },
+        };
+
+        try {
           const mailRef = await addDoc(collection(db, "mail"), payload);
           await setDoc(
             doc(db, collectionName, uid),
             {
-              welcomeEmailMailId: mailRef.id,
-              welcomeEmailQueuedAt: serverTimestamp(),
-              welcomeEmailQueuedBy: "web-client",
+              confirmationMailId: mailRef.id,
+              confirmationMailQueuedAt: serverTimestamp(),
+              confirmationMailQueuedBy: "web-client",
             },
             { merge: true },
           );
@@ -254,21 +311,35 @@
           if (isNew) {
             try {
               const result = await solicitarConfirmacao(profilePath);
-              const rawStatus = (result?.status || result?.mailStatus || "").toString();
+              const rawStatus = (result?.mailStatus || result?.status || "").toString();
+              const mailIdFromServer =
+                typeof result?.mailId === "string" && result.mailId
+                  ? result.mailId
+                  : typeof result?.mailDocumentId === "string"
+                    ? result.mailDocumentId
+                    : null;
+              const confirmationUrl =
+                (typeof result?.confirmationUrl === "string" && result.confirmationUrl.trim()) ||
+                (result?.mailPayload?.metadata?.confirmationUrl || "");
+              const confirmationToken =
+                (result?.mailPayload?.metadata?.confirmationToken || result?.confirmationToken || "");
 
-              if (rawStatus === "queued" || rawStatus === "already-queued") {
+              if ((rawStatus === "queued" || rawStatus === "already-queued") && mailIdFromServer) {
                 confirmationQueued = true;
                 queueStatus = rawStatus;
-              } else if (rawStatus === "prepared" && result?.mailPayload) {
-                const mailId = await enfileirarEmailConfirmacao(result.mailPayload, profilePath, "clientes", uid);
-                confirmationQueued = Boolean(mailId);
-                queueStatus = confirmationQueued ? "queued" : "enqueue-failed";
               } else if (rawStatus === "missing-email") {
                 confirmationQueued = false;
                 queueStatus = "missing-email";
               } else {
-                confirmationQueued = false;
-                queueStatus = rawStatus || "unknown";
+                const mailId = await enfileirarEmailConfirmacao(result?.mailPayload, profilePath, "clientes", uid, {
+                  email,
+                  name: nome,
+                  role: "cliente",
+                  confirmationUrl,
+                  token: confirmationToken,
+                });
+                confirmationQueued = Boolean(mailId);
+                queueStatus = confirmationQueued ? "queued" : rawStatus || "enqueue-failed";
               }
             } catch (error) {
               confirmationQueued = false;

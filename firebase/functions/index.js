@@ -264,7 +264,7 @@ async function queueConfirmationForSnapshot(
     return {
       status: queueMail ? mailStatus : "prepared",
       confirmationUrl,
-      mailPayload: queueMail ? null : mailPayload,
+      mailPayload,
       mailStatus,
       mailId,
     };
