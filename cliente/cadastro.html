@@ -75,34 +75,6 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
-      const REQUEST_CONFIRMATION_URL =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
-      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
-
-      function buildConfirmationMailContent({ name, role, confirmationUrl }) {
-        const safeName = (name || (role === "profissional" ? "Profissional" : "Cliente")).trim() ||
-          (role === "profissional" ? "Profissional" : "Cliente");
-        const roleLabel = role === "profissional" ? "profissional" : "cliente";
-        const subject = "Confirme seu cadastro no NailNow 💅";
-        const text = [
-          `Olá, ${safeName}!`,
-          `Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.`,
-          "Para confirmar sua conta e liberar o acesso ao portal, clique no link abaixo:",
-          confirmationUrl,
-          "Se você não solicitou este cadastro, pode ignorar esta mensagem.",
-          "Com carinho, equipe NailNow",
-        ].join("\n\n");
-        const html = [
-          `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.</p>`,
-          `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
-          `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
-          `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`,
-          "<p>Com carinho, equipe NailNow 💅</p>",
-        ].join("");
-
-        return { subject, text, html };
-      }
-
       async function ensureAuthAccount(email, senha) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, senha);
@@ -308,52 +280,11 @@
           const profilePath = `clientes/${uid}`;
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
-          if (isNew) {
-            try {
-              const result = await solicitarConfirmacao(profilePath);
-              const rawStatus = (result?.mailStatus || result?.status || "").toString();
-              const mailIdFromServer =
-                typeof result?.mailId === "string" && result.mailId
-                  ? result.mailId
-                  : typeof result?.mailDocumentId === "string"
-                    ? result.mailDocumentId
-                    : null;
-              const confirmationUrl =
-                (typeof result?.confirmationUrl === "string" && result.confirmationUrl.trim()) ||
-                (result?.mailPayload?.metadata?.confirmationUrl || "");
-              const confirmationToken =
-                (result?.mailPayload?.metadata?.confirmationToken || result?.confirmationToken || "");
-
-              if ((rawStatus === "queued" || rawStatus === "already-queued") && mailIdFromServer) {
-                confirmationQueued = true;
-                queueStatus = rawStatus;
-              } else if (rawStatus === "missing-email") {
-                confirmationQueued = false;
-                queueStatus = "missing-email";
-              } else {
-                const mailId = await enfileirarEmailConfirmacao(result?.mailPayload, profilePath, "clientes", uid, {
-                  email,
-                  name: nome,
-                  role: "cliente",
-                  confirmationUrl,
-                  token: confirmationToken,
-                });
-                confirmationQueued = Boolean(mailId);
-                queueStatus = confirmationQueued ? "queued" : rawStatus || "enqueue-failed";
-              }
-            } catch (error) {
-              confirmationQueued = false;
-              queueStatus = "error";
-            }
-          }
-
-          feedback.textContent = isNew
-            ? confirmationQueued
-              ? "✅ Conta criada! Verifique seu e-mail para confirmar o cadastro e liberar o acesso."
-              : queueStatus === "missing-email"
-                ? "✅ Cadastro recebido! Assim que atualizarmos seu e-mail enviaremos a confirmação. Revise se o endereço informado está correto e tente novamente."
-                : "✅ Conta criada! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
+          const successMessage = isNew
+            ? "✅ Conta criada! Verifique seu e-mail (suporte@nailnow.app) para confirmar o cadastro e liberar o acesso."
             : "✅ Dados atualizados!";
+
+          feedback.textContent = successMessage;
           feedback.style.color = "#2e7d32";
           form.reset();
           form.querySelector("[name='aceiteTermos']").checked = false;

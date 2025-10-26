@@ -4,7 +4,8 @@ Este pacote contém Cloud Functions que gerenciam o estado de confirmação de c
 
 ## Como funciona
 
-- Monitora criações nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures` para garantir que todo perfil comece como `pendente` e receba um `signupConfirmation.token` único.
+- Monitora criações **e atualizações** nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures` para garantir que todo perfil comece como `pendente` e receba um `signupConfirmation.token` único.
+- Caso o documento seja alterado posteriormente (por exemplo, e-mail corrigido ou cadastro recriado), o gatilho reavalia o estado e reenfileira automaticamente o e-mail de confirmação quando necessário.
 - A função HTTPS `requestSignupConfirmation` reutiliza a mesma lógica dos gatilhos Firestore, gera (ou reaproveita) o token e **enfileira automaticamente** o documento na coleção `mail`, retornando o `confirmationUrl` e o identificador do e-mail.
 - Os formulários da NailNow apenas solicitam a confirmação após salvar o cadastro; não é mais necessário (nem recomendado) criar documentos `mail` diretamente pelo navegador.
 - A extensão Trigger Email from Firestore envia a mensagem de confirmação assim que o documento `mail` criado pela função é processado.

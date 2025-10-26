@@ -290,11 +290,123 @@ async function queueConfirmationForSnapshot(
   }
 }
 
-async function handleProfileCreation(snap, context, role) {
-  return queueConfirmationForSnapshot(snap, role, context.resource?.name, "firestore-trigger", {
-    queueMail: true,
-    force: false,
-  });
+function normalizeString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeLower(value) {
+  return normalizeString(value).toLowerCase();
+}
+
+function getPrimaryEmail(data) {
+  const raw = normalizeString(data.email || data.contatoEmail || "");
+  return raw.toLowerCase();
+}
+
+function getSignupMailStatus(data) {
+  const confirmation = data?.signupConfirmation || {};
+  return normalizeLower(confirmation.mailStatus || "");
+}
+
+const MAIL_STATUSES_TO_RETRY = new Set([
+  "not-requested",
+  "requires-client-enqueue",
+  "error",
+  "failed",
+]);
+
+function shouldAttemptQueueOnWrite(beforeData, afterData) {
+  if (!afterData) {
+    return { shouldQueue: false, force: false };
+  }
+
+  const statusNormalized = normalizeLower(afterData.status || "");
+  if (["confirmado", "confirmada", "confirmed"].includes(statusNormalized)) {
+    return { shouldQueue: false, force: false };
+  }
+
+  const afterEmail = getPrimaryEmail(afterData);
+  if (!afterEmail) {
+    return { shouldQueue: false, force: false };
+  }
+
+  const afterConfirmation = afterData.signupConfirmation || {};
+  const beforeConfirmation = (beforeData && beforeData.signupConfirmation) || {};
+  const afterMailStatus = getSignupMailStatus(afterData);
+  const beforeMailStatus = getSignupMailStatus(beforeData || {});
+
+  if (!beforeData) {
+    return { shouldQueue: true, force: false };
+  }
+
+  if (["queued", "already-queued"].includes(afterMailStatus)) {
+    return { shouldQueue: false, force: false };
+  }
+
+  const beforeEmail = getPrimaryEmail(beforeData);
+  const emailChanged = afterEmail && beforeEmail !== afterEmail;
+
+  if (!afterConfirmation.token) {
+    return { shouldQueue: true, force: true };
+  }
+
+  if (afterMailStatus === "missing-email") {
+    if (emailChanged) {
+      return { shouldQueue: true, force: true };
+    }
+    return { shouldQueue: false, force: false };
+  }
+
+  if (emailChanged) {
+    return { shouldQueue: true, force: true };
+  }
+
+  if (!afterMailStatus) {
+    if (!beforeMailStatus) {
+      if (beforeConfirmation.preparedBy === undefined && afterConfirmation.preparedBy === "firestore-trigger") {
+        return { shouldQueue: false, force: false };
+      }
+    }
+    return { shouldQueue: true, force: true };
+  }
+
+  if (MAIL_STATUSES_TO_RETRY.has(afterMailStatus)) {
+    if (
+      afterConfirmation.preparedBy === "firestore-trigger" &&
+      beforeMailStatus === afterMailStatus &&
+      beforeConfirmation.preparedBy === afterConfirmation.preparedBy
+    ) {
+      return { shouldQueue: false, force: false };
+    }
+    return { shouldQueue: true, force: true };
+  }
+
+  return { shouldQueue: false, force: false };
+}
+
+async function handleProfileWrite(change, context, role) {
+  if (!change.after.exists) {
+    return null;
+  }
+
+  const beforeData = change.before.exists ? change.before.data() : null;
+  const afterData = change.after.data();
+  const decision = shouldAttemptQueueOnWrite(beforeData, afterData);
+
+  if (!decision.shouldQueue) {
+    return null;
+  }
+
+  return queueConfirmationForSnapshot(
+    change.after,
+    role,
+    context.resource?.name,
+    "firestore-trigger",
+    {
+      queueMail: true,
+      force: decision.force,
+    },
+  );
 }
 
 async function queueConfirmationByRef(docRef, role, sourcePath, queuedBy, options = {}) {
@@ -312,27 +424,27 @@ async function queueConfirmationByRef(docRef, role, sourcePath, queuedBy, option
 exports.queueClienteWelcomeEmail = functions
   .region("southamerica-east1")
   .firestore.document("clientes/{clienteId}")
-  .onCreate((snap, context) => handleProfileCreation(snap, context, "cliente"));
+  .onWrite((change, context) => handleProfileWrite(change, context, "cliente"));
 
 exports.queueClientWelcomeEmail = functions
   .region("southamerica-east1")
   .firestore.document("clients/{clientId}")
-  .onCreate((snap, context) => handleProfileCreation(snap, context, "cliente"));
+  .onWrite((change, context) => handleProfileWrite(change, context, "cliente"));
 
 exports.queueProfessionalWelcomeEmail = functions
   .region("southamerica-east1")
   .firestore.document("profissionais/{profissionalId}")
-  .onCreate((snap, context) => handleProfileCreation(snap, context, "profissional"));
+  .onWrite((change, context) => handleProfileWrite(change, context, "profissional"));
 
 exports.queueManicureWelcomeEmail = functions
   .region("southamerica-east1")
   .firestore.document("manicures/{manicureId}")
-  .onCreate((snap, context) => handleProfileCreation(snap, context, "profissional"));
+  .onWrite((change, context) => handleProfileWrite(change, context, "profissional"));
 
 exports.queueProfessionalWelcomeEmailEn = functions
   .region("southamerica-east1")
   .firestore.document("professionals/{professionalId}")
-  .onCreate((snap, context) => handleProfileCreation(snap, context, "profissional"));
+  .onWrite((change, context) => handleProfileWrite(change, context, "profissional"));
 
 const CONFIRMATION_COLLECTIONS = {
   clientes: { role: "cliente", loginPath: ROLE_LOGIN_PATH.cliente },

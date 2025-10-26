@@ -54,14 +54,7 @@
         signInWithEmailAndPassword,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import {
-        getFirestore,
-        doc,
-        setDoc,
-        serverTimestamp,
-        collection,
-        addDoc,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -75,34 +68,6 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
-      const REQUEST_CONFIRMATION_URL =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
-      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
-
-      function buildConfirmationMailContent({ name, role, confirmationUrl }) {
-        const safeName = (name || (role === "profissional" ? "Profissional" : "Cliente")).trim() ||
-          (role === "profissional" ? "Profissional" : "Cliente");
-        const roleLabel = role === "profissional" ? "profissional" : "cliente";
-        const subject = "Confirme seu cadastro no NailNow 💅";
-        const text = [
-          `Olá, ${safeName}!`,
-          `Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.`,
-          "Para confirmar sua conta e liberar o acesso ao portal, clique no link abaixo:",
-          confirmationUrl,
-          "Se você não solicitou este cadastro, pode ignorar esta mensagem.",
-          "Com carinho, equipe NailNow",
-        ].join("\n\n");
-        const html = [
-          `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.</p>`,
-          `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
-          `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
-          `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`,
-          "<p>Com carinho, equipe NailNow 💅</p>",
-        ].join("");
-
-        return { subject, text, html };
-      }
-
       const FEEDBACK_COLORS = {
         info: "#4527a0",
         error: "#c62828",
@@ -141,85 +106,6 @@
         }
       }
       async function safeSignOut() {
-        try {
-          if (auth.currentUser) {
-            await signOut(auth);
-          }
-        } catch (error) {
-          console.warn("Não foi possível encerrar a sessão após o cadastro", error);
-        }
-      }
-
-      async function solicitarConfirmacao(profilePath) {
-        try {
-          const response = await fetch(REQUEST_CONFIRMATION_URL, {
-            method: "POST",
-            mode: "cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ profile: profilePath }),
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text().catch(() => "");
-            throw new Error(`request-failed-${response.status}-${errorText}`);
-          }
-
-          const payload = await response.json().catch(() => ({}));
-          return payload || {};
-        } catch (error) {
-          console.error("Falha ao solicitar e-mail de confirmação", error);
-          throw error;
-        }
-      }
-
-      async function enfileirarEmailConfirmacao(mailPayload, profilePath, collectionName, uid, fallback = {}) {
-        const basePayload = mailPayload && typeof mailPayload === "object" ? mailPayload : {};
-        const confirmedEmail =
-          Array.isArray(basePayload.to) && basePayload.to.length > 0
-            ? basePayload.to.find((value) => typeof value === "string" && value.trim())
-            : null;
-        const fallbackEmail = typeof fallback.email === "string" ? fallback.email.trim().toLowerCase() : "";
-
-        const to = confirmedEmail ? [confirmedEmail.trim().toLowerCase()] : fallbackEmail ? [fallbackEmail] : [];
-
-        if (to.length === 0 || !fallback.confirmationUrl) {
-          return null;
-        }
-
-        const message =
-          basePayload.message && typeof basePayload.message === "object"
-            ? basePayload.message
-            : buildConfirmationMailContent({
-                name: fallback.name,
-                role: fallback.role,
-                confirmationUrl: fallback.confirmationUrl,
-              });
-
-        const payload = {
-          ...basePayload,
-          to,
-          from:
-            basePayload.from && typeof basePayload.from === "string" && basePayload.from.trim()
-              ? basePayload.from
-              : SUPPORT_SENDER,
-          message: {
-            subject: message.subject,
-            text: message.text,
-            html: message.html,
-          },
-          metadata: {
-            ...(basePayload.metadata || {}),
-            source: "web-client",
-            queuedBy: "web-client",
-            profilePath,
-            profileCollection: collectionName,
-            role: fallback.role,
-            name: fallback.name || null,
-            confirmationUrl: fallback.confirmationUrl,
-            confirmationToken: fallback.token || null,
-          },
-        };
-
         try {
           const mailRef = await addDoc(collection(db, "mail"), payload);
           await setDoc(
@@ -319,51 +205,8 @@
           const profilePath = `profissionais/${uid}`;
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
-          if (isNew) {
-            try {
-              const result = await solicitarConfirmacao(profilePath);
-              const rawStatus = (result?.mailStatus || result?.status || "").toString();
-              const mailIdFromServer =
-                typeof result?.mailId === "string" && result.mailId
-                  ? result.mailId
-                  : typeof result?.mailDocumentId === "string"
-                    ? result.mailDocumentId
-                    : null;
-              const confirmationUrl =
-                (typeof result?.confirmationUrl === "string" && result.confirmationUrl.trim()) ||
-                (result?.mailPayload?.metadata?.confirmationUrl || "");
-              const confirmationToken =
-                (result?.mailPayload?.metadata?.confirmationToken || result?.confirmationToken || "");
-
-              if ((rawStatus === "queued" || rawStatus === "already-queued") && mailIdFromServer) {
-                confirmationQueued = true;
-                queueStatus = rawStatus;
-              } else if (rawStatus === "missing-email") {
-                confirmationQueued = false;
-                queueStatus = "missing-email";
-              } else {
-                const mailId = await enfileirarEmailConfirmacao(result?.mailPayload, profilePath, "profissionais", uid, {
-                  email,
-                  name: nome,
-                  role: "profissional",
-                  confirmationUrl,
-                  token: confirmationToken,
-                });
-                confirmationQueued = Boolean(mailId);
-                queueStatus = confirmationQueued ? "queued" : rawStatus || "enqueue-failed";
-              }
-            } catch (error) {
-              confirmationQueued = false;
-              queueStatus = "error";
-            }
-          }
-
           const successMessage = isNew
-            ? confirmationQueued
-              ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso ao portal profissional."
-              : queueStatus === "missing-email"
-                ? "✅ Cadastro recebido! Assim que atualizarmos seu e-mail enviaremos a confirmação. Revise se o campo de e-mail foi preenchido corretamente e tente novamente."
-                : "✅ Cadastro enviado! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
+            ? "✅ Cadastro enviado! Verifique seu e-mail (suporte@nailnow.app) para confirmar o acesso ao portal profissional."
             : "✅ Perfil profissional atualizado!";
 
           setFeedbackMessage(feedback, successMessage, "success");
