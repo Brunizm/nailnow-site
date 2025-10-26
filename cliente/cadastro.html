@@ -54,7 +54,14 @@
         signInWithEmailAndPassword,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        serverTimestamp,
+        collection,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -68,7 +75,78 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+      const MAIL_COLLECTION = "mail";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
 
+      function generateConfirmationToken() {
+        if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+          return crypto.randomUUID().replace(/-/g, "");
+        }
+
+        const buffer = new Uint8Array(16);
+        if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+          crypto.getRandomValues(buffer);
+        } else {
+          for (let i = 0; i < buffer.length; i += 1) {
+            buffer[i] = Math.floor(Math.random() * 256);
+          }
+        }
+
+        return Array.from(buffer, (byte) => byte.toString(16).padStart(2, "0")).join("");
+      }
+
+      function buildConfirmationUrl(profilePath, token) {
+        const baseUrl = window.location?.origin || "https://www.nailnow.app";
+        const params = new URLSearchParams({ profile: profilePath, token });
+        return `${baseUrl}/confirmar-cadastro.html?${params.toString()}`;
+      }
+
+      function buildConfirmationMessage({ name, confirmationUrl }) {
+        const displayName = name?.trim() || "Cliente";
+        const subject = "Confirme seu cadastro no NailNow 💅";
+        const text = [
+          `Olá, ${displayName}!`,
+          "Recebemos seu cadastro como cliente no NailNow e ele está aguardando confirmação.",
+          "Para confirmar sua conta e liberar o acesso ao portal, clique no link abaixo:",
+          confirmationUrl,
+          "Se você não solicitou este cadastro, pode ignorar esta mensagem.",
+          "Com carinho, equipe NailNow",
+        ].join("\n\n");
+        const html = [
+          `<p>Olá, <strong>${displayName}</strong>! 💖 Recebemos seu cadastro como cliente no NailNow e ele está aguardando confirmação.</p>`,
+          `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
+          `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
+          `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style="word-break:break-all;">${confirmationUrl}</span></p>`,
+          "<p>Com carinho, equipe NailNow 💅</p>",
+        ].join("");
+
+        return { subject, text, html };
+      }
+
+      async function queueConfirmationEmail({ email, name, profilePath, token, confirmationUrl }) {
+        const trimmedEmail = email?.trim();
+        if (!trimmedEmail) {
+          throw new Error("missing-email");
+        }
+
+        const message = buildConfirmationMessage({ name, confirmationUrl });
+        const payload = {
+          to: [trimmedEmail.toLowerCase()],
+          from: SUPPORT_SENDER,
+          message,
+          metadata: {
+            role: "cliente",
+            emailType: "confirmation",
+            profilePath,
+            confirmationUrl,
+            confirmationToken: token,
+            queuedBy: "client-signup-form",
+          },
+        };
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), payload);
+        return { mailId: mailRef.id };
+      }
       async function ensureAuthAccount(email, senha) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, senha);
@@ -141,6 +219,29 @@
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
 
+          const profilePath = `clientes/${uid}`;
+          const confirmationToken = generateConfirmationToken();
+          const confirmationUrl = buildConfirmationUrl(profilePath, confirmationToken);
+
+          let mailId = null;
+          let confirmationQueued = false;
+
+          if (isNew) {
+            try {
+              const result = await queueConfirmationEmail({
+                email,
+                name: nome,
+                profilePath,
+                token: confirmationToken,
+                confirmationUrl,
+              });
+              mailId = result.mailId;
+              confirmationQueued = true;
+            } catch (mailError) {
+              console.error("Falha ao enfileirar e-mail de confirmação do cliente", mailError);
+            }
+          }
+
           const payload = {
             uid,
             nome,
@@ -161,14 +262,39 @@
 
           if (isNew) {
             payload.criadoEm = serverTimestamp();
+            payload.status = "pendente";
+            payload.emailVerificado = false;
+            payload.signupConfirmation = {
+              token: confirmationToken,
+              status: "pending",
+              role: "cliente",
+              confirmationUrl,
+              preparedBy: "client-signup-form",
+              preparedAt: serverTimestamp(),
+              ...(confirmationQueued && mailId
+                ? {
+                    mailStatus: "queued",
+                    mailId,
+                    mailDocumentId: mailId,
+                    mailQueuedAt: serverTimestamp(),
+                    mailQueuedBy: "client-signup-form",
+                  }
+                : {
+                    mailStatus: "error",
+                  }),
+            };
           }
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
-          feedback.textContent = isNew
-            ? "✅ Conta criada com sucesso!"
+          const successMessage = isNew
+            ? confirmationQueued
+              ? "✅ Conta criada! Verifique seu e-mail (suporte@nailnow.app) para confirmar o cadastro e liberar o acesso."
+              : "⚠️ Conta criada! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, conclua o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app."
             : "✅ Dados atualizados!";
-          feedback.style.color = "#2e7d32";
+
+          feedback.textContent = successMessage;
+          feedback.style.color = confirmationQueued || !isNew ? "#2e7d32" : "#c77800";
           form.reset();
           form.querySelector("[name='aceiteTermos']").checked = false;
         } catch (error) {
@@ -188,7 +314,13 @@
         }
       }
 
-      window.cadastrarCliente = cadastrarCliente;
+      window.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("cadastroClienteForm");
+        if (!form) return;
+        form.setAttribute("method", "post");
+        form.setAttribute("novalidate", "novalidate");
+        form.addEventListener("submit", cadastrarCliente);
+      });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
     <script src="/assets/js/menu-toggle.js" defer></script>
@@ -262,7 +394,13 @@
           <div class="client-signup-card">
             <h2 class="client-signup-card__title">Comece agora</h2>
             <p class="client-signup-card__subtitle">Preencha seus dados para desbloquear ofertas e agendar sem filas.</p>
-            <form class="signup-form" onsubmit="cadastrarCliente(event)" autocomplete="off">
+            <form
+              id="cadastroClienteForm"
+              class="signup-form"
+              method="post"
+              autocomplete="off"
+              novalidate
+            >
               <div class="signup-field">
                 <label for="nome">Nome completo *</label>
                 <input id="nome" name="nome" type="text" required />
@@ -398,7 +536,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
+          <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
