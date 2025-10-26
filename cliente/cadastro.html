@@ -75,52 +75,21 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
-      const MAIL_COLLECTION = "mail";
-      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+      const CONFIRMATION_ENDPOINT =
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
 
-      function generateConfirmationToken() {
-        if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-          return crypto.randomUUID().replace(/-/g, "");
-        }
-
-        const buffer = new Uint8Array(16);
-        if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
-          crypto.getRandomValues(buffer);
-        } else {
-          for (let i = 0; i < buffer.length; i += 1) {
-            buffer[i] = Math.floor(Math.random() * 256);
-          }
-        }
-
-        return Array.from(buffer, (byte) => byte.toString(16).padStart(2, "0")).join("");
+      function resetFeedback(feedback) {
+        if (!feedback) return;
+        feedback.textContent = "";
+        feedback.style.removeProperty("color");
       }
 
-      function buildConfirmationUrl(profilePath, token) {
-        const baseUrl = window.location?.origin || "https://www.nailnow.app";
-        const params = new URLSearchParams({ profile: profilePath, token });
-        return `${baseUrl}/confirmar-cadastro.html?${params.toString()}`;
-      }
-
-      function buildConfirmationMessage({ name, confirmationUrl }) {
-        const displayName = name?.trim() || "Cliente";
-        const subject = "Confirme seu cadastro no NailNow 💅";
-        const text = [
-          `Olá, ${displayName}!`,
-          "Recebemos seu cadastro como cliente no NailNow e ele está aguardando confirmação.",
-          "Para confirmar sua conta e liberar o acesso ao portal, clique no link abaixo:",
-          confirmationUrl,
-          "Se você não solicitou este cadastro, pode ignorar esta mensagem.",
-          "Com carinho, equipe NailNow",
-        ].join("\n\n");
-        const html = [
-          `<p>Olá, <strong>${displayName}</strong>! 💖 Recebemos seu cadastro como cliente no NailNow e ele está aguardando confirmação.</p>`,
-          `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
-          `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
-          `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style="word-break:break-all;">${confirmationUrl}</span></p>`,
-          "<p>Com carinho, equipe NailNow 💅</p>",
-        ].join("");
-
-        return { subject, text, html };
+      function setFeedback(feedback, message, color) {
+        if (!feedback) return;
+        feedback.textContent = message;
+        if (color) {
+          feedback.style.color = color;
+        }
       }
 
       async function queueConfirmationEmail({ email, name, profilePath, token, confirmationUrl }) {
@@ -170,101 +139,51 @@
         }
       }
 
-      async function solicitarConfirmacao(profilePath) {
+      async function requestConfirmation(profilePath) {
+        if (!profilePath) {
+          throw new Error("missing-profile-path");
+        }
+
         try {
-          const response = await fetch(REQUEST_CONFIRMATION_URL, {
+          const response = await fetch(CONFIRMATION_ENDPOINT, {
             method: "POST",
-            mode: "cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ profile: profilePath }),
           });
 
           if (!response.ok) {
-            const errorText = await response.text().catch(() => "");
-            throw new Error(`request-failed-${response.status}-${errorText}`);
+            let errorCode = `http-${response.status}`;
+            try {
+              const errorPayload = await response.json();
+              if (errorPayload?.error) {
+                errorCode = errorPayload.error;
+              }
+            } catch (parseError) {
+              /* ignore parse error */
+            }
+            const httpError = new Error(errorCode);
+            httpError.code = errorCode;
+            throw httpError;
           }
 
-          const payload = await response.json().catch(() => ({}));
-          return payload || {};
+          return await response.json();
         } catch (error) {
-          console.error("Falha ao solicitar e-mail de confirmação", error);
+          console.error("Falha ao solicitar e-mail de confirmação para cliente", error);
           throw error;
         }
       }
 
-      async function enfileirarEmailConfirmacao(mailPayload, profilePath, collectionName, uid, fallback = {}) {
-        const basePayload = mailPayload && typeof mailPayload === "object" ? mailPayload : {};
-        const confirmedEmail =
-          Array.isArray(basePayload.to) && basePayload.to.length > 0
-            ? basePayload.to.find((value) => typeof value === "string" && value.trim())
-            : null;
-        const fallbackEmail = typeof fallback.email === "string" ? fallback.email.trim().toLowerCase() : "";
-
-        const to = confirmedEmail ? [confirmedEmail.trim().toLowerCase()] : fallbackEmail ? [fallbackEmail] : [];
-
-        if (to.length === 0 || !fallback.confirmationUrl) {
-          return null;
-        }
-
-        const message =
-          basePayload.message && typeof basePayload.message === "object"
-            ? basePayload.message
-            : buildConfirmationMailContent({
-                name: fallback.name,
-                role: fallback.role,
-                confirmationUrl: fallback.confirmationUrl,
-              });
-
-        const payload = {
-          ...basePayload,
-          to,
-          from:
-            basePayload.from && typeof basePayload.from === "string" && basePayload.from.trim()
-              ? basePayload.from
-              : SUPPORT_SENDER,
-          message: {
-            subject: message.subject,
-            text: message.text,
-            html: message.html,
-          },
-          metadata: {
-            ...(basePayload.metadata || {}),
-            source: "web-client",
-            queuedBy: "web-client",
-            profilePath,
-            profileCollection: collectionName,
-            role: fallback.role,
-            name: fallback.name || null,
-            confirmationUrl: fallback.confirmationUrl,
-            confirmationToken: fallback.token || null,
-          },
-        };
-
-        try {
-          const mailRef = await addDoc(collection(db, "mail"), payload);
-          await setDoc(
-            doc(db, collectionName, uid),
-            {
-              confirmationMailId: mailRef.id,
-              confirmationMailQueuedAt: serverTimestamp(),
-              confirmationMailQueuedBy: "web-client",
-            },
-            { merge: true },
-          );
-
-          return mailRef.id;
-        } catch (error) {
-          console.error("Falha ao enfileirar e-mail de confirmação", error);
-          return null;
-        }
-      }
-
-      async function cadastrarCliente(event) {
-        event.preventDefault();
-        const form = event.target;
-        const btn = form.querySelector("button[type='submit']");
+      async function processClientSignup() {
+        const form = document.getElementById("cadastroClienteForm");
+        const btn = document.getElementById("signup-submit");
         const feedback = document.getElementById("signup-feedback");
-        feedback.textContent = "";
+
+        if (!form || !btn) {
+          console.warn("Formulário de cadastro de cliente não encontrado");
+          return;
+        }
+
+        resetFeedback(feedback);
 
         try {
           const nome = form.nome.value.trim();
@@ -284,29 +203,32 @@
           const lng = form.lng.value || "";
 
           if (!nome || !email || !senha || !confirmarSenha || !endereco) {
-            feedback.textContent = "Preencha os campos obrigatórios (*).";
-            feedback.style.color = "#c62828";
+            setFeedback(feedback, "Preencha os campos obrigatórios (*).", "#c62828");
             return;
           }
 
           if (senha !== confirmarSenha) {
-            feedback.textContent = "As senhas não coincidem.";
-            feedback.style.color = "#c62828";
+            setFeedback(feedback, "As senhas não coincidem.", "#c62828");
             form.confirmarSenha.focus();
             return;
           }
 
           if (!aceiteTermos) {
-            feedback.textContent = "É necessário aceitar os termos para continuar.";
-            feedback.style.color = "#c62828";
+            setFeedback(feedback, "É necessário aceitar os termos para continuar.", "#c62828");
             return;
           }
 
           btn.disabled = true;
+          btn.setAttribute("aria-busy", "true");
           btn.textContent = "Criando conta…";
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
+          btn.textContent = "Salvando cadastro…";
+
+          const profilePath = `clientes/${uid}`;
+          let confirmationQueued = false;
+          let confirmationError = null;
 
           const profilePath = `clientes/${uid}`;
           const confirmationToken = generateConfirmationToken();
@@ -355,23 +277,10 @@
             payload.status = "pendente";
             payload.emailVerificado = false;
             payload.signupConfirmation = {
-              token: confirmationToken,
               status: "pending",
               role: "cliente",
-              confirmationUrl,
               preparedBy: "client-signup-form",
               preparedAt: serverTimestamp(),
-              ...(confirmationQueued && mailId
-                ? {
-                    mailStatus: "queued",
-                    mailId,
-                    mailDocumentId: mailId,
-                    mailQueuedAt: serverTimestamp(),
-                    mailQueuedBy: "client-signup-form",
-                  }
-                : {
-                    mailStatus: "error",
-                  }),
             };
           }
 
@@ -381,39 +290,80 @@
           const profilePath = `clientes/${uid}`;
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
-          const successMessage = isNew
-            ? confirmationQueued
-              ? "✅ Conta criada! Verifique seu e-mail (suporte@nailnow.app) para confirmar o cadastro e liberar o acesso."
-              : "⚠️ Conta criada! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, conclua o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app."
-            : "✅ Dados atualizados!";
+          if (isNew) {
+            btn.textContent = "Solicitando confirmação…";
+            try {
+              const result = await requestConfirmation(profilePath);
+              const mailStatus = (result?.mailStatus || "").toLowerCase();
+              confirmationQueued = ["queued", "already-queued"].includes(mailStatus);
+            } catch (error) {
+              confirmationError = error;
+            }
+          }
 
-          feedback.textContent = successMessage;
-          feedback.style.color = confirmationQueued || !isNew ? "#2e7d32" : "#c77800";
+          if (isNew) {
+            if (confirmationQueued) {
+              setFeedback(
+                feedback,
+                "✅ Cadastro enviado! Verifique seu e-mail (suporte@nailnow.app) para confirmar sua conta e acessar o portal.",
+                "#2e7d32",
+              );
+            } else if (confirmationError) {
+              setFeedback(
+                feedback,
+                "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação.",
+                "#4527a0",
+              );
+            } else {
+              setFeedback(
+                feedback,
+                "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.",
+                "#4527a0",
+              );
+            }
+          } else {
+            setFeedback(feedback, "✅ Dados atualizados!", "#2e7d32");
+          }
+
           form.reset();
-          form.querySelector("[name='aceiteTermos']").checked = false;
+          if (form.aceiteTermos) {
+            form.aceiteTermos.checked = false;
+          }
         } catch (error) {
           console.error(error);
           if (error.code === "auth/wrong-password") {
-            feedback.textContent = "❌ Erro: A senha informada não confere com a conta existente.";
+            setFeedback(feedback, "❌ Erro: A senha informada não confere com a conta existente.", "#c62828");
           } else if (error.code === "auth/invalid-login-credentials") {
-            feedback.textContent = "❌ Erro: Não foi possível confirmar seus dados de acesso.";
+            setFeedback(feedback, "❌ Erro: Não foi possível confirmar seus dados de acesso.", "#c62828");
           } else {
-            feedback.textContent = `❌ Erro: ${error.code || "erro-desconhecido"}`;
+            setFeedback(feedback, `❌ Erro: ${error.code || "erro-desconhecido"}`, "#c62828");
           }
-          feedback.style.color = "#c62828";
         } finally {
           await safeSignOut();
           btn.disabled = false;
+          btn.removeAttribute("aria-busy");
           btn.textContent = "Criar conta cliente";
         }
       }
 
       window.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById("cadastroClienteForm");
-        if (!form) return;
-        form.setAttribute("method", "post");
+        const btn = document.getElementById("signup-submit");
+        if (!form || !btn) return;
         form.setAttribute("novalidate", "novalidate");
-        form.addEventListener("submit", cadastrarCliente);
+
+        const handleSubmit = (event) => {
+          event.preventDefault();
+          processClientSignup();
+        };
+
+        form.addEventListener("submit", handleSubmit);
+        btn.addEventListener("click", handleSubmit);
+        form.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" && event.target?.tagName !== "TEXTAREA") {
+            handleSubmit(event);
+          }
+        });
       });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
@@ -583,7 +533,7 @@
                 </span>
               </label>
 
-              <button type="submit" class="signup-submit">Criar conta cliente</button>
+              <button id="signup-submit" type="button" class="signup-submit">Criar conta cliente</button>
               <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
             </form>
           </div>
