@@ -54,7 +54,14 @@
         signInWithEmailAndPassword,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        serverTimestamp,
+        collection,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -68,6 +75,8 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+      const REQUEST_CONFIRMATION_URL =
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
 
       async function ensureAuthAccount(email, senha) {
         try {
@@ -89,6 +98,66 @@
           }
         } catch (error) {
           console.warn("Não foi possível encerrar a sessão após o cadastro", error);
+        }
+      }
+
+      async function solicitarConfirmacao(profilePath) {
+        try {
+          const response = await fetch(REQUEST_CONFIRMATION_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profile: profilePath }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => "");
+            throw new Error(`request-failed-${response.status}-${errorText}`);
+          }
+
+          const payload = await response.json().catch(() => ({}));
+          return payload || {};
+        } catch (error) {
+          console.error("Falha ao solicitar e-mail de confirmação", error);
+          throw error;
+        }
+      }
+
+      function normalizarDestinatarios(valor) {
+        if (!valor) return [];
+        if (Array.isArray(valor)) {
+          return valor.map((item) => `${item}`.trim()).filter(Boolean);
+        }
+        return [`${valor}`.trim()].filter(Boolean);
+      }
+
+      async function queueWelcomeEmail(mailPayload) {
+        try {
+          if (!mailPayload || typeof mailPayload !== "object") {
+            throw new Error("mail-payload-invalido");
+          }
+
+          const to = normalizarDestinatarios(mailPayload.to);
+          if (!to.length) {
+            throw new Error("mail-sem-destinatario");
+          }
+
+          const message = mailPayload.message || {};
+          if (!message.subject && !message.templateId) {
+            throw new Error("mail-sem-assunto");
+          }
+
+          const payload = {
+            ...mailPayload,
+            to,
+            message,
+            from: mailPayload.from || "NailNow <suporte@nailnow.app>",
+          };
+
+          const docRef = await addDoc(collection(db, "mail"), payload);
+          return docRef.id;
+        } catch (error) {
+          console.error("Falha ao criar fallback do e-mail de confirmação", error);
+          return null;
         }
       }
 
@@ -159,14 +228,42 @@
             atualizadoEm: serverTimestamp(),
           };
 
+          let welcomeEmailQueued = null;
           if (isNew) {
             payload.criadoEm = serverTimestamp();
+            payload.status = "pendente";
           }
+
+          let confirmationQueued = false;
+          let mailPayload = null;
+          let mailDocId = null;
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
+          if (isNew) {
+            try {
+              const result = await solicitarConfirmacao(`clientes/${uid}`);
+              confirmationQueued = ["queued", "already-queued"].includes(result?.status);
+              if (result?.mailPayload) {
+                mailPayload = result.mailPayload;
+              }
+            } catch (error) {
+              confirmationQueued = false;
+            }
+          }
+
+          if (isNew && !confirmationQueued && mailPayload) {
+            mailDocId = await queueWelcomeEmail(mailPayload);
+            confirmationQueued = Boolean(mailDocId);
+            if (mailDocId) {
+              console.info("E-mail de confirmação enfileirado via fallback", mailDocId);
+            }
+          }
+
           feedback.textContent = isNew
-            ? "✅ Conta criada com sucesso!"
+            ? confirmationQueued
+              ? "✅ Conta criada! Verifique seu e-mail para confirmar o cadastro e liberar o acesso."
+              : "✅ Conta criada! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
             : "✅ Dados atualizados!";
           feedback.style.color = "#2e7d32";
           form.reset();
@@ -398,7 +495,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
+          <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
