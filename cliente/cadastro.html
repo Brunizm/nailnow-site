@@ -54,7 +54,15 @@
         signInWithEmailAndPassword,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        updateDoc,
+        serverTimestamp,
+        collection,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -68,7 +76,154 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+      const CONFIRMATION_ENDPOINT =
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
+      const MAIL_COLLECTION = "mail";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+      const MAIL_SOURCE = "client-signup-form";
 
+      const FORM_ID = "cadastroClienteForm";
+      const SUBMIT_ID = "signup-submit";
+      const FEEDBACK_ID = "signup-feedback";
+
+      const FEEDBACK_COLORS = {
+        info: "#4527a0",
+        error: "#c62828",
+        success: "#2e7d32",
+      };
+
+      function sanitizeMailPayload(mailPayload, context = {}) {
+        if (!mailPayload || typeof mailPayload !== "object") {
+          return null;
+        }
+
+        const toRaw = Array.isArray(mailPayload.to) ? mailPayload.to : [];
+        const to = toRaw
+          .map((value) => (typeof value === "string" ? value.trim() : ""))
+          .filter((value) => value);
+
+        if (!to.length) {
+          return null;
+        }
+
+        const metadata = mailPayload.metadata || {};
+        const confirmationUrl =
+          context.confirmationUrl || metadata.confirmationUrl || "";
+
+        const subjectFallback = "Confirme seu cadastro no NailNow 💅";
+        const textFallback = confirmationUrl
+          ? `Olá! Confirme seu cadastro acessando: ${confirmationUrl}`
+          : "Olá! Confirme seu cadastro no NailNow.";
+        const htmlFallback = confirmationUrl
+          ? `<p>Olá! 💖 Confirme seu cadastro clicando no botão abaixo:</p><p style="margin:24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p><p>Se o botão não funcionar, copie e cole este link:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`
+          : "<p>Olá! 💖 Confirme seu cadastro no NailNow.</p>";
+
+        const message = {
+          subject: mailPayload.message?.subject || subjectFallback,
+          text: mailPayload.message?.text || textFallback,
+          html: mailPayload.message?.html || htmlFallback,
+        };
+
+        return {
+          to,
+          from: SUPPORT_SENDER,
+          message,
+          metadata: {
+            ...metadata,
+            role: context.role || metadata.role || "cliente",
+            queuedBy: context.queuedBy || metadata.queuedBy || MAIL_SOURCE,
+            profilePath: context.profilePath || metadata.profilePath || null,
+            confirmationUrl: confirmationUrl || null,
+            emailType: metadata.emailType || "confirmation",
+          },
+        };
+      }
+
+      async function enqueueMailFallback(mailPayload, context = {}) {
+        const sanitized = sanitizeMailPayload(mailPayload, context);
+        if (!sanitized) {
+          return { mailId: null, mailStatus: "missing-email" };
+        }
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), sanitized);
+        return { mailId: mailRef.id, mailStatus: "queued" };
+      }
+
+      async function persistConfirmationStatus(docRef, updates = {}) {
+        if (!docRef) return;
+
+        const payload = {};
+        const queuedBy = updates.queuedBy || MAIL_SOURCE;
+
+        payload["signupConfirmation.preparedBy"] = queuedBy;
+        payload["signupConfirmation.preparedAt"] = serverTimestamp();
+
+        if (updates.mailStatus) {
+          payload["signupConfirmation.mailStatus"] = updates.mailStatus;
+        }
+
+        if (updates.confirmationUrl) {
+          payload["signupConfirmation.confirmationUrl"] = updates.confirmationUrl;
+        }
+
+        if (updates.mailId) {
+          payload["signupConfirmation.mailId"] = updates.mailId;
+          payload["signupConfirmation.mailDocumentId"] = updates.mailId;
+          payload["signupConfirmation.mailQueuedBy"] = queuedBy;
+          payload["signupConfirmation.mailQueuedAt"] = serverTimestamp();
+        }
+
+        if (Object.keys(payload).length) {
+          await updateDoc(docRef, payload);
+        }
+      }
+
+      function setFeedback(element, message, variant = "info") {
+        if (!element) return;
+        if (!message) {
+          element.textContent = "";
+          element.style.removeProperty("color");
+          element.removeAttribute("data-variant");
+          return;
+        }
+
+        element.textContent = message;
+        element.dataset.variant = variant;
+        element.style.color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
+      }
+
+      function setFeedback(element, message, variant = "info") {
+        if (!element) return;
+        if (!message) {
+          element.textContent = "";
+          element.style.removeProperty("color");
+          element.removeAttribute("data-variant");
+          return;
+        }
+
+        element.textContent = message;
+        element.dataset.variant = variant;
+        element.style.color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
+      }
+
+        const message = buildConfirmationMessage({ name, confirmationUrl });
+        const payload = {
+          to: [trimmedEmail.toLowerCase()],
+          from: SUPPORT_SENDER,
+          message,
+          metadata: {
+            role: "cliente",
+            emailType: "confirmation",
+            profilePath,
+            confirmationUrl,
+            confirmationToken: token,
+            queuedBy: "client-signup-form",
+          },
+        };
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), payload);
+        return { mailId: mailRef.id };
+      }
       async function ensureAuthAccount(email, senha) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, senha);
@@ -92,55 +247,130 @@
         }
       }
 
-      async function cadastrarCliente(event) {
-        event.preventDefault();
-        const form = event.target;
-        const btn = form.querySelector("button[type='submit']");
-        const feedback = document.getElementById("signup-feedback");
-        feedback.textContent = "";
+      async function requestConfirmation(profilePath) {
+        if (!profilePath) {
+          throw new Error("missing-profile-path");
+        }
 
         try {
-          const nome = form.nome.value.trim();
-          const email = form.email.value.trim().toLowerCase();
-          const senha = form.senha.value;
-          const confirmarSenha = form.confirmarSenha.value;
-          const telefone = form.telefone.value.trim();
-          const endereco = form.endereco_text.value.trim();
-          const complemento = form.complemento.value.trim();
-          const preferencias = [];
-          const newsletter = false;
-          const aceiteTermos = form.aceiteTermos.checked;
+          const response = await fetch(CONFIRMATION_ENDPOINT, {
+            method: "POST",
+            mode: "cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profile: profilePath }),
+          });
 
-          const endereco_formatado = form.endereco_formatado.value || "";
-          const place_id = form.place_id.value || "";
-          const lat = form.lat.value || "";
-          const lng = form.lng.value || "";
+          if (!response.ok) {
+            let errorCode = `http-${response.status}`;
+            try {
+              const payload = await response.json();
+              if (payload?.error) {
+                errorCode = payload.error;
+              }
+            } catch (parseError) {
+              /* ignore parse error */
+            }
+            const httpError = new Error(errorCode);
+            httpError.code = errorCode;
+            throw httpError;
+          }
+
+          return await response.json();
+        } catch (error) {
+          console.error("Falha ao solicitar e-mail de confirmação para cliente", error);
+          throw error;
+        }
+      }
+
+      function setSubmittingState(button, isSubmitting, idleLabel) {
+        if (!button) return;
+        button.disabled = isSubmitting;
+        if (isSubmitting) {
+          button.setAttribute("aria-busy", "true");
+        } else {
+          button.removeAttribute("aria-busy");
+        }
+        button.textContent = isSubmitting ? "Enviando…" : idleLabel;
+      }
+
+      let isProcessing = false;
+
+      async function processClientSignup(event) {
+        event?.preventDefault();
+        if (isProcessing) {
+          return;
+        }
+
+        const form = document.getElementById(FORM_ID);
+        const button = document.getElementById(SUBMIT_ID);
+        const feedback = document.getElementById(FEEDBACK_ID);
+
+        if (!form || !button) {
+          console.warn("Formulário de cadastro de cliente não encontrado");
+          return;
+        }
+
+        isProcessing = true;
+        setFeedback(feedback, "");
+
+        try {
+          const formData = new FormData(form);
+          const nome = (formData.get("nome") || "").toString().trim();
+          const email = (formData.get("email") || "").toString().trim().toLowerCase();
+          const senha = (formData.get("senha") || "").toString();
+          const confirmarSenha = (formData.get("confirmarSenha") || "").toString();
+          const telefone = (formData.get("telefone") || "").toString().trim();
+          const endereco = (formData.get("endereco_text") || "").toString().trim();
+          const complemento = (formData.get("complemento") || "").toString().trim();
+          const enderecoFormatado = (formData.get("endereco_formatado") || "").toString();
+          const placeId = (formData.get("place_id") || "").toString();
+          const lat = (formData.get("lat") || "").toString();
+          const lng = (formData.get("lng") || "").toString();
+          const aceiteTermos = formData.get("aceiteTermos") === "on" || form.aceiteTermos?.checked;
 
           if (!nome || !email || !senha || !confirmarSenha || !endereco) {
-            feedback.textContent = "Preencha os campos obrigatórios (*).";
-            feedback.style.color = "#c62828";
+            setFeedback(feedback, "Preencha os campos obrigatórios (*).", "error");
+            feedback?.focus();
+            isProcessing = false;
             return;
           }
 
           if (senha !== confirmarSenha) {
-            feedback.textContent = "As senhas não coincidem.";
-            feedback.style.color = "#c62828";
-            form.confirmarSenha.focus();
+            setFeedback(feedback, "As senhas não coincidem.", "error");
+            form.querySelector("#confirmarSenha")?.focus();
+            isProcessing = false;
             return;
           }
 
           if (!aceiteTermos) {
-            feedback.textContent = "É necessário aceitar os termos para continuar.";
-            feedback.style.color = "#c62828";
+            setFeedback(feedback, "É necessário aceitar os termos para continuar.", "error");
+            form.aceiteTermos?.focus();
+            isProcessing = false;
             return;
           }
 
-          btn.disabled = true;
-          btn.textContent = "Criando conta…";
+          setSubmittingState(button, true, "Criar conta cliente");
+          button.textContent = "Criando conta…";
+          setFeedback(feedback, "Validando seus dados…", "info");
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
+          btn.textContent = "Salvando cadastro…";
 
+          const profilePath = `clientes/${uid}`;
+          let confirmationQueued = false;
+          let confirmationError = null;
+
+          const profilePath = `clientes/${uid}`;
+          const confirmationToken = generateConfirmationToken();
+          const confirmationUrl = buildConfirmationUrl(profilePath, confirmationToken);
+
+          let mailId = null;
+          let confirmationQueued = false;
+
+          button.textContent = "Salvando cadastro…";
+
+          const profilePath = `clientes/${uid}`;
           const payload = {
             uid,
             nome,
@@ -149,42 +379,139 @@
             telefone,
             endereco,
             complemento,
-            endereco_formatado,
-            place_id,
+            endereco_formatado: enderecoFormatado,
+            place_id: placeId,
             lat,
             lng,
-            preferencias,
-            newsletter,
-            aceiteTermos,
+            preferencias: [],
+            newsletter: false,
+            aceiteTermos: Boolean(aceiteTermos),
             atualizadoEm: serverTimestamp(),
           };
 
+          let welcomeEmailQueued = null;
           if (isNew) {
             payload.criadoEm = serverTimestamp();
+            payload.status = "pendente";
+            payload.emailVerificado = false;
+            payload.signupConfirmation = {
+              status: "pending",
+              role: "cliente",
+              preparedBy: "client-signup-form",
+              preparedAt: serverTimestamp(),
+            };
           }
 
-          await setDoc(doc(db, "clientes", uid), payload, { merge: true });
+          const docRef = doc(db, "clientes", uid);
+          await setDoc(docRef, payload, { merge: true });
 
-          feedback.textContent = isNew
-            ? "✅ Conta criada com sucesso!"
-            : "✅ Dados atualizados!";
-          feedback.style.color = "#2e7d32";
+          let confirmationQueued = false;
+          let confirmationError = null;
+          let confirmationMailStatus = "not-requested";
+          let confirmationMailId = null;
+
+          if (isNew) {
+            button.textContent = "Solicitando confirmação…";
+            try {
+              const result = await requestConfirmation(profilePath);
+              const normalizedStatus = (result?.mailStatus || "").toLowerCase();
+              confirmationMailStatus = normalizedStatus || confirmationMailStatus;
+
+              if (["queued", "already-queued"].includes(normalizedStatus)) {
+                confirmationQueued = true;
+                if (result?.mailId) {
+                  confirmationMailId = result.mailId;
+                }
+              } else if (result?.mailPayload) {
+                try {
+                  const fallback = await enqueueMailFallback(result.mailPayload, {
+                    role: "cliente",
+                    queuedBy: MAIL_SOURCE,
+                    profilePath,
+                    confirmationUrl:
+                      result?.confirmationUrl || result?.mailPayload?.metadata?.confirmationUrl || "",
+                  });
+                  confirmationMailStatus = fallback.mailStatus || confirmationMailStatus;
+                  if (fallback.mailId) {
+                    confirmationQueued = true;
+                    confirmationMailId = fallback.mailId;
+                    confirmationError = null;
+                  }
+                } catch (fallbackError) {
+                  confirmationMailStatus = "error";
+                  confirmationError = fallbackError;
+                }
+              }
+
+              await persistConfirmationStatus(docRef, {
+                queuedBy: MAIL_SOURCE,
+                mailStatus: confirmationQueued
+                  ? confirmationMailStatus || "queued"
+                  : confirmationMailStatus || "requires-client-enqueue",
+                mailId: confirmationMailId || result?.mailId || null,
+                confirmationUrl:
+                  result?.confirmationUrl || result?.mailPayload?.metadata?.confirmationUrl || null,
+              });
+            } catch (error) {
+              confirmationError = error;
+              confirmationMailStatus = "error";
+              try {
+                await persistConfirmationStatus(docRef, {
+                  queuedBy: MAIL_SOURCE,
+                  mailStatus: "error",
+                });
+              } catch (persistError) {
+                console.warn("Não foi possível registrar o status da confirmação do cliente", persistError);
+              }
+            }
+          }
+
+          if (isNew) {
+            let message;
+            let variant = "info";
+
+            if (confirmationQueued) {
+              message =
+                "✅ Cadastro enviado! Verifique seu e-mail (suporte@nailnow.app) para confirmar sua conta e acessar o portal.";
+              variant = "success";
+            } else if (confirmationError) {
+              message =
+                "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação.";
+              variant = "error";
+            } else if (confirmationMailStatus === "missing-email") {
+              message =
+                "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize o cadastro ou contate suporte@nailnow.app.";
+              variant = "info";
+            } else {
+              message =
+                "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
+              variant = "info";
+            }
+
+            setFeedback(feedback, message, variant);
+          } else {
+            setFeedback(feedback, "✅ Dados atualizados!", "success");
+          }
+
           form.reset();
-          form.querySelector("[name='aceiteTermos']").checked = false;
+          if (form.aceiteTermos) {
+            form.aceiteTermos.checked = false;
+          }
         } catch (error) {
           console.error(error);
-          if (error.code === "auth/wrong-password") {
-            feedback.textContent = "❌ Erro: A senha informada não confere com a conta existente.";
-          } else if (error.code === "auth/invalid-login-credentials") {
-            feedback.textContent = "❌ Erro: Não foi possível confirmar seus dados de acesso.";
+          const code = error?.code || "erro-desconhecido";
+          if (code === "auth/wrong-password") {
+            setFeedback(feedback, "❌ Erro: A senha informada não confere com a conta existente.", "error");
+          } else if (code === "auth/invalid-login-credentials") {
+            setFeedback(feedback, "❌ Erro: Não foi possível confirmar seus dados de acesso.", "error");
           } else {
-            feedback.textContent = `❌ Erro: ${error.code || "erro-desconhecido"}`;
+            const message = error?.message ? error.message.replace(/^Firebase: /, "") : code;
+            setFeedback(feedback, `❌ Erro: ${message}`, "error");
           }
-          feedback.style.color = "#c62828";
         } finally {
           await safeSignOut();
-          btn.disabled = false;
-          btn.textContent = "Criar conta cliente";
+          setSubmittingState(document.getElementById(SUBMIT_ID), false, "Criar conta cliente");
+          isProcessing = false;
         }
       }
 
@@ -359,7 +686,7 @@
                 </span>
               </label>
 
-              <button type="submit" class="signup-submit">Criar conta cliente</button>
+              <button id="signup-submit" type="submit" class="signup-submit">Criar conta cliente</button>
               <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
             </form>
           </div>
