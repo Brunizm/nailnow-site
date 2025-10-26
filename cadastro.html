@@ -71,6 +71,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
     const storage = getStorage(app);
     const REQUEST_CONFIRMATION_URL =
       "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
@@ -228,6 +229,19 @@
 
         // 3) Firestore
         console.log(">> Gravando no Firestore…");
+        let mailDocId = null;
+        if (isNew) {
+          try {
+            mailDocId = await queueWelcomeEmail({
+              email,
+              nome,
+              profilePath: `profissionais/${uid}`,
+            });
+          } catch (queueError) {
+            console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
+          }
+        }
+
         const payload = {
           nome,
           email,
@@ -238,10 +252,16 @@
           updatedAt: serverTimestamp(),
         };
 
+        let welcomeEmailQueued = null;
         if (isNew) {
           payload.createdAt = serverTimestamp();
           payload.status = "pendente";
           payload.fotoUrl = fotoUrl || null;
+          if (mailDocId) {
+            payload.welcomeEmailQueuedAt = serverTimestamp();
+            payload.welcomeEmailQueuedBy = "web";
+            payload.welcomeEmailMailId = mailDocId;
+          }
         } else if (fotoUrl) {
           payload.fotoUrl = fotoUrl;
         }
