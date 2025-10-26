@@ -46,7 +46,14 @@
       signInWithEmailAndPassword,
       signOut,
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      serverTimestamp,
+      collection,
+      addDoc,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     const firebaseConfig = {
@@ -61,6 +68,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
     const storage = getStorage(app);
     const CONFIRMATION_ENDPOINT =
       "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
@@ -247,6 +255,10 @@
           };
         }
 
+        let confirmationQueued = false;
+        let queueStatus = "not-requested";
+
+        const profilePath = `profissionais/${uid}`;
         await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
         let confirmationQueued = false;

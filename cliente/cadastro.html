@@ -54,7 +54,14 @@
         signInWithEmailAndPassword,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        serverTimestamp,
+        collection,
+        addDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -95,6 +102,24 @@
         element.style.color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
       }
 
+        const message = buildConfirmationMessage({ name, confirmationUrl });
+        const payload = {
+          to: [trimmedEmail.toLowerCase()],
+          from: SUPPORT_SENDER,
+          message,
+          metadata: {
+            role: "cliente",
+            emailType: "confirmation",
+            profilePath,
+            confirmationUrl,
+            confirmationToken: token,
+            queuedBy: "client-signup-form",
+          },
+        };
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), payload);
+        return { mailId: mailRef.id };
+      }
       async function ensureAuthAccount(email, senha) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, senha);
@@ -226,6 +251,34 @@
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
+          btn.textContent = "Salvando cadastro…";
+
+          const profilePath = `clientes/${uid}`;
+          let confirmationQueued = false;
+          let confirmationError = null;
+
+          const profilePath = `clientes/${uid}`;
+          const confirmationToken = generateConfirmationToken();
+          const confirmationUrl = buildConfirmationUrl(profilePath, confirmationToken);
+
+          let mailId = null;
+          let confirmationQueued = false;
+
+          if (isNew) {
+            try {
+              const result = await queueConfirmationEmail({
+                email,
+                name: nome,
+                profilePath,
+                token: confirmationToken,
+                confirmationUrl,
+              });
+              mailId = result.mailId;
+              confirmationQueued = true;
+            } catch (mailError) {
+              console.error("Falha ao enfileirar e-mail de confirmação do cliente", mailError);
+            }
+          }
 
           button.textContent = "Salvando cadastro…";
 
@@ -248,6 +301,7 @@
             atualizadoEm: serverTimestamp(),
           };
 
+          let welcomeEmailQueued = null;
           if (isNew) {
             payload.criadoEm = serverTimestamp();
             payload.status = "pendente";
@@ -260,6 +314,10 @@
             };
           }
 
+          let confirmationQueued = false;
+          let queueStatus = "not-requested";
+
+          const profilePath = `clientes/${uid}`;
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
           let confirmationQueued = false;
