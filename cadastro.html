@@ -39,7 +39,6 @@
 
   <!-- Firebase + integração do formulário -->
   <script type="module">
-    // SDKs Firebase (v10 modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
       getAuth,
@@ -47,52 +46,73 @@
       signInWithEmailAndPassword,
       signOut,
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      updateDoc,
+      serverTimestamp,
+      collection,
+      addDoc,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    // 🔧 Config do seu projeto
     const firebaseConfig = {
       apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
       authDomain: "nailnow-site.firebaseapp.com",
       projectId: "nailnow-site",
-      storageBucket: "nailnow-site.appspot.com", // ✅ corrigido (era .firebasestorage.app)
+      storageBucket: "nailnow-site.appspot.com",
       messagingSenderId: "726392294571",
       appId: "1:726392294571:web:a363a40231f7ac162e7bee",
     };
 
-    // Inicializa Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
+    const CONFIRMATION_ENDPOINT =
+      "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
+    const MAIL_COLLECTION = "mail";
+    const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+    const MAIL_SOURCE = "legacy-professional-signup";
 
-    // ---------- Utils ----------
-    const $ = (id) => document.getElementById(id);
+    const FORM_ID = "cadastroForm";
+    const SUBMIT_ID = "signup-submit";
 
-    // Garante que um input exista; se não existir, cria (visível) no fim do form
-    function ensureInput({ id, label, type = "text", required = false, accept = "" }) {
-      let el = document.getElementById(id);
-      if (!el) {
-        const form = $("cadastroForm");
-        const lbl = document.createElement("label");
-        lbl.htmlFor = id;
-        lbl.textContent = label + (required ? " *" : "");
-        el = document.createElement(type === "textarea" ? "textarea" : "input");
-        el.id = id;
-        if (type !== "textarea") el.type = type;
-        if (accept) el.setAttribute("accept", accept);
-        if (required) el.required = true;
-        form.appendChild(lbl);
-        form.appendChild(el);
-        console.warn(`Criado automaticamente o campo ausente: #${id}`);
+    const FEEDBACK_COLORS = {
+      info: "#4527a0",
+      error: "#c62828",
+      success: "#2e7d32",
+    };
+
+    function setFeedback(message, variant = "info") {
+      const feedback = document.getElementById("form-feedback");
+      if (!feedback) return;
+      if (!message) {
+        feedback.textContent = "";
+        feedback.style.removeProperty("color");
+        feedback.removeAttribute("data-variant");
+        return;
       }
-      return el;
+      feedback.textContent = message;
+      feedback.dataset.variant = variant;
+      feedback.style.color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
+      feedback.focus?.({ preventScroll: false });
     }
 
-    const servicosSelecionados = () =>
-      Array.from(document.querySelectorAll('input[name="servicos"]:checked')).map(el => el.value);
+    function setSubmittingState(isSubmitting) {
+      const button = document.getElementById(SUBMIT_ID);
+      if (!button) return;
+      button.disabled = isSubmitting;
+      if (isSubmitting) {
+        button.setAttribute("aria-busy", "true");
+        button.textContent = "Enviando…";
+      } else {
+        button.removeAttribute("aria-busy");
+        button.textContent = "Cadastrar profissional";
+      }
+    }
 
-    // ---------- Submit ----------
     async function ensureAuthAccount(email, senha) {
       try {
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
@@ -106,111 +126,351 @@
       }
     }
 
-    async function enviarCadastro(event) {
-      event.preventDefault();
-      console.log(">> enviarCadastro DISPAROU");
+    async function safeSignOut() {
+      try {
+        if (auth.currentUser) {
+          await signOut(auth);
+        }
+      } catch (error) {
+        console.warn("Não foi possível encerrar a sessão após o cadastro", error);
+      }
+    }
 
-      const botao = $("enviar");
-      if (botao) { botao.disabled = true; botao.innerText = "Enviando..."; }
+    async function requestConfirmation(profilePath) {
+      if (!profilePath) {
+        throw new Error("missing-profile-path");
+      }
+
+      const response = await fetch(CONFIRMATION_ENDPOINT, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: profilePath }),
+      });
+
+      if (!response.ok) {
+        let errorCode = `http-${response.status}`;
+        try {
+          const payload = await response.json();
+          if (payload?.error) {
+            errorCode = payload.error;
+          }
+        } catch (parseError) {
+          /* ignore parse error */
+        }
+        const httpError = new Error(errorCode);
+        httpError.code = errorCode;
+        throw httpError;
+      }
+
+      return response.json();
+    }
+
+    function sanitizeMailPayload(mailPayload, context = {}) {
+      if (!mailPayload || typeof mailPayload !== "object") {
+        return null;
+      }
+
+      const toRaw = Array.isArray(mailPayload.to) ? mailPayload.to : [];
+      const to = toRaw
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter((value) => value);
+
+      if (!to.length) {
+        return null;
+      }
+
+      const metadata = mailPayload.metadata || {};
+      const confirmationUrl = context.confirmationUrl || metadata.confirmationUrl || "";
+
+      const subjectFallback = "Confirme seu cadastro no NailNow 💅";
+      const textFallback = confirmationUrl
+        ? `Olá! Confirme seu cadastro acessando: ${confirmationUrl}`
+        : "Olá! Confirme seu cadastro no NailNow.";
+      const htmlFallback = confirmationUrl
+        ? `<p>Olá! 💖 Confirme seu cadastro clicando no botão abaixo:</p><p style="margin:24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p><p>Se o botão não funcionar, copie e cole este link:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`
+        : "<p>Olá! 💖 Confirme seu cadastro no NailNow.</p>";
+
+      const message = {
+        subject: mailPayload.message?.subject || subjectFallback,
+        text: mailPayload.message?.text || textFallback,
+        html: mailPayload.message?.html || htmlFallback,
+      };
+
+      return {
+        to,
+        from: SUPPORT_SENDER,
+        message,
+        metadata: {
+          ...metadata,
+          role: context.role || metadata.role || "profissional",
+          queuedBy: context.queuedBy || metadata.queuedBy || MAIL_SOURCE,
+          profilePath: context.profilePath || metadata.profilePath || null,
+          confirmationUrl: confirmationUrl || null,
+          emailType: metadata.emailType || "confirmation",
+        },
+      };
+    }
+
+    async function enqueueMailFallback(mailPayload, context = {}) {
+      const sanitized = sanitizeMailPayload(mailPayload, context);
+      if (!sanitized) {
+        return { mailId: null, mailStatus: "missing-email" };
+      }
+
+      const mailRef = await addDoc(collection(db, MAIL_COLLECTION), sanitized);
+      return { mailId: mailRef.id, mailStatus: "queued" };
+    }
+
+    async function persistConfirmationStatus(docRef, updates = {}) {
+      if (!docRef) return;
+
+      const payload = {};
+      const queuedBy = updates.queuedBy || MAIL_SOURCE;
+
+      payload["signupConfirmation.preparedBy"] = queuedBy;
+      payload["signupConfirmation.preparedAt"] = serverTimestamp();
+
+      if (updates.mailStatus) {
+        payload["signupConfirmation.mailStatus"] = updates.mailStatus;
+      }
+
+      if (updates.confirmationUrl) {
+        payload["signupConfirmation.confirmationUrl"] = updates.confirmationUrl;
+      }
+
+      if (updates.mailId) {
+        payload["signupConfirmation.mailId"] = updates.mailId;
+        payload["signupConfirmation.mailDocumentId"] = updates.mailId;
+        payload["signupConfirmation.mailQueuedBy"] = queuedBy;
+        payload["signupConfirmation.mailQueuedAt"] = serverTimestamp();
+      }
+
+      if (Object.keys(payload).length) {
+        await updateDoc(docRef, payload);
+      }
+    }
+
+    async function uploadPhotoIfNeeded(uid, file) {
+      if (!file) return "";
+      const filePath = `profissionais/${uid}/perfil_${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, filePath);
+      await uploadBytes(storageRef, file);
+      return getDownloadURL(storageRef);
+    }
+
+    let isProcessing = false;
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+      if (isProcessing) {
+        return;
+      }
+
+      const form = document.getElementById(FORM_ID);
+      if (!form) {
+        alert("Formulário não encontrado.");
+        return;
+      }
+
+      isProcessing = true;
+      setFeedback("");
+      setSubmittingState(true);
 
       try {
-        // Garante que os campos existem (se faltarem, cria)
-        const nomeEl = ensureInput({ id: "nome", label: "Nome completo", required: true });
-        const emailEl = ensureInput({ id: "email", label: "E-mail", type: "email", required: true });
-        const senhaEl = ensureInput({ id: "senha", label: "Senha", type: "password", required: true });
-        const confirmarEl = ensureInput({ id: "confirmarSenha", label: "Confirmar senha", type: "password", required: true });
-        const telefoneEl = ensureInput({ id: "telefone", label: "Telefone / WhatsApp" });
-        const cidadeEl = ensureInput({ id: "cidade", label: "Cidade", required: true });
-        const bioEl = ensureInput({ id: "bio", label: "Sobre você", type: "textarea" });
-        const fotoEl = ensureInput({ id: "foto", label: "Foto de perfil", type: "file", accept: "image/*" });
+        const formData = new FormData(form);
+        const nome = (formData.get("nome") || "").toString().trim();
+        const email = (formData.get("email") || "").toString().trim().toLowerCase();
+        const senha = (formData.get("senha") || "").toString();
+        const confirmarSenha = (formData.get("confirmarSenha") || "").toString();
+        const telefone = (formData.get("telefone") || "").toString().trim();
+        const cidade = (formData.get("cidade") || "").toString().trim();
+        const bio = (formData.get("bio") || "").toString().trim();
+        const servicos = formData.getAll("servicos");
+        const fotoFile = form.querySelector("#foto")?.files?.[0] || null;
 
-        // Valores
-        const nome = nomeEl.value.trim();
-        const email = emailEl.value.trim().toLowerCase();
-        const senha = senhaEl.value;
-        const confirmar = confirmarEl.value;
-        const telefone = telefoneEl.value.trim();
-        const cidade = cidadeEl.value.trim();
-        const bio = bioEl.value.trim();
-        const foto = fotoEl.files?.[0] || null;
-
-        if (!nome || !email || !senha || !confirmar || !cidade) {
-          alert("Preencha os campos obrigatórios (*)");
-          return;
-        }
-        if (senha !== confirmar) {
-          alert("A confirmação de senha não confere.");
+        if (!nome || !email || !senha || !confirmarSenha || !cidade) {
+          setFeedback("❌ Erro: Preencha os campos obrigatórios (*).", "error");
+          isProcessing = false;
+          setSubmittingState(false);
           return;
         }
 
-        // 1) Auth
-        console.log(">> Criando usuário no Auth…");
+        if (senha !== confirmarSenha) {
+          setFeedback("❌ Erro: As senhas não coincidem.", "error");
+          form.querySelector("#confirmarSenha")?.focus();
+          isProcessing = false;
+          setSubmittingState(false);
+          return;
+        }
+
         const { user, isNew } = await ensureAuthAccount(email, senha);
         const uid = user.uid;
-        console.log(">> Auth OK, uid:", uid);
 
-        // 2) Foto (opcional)
         let fotoUrl = "";
-        if (foto) {
-          console.log(">> Subindo foto…");
-          const caminho = `profissionais/${uid}/perfil_${Date.now()}_${foto.name}`;
-          const fileRef = ref(storage, caminho);
-          await uploadBytes(fileRef, foto);
-          fotoUrl = await getDownloadURL(fileRef);
-          console.log(">> Foto URL:", fotoUrl);
+        if (fotoFile) {
+          setFeedback("Carregando foto…", "info");
+          fotoUrl = await uploadPhotoIfNeeded(uid, fotoFile);
         }
 
-        // 3) Firestore
-        console.log(">> Gravando no Firestore…");
+        setFeedback("Salvando cadastro…", "info");
+
+        const profilePath = `profissionais/${uid}`;
         const payload = {
+          uid,
           nome,
           email,
           telefone,
           cidade,
           bio,
-          servicos: servicosSelecionados(),
-          updatedAt: serverTimestamp(),
+          servicos,
+          atualizadoEm: serverTimestamp(),
         };
+
+        if (fotoUrl) {
+          payload.fotoUrl = fotoUrl;
+        }
 
         if (isNew) {
           payload.createdAt = serverTimestamp();
           payload.status = "pendente";
-          payload.fotoUrl = fotoUrl || null;
-        } else if (fotoUrl) {
-          payload.fotoUrl = fotoUrl;
+          payload.emailVerificado = false;
+          payload.signupConfirmation = {
+            status: "pending",
+            role: "profissional",
+            preparedBy: "legacy-professional-signup",
+            preparedAt: serverTimestamp(),
+          };
         }
 
-        await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
-        console.log(">> Firestore OK");
+        const docRef = doc(db, "profissionais", uid);
+        await setDoc(docRef, payload, { merge: true });
 
-        // 4) Sair (opcional)
-        await signOut(auth);
+        let confirmationQueued = false;
+        let confirmationError = null;
+        let confirmationMailStatus = "not-requested";
+        let confirmationMailId = null;
 
-        alert(isNew ? "✅ Cadastro enviado com sucesso!" : "✅ Dados profissionais atualizados!");
-        $("cadastroForm").reset();
+        if (isNew) {
+          setFeedback("Solicitando e-mail de confirmação…", "info");
+          try {
+            const result = await requestConfirmation(profilePath);
+            const normalizedStatus = (result?.mailStatus || "").toLowerCase();
+            confirmationMailStatus = normalizedStatus || confirmationMailStatus;
+
+            if (["queued", "already-queued"].includes(normalizedStatus)) {
+              confirmationQueued = true;
+              if (result?.mailId) {
+                confirmationMailId = result.mailId;
+              }
+            } else if (result?.mailPayload) {
+              try {
+                const fallback = await enqueueMailFallback(result.mailPayload, {
+                  role: "profissional",
+                  queuedBy: MAIL_SOURCE,
+                  profilePath,
+                  confirmationUrl:
+                    result?.confirmationUrl || result?.mailPayload?.metadata?.confirmationUrl || "",
+                });
+                confirmationMailStatus = fallback.mailStatus || confirmationMailStatus;
+                if (fallback.mailId) {
+                  confirmationQueued = true;
+                  confirmationMailId = fallback.mailId;
+                  confirmationError = null;
+                }
+              } catch (fallbackError) {
+                confirmationMailStatus = "error";
+                confirmationError = fallbackError;
+              }
+            }
+
+            await persistConfirmationStatus(docRef, {
+              queuedBy: MAIL_SOURCE,
+              mailStatus: confirmationQueued
+                ? confirmationMailStatus || "queued"
+                : confirmationMailStatus || "requires-client-enqueue",
+              mailId: confirmationMailId || result?.mailId || null,
+              confirmationUrl:
+                result?.confirmationUrl || result?.mailPayload?.metadata?.confirmationUrl || null,
+            });
+          } catch (error) {
+            confirmationError = error;
+            confirmationMailStatus = "error";
+            try {
+              await persistConfirmationStatus(docRef, {
+                queuedBy: MAIL_SOURCE,
+                mailStatus: "error",
+              });
+            } catch (persistError) {
+              console.warn("Não foi possível registrar o status da confirmação (legado)", persistError);
+            }
+          }
+        }
+
+        let message;
+        let variant;
+        if (isNew) {
+          if (confirmationQueued) {
+            message = "✅ Cadastro enviado! Verifique seu e-mail (suporte@nailnow.app) para confirmar o acesso ao portal profissional.";
+            variant = "success";
+          } else if (confirmationError) {
+            message = "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação.";
+            variant = "error";
+          } else if (confirmationMailStatus === "missing-email") {
+            message = "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app.";
+            variant = "info";
+          } else {
+            message = "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
+            variant = "info";
+          }
+        } else {
+          message = "✅ Dados profissionais atualizados!";
+          variant = "success";
+        }
+
+        setFeedback(message, variant);
+        form.reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
-        if (error.code === "auth/wrong-password") {
-          alert("❌ Erro: A senha informada não confere com a conta existente.");
-        } else if (error.code === "auth/invalid-login-credentials") {
-          alert("❌ Erro: Não foi possível confirmar seus dados de acesso.");
-        } else {
-          alert(`❌ Erro ao cadastrar: ${error.code || error.message || "erro-desconhecido"}`);
-        }
+        const code = error?.code || "erro-desconhecido";
+        const friendly =
+          code === "auth/wrong-password"
+            ? "❌ Erro: A senha informada não confere com a conta existente."
+            : code === "auth/invalid-login-credentials"
+              ? "❌ Erro: Não foi possível confirmar seus dados de acesso."
+              : error?.message
+                ? `❌ Erro: ${error.message.replace(/^Firebase: /, "")}`
+                : `❌ Erro: ${code}`;
+        setFeedback(friendly, "error");
       } finally {
-        if (botao) { botao.disabled = false; botao.innerText = "Cadastrar profissional"; }
+        await safeSignOut();
+        setSubmittingState(false);
+        isProcessing = false;
       }
     }
 
-    // Conecta o listener no DOMContentLoaded (e removemos o inline onsubmit)
     document.addEventListener("DOMContentLoaded", () => {
-      const form = $("cadastroForm");
-      if (form) {
-        form.addEventListener("submit", enviarCadastro);
-        console.log(">> Listener conectado ao form");
-      } else {
-        console.warn("Form #cadastroForm não encontrado");
+      const form = document.getElementById(FORM_ID);
+      const submitButton = document.getElementById(SUBMIT_ID);
+      if (!form || !submitButton) {
+        console.warn("Form #cadastroForm ou botão de envio não encontrado");
+        return;
       }
+
+      form.setAttribute("novalidate", "novalidate");
+      form.setAttribute("action", "javascript:void(0);");
+      submitButton.type = "submit";
+      const feedback = document.createElement("p");
+      feedback.id = "form-feedback";
+      feedback.className = "hint";
+      feedback.setAttribute("role", "status");
+      feedback.setAttribute("tabindex", "-1");
+      submitButton.insertAdjacentElement("afterend", feedback);
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        handleSubmit(event);
+      });
     });
   </script>
 
@@ -239,7 +499,7 @@
   <div class="container">
     <h1>Cadastro de Profissional 💅</h1>
 
-    <form id="cadastroForm">
+    <form id="cadastroForm" method="post" action="javascript:void(0);" novalidate>
       <label for="nome">Nome completo *</label>
       <input id="nome" type="text" required />
 
@@ -297,7 +557,7 @@
       <div class="hint">Use uma imagem pequena (até 5 MB).
       </div>
 
-      <button id="enviar" type="submit">Cadastrar profissional</button>
+      <button id="signup-submit" type="submit">Cadastrar profissional</button>
     </form>
   </div>
   <script src="assets/js/password-toggle.js"></script>
