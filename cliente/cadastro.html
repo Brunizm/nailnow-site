@@ -515,22 +515,14 @@
         }
       }
 
-      window.addEventListener("DOMContentLoaded", () => {
-        const form = document.getElementById(FORM_ID);
-        const button = document.getElementById(SUBMIT_ID);
-        if (!form || !button) {
-          console.warn("Formulário de cadastro de cliente não encontrado");
-          return;
+      window.cadastrarCliente = cadastrarCliente;
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.querySelector(".signup-form");
+        if (form) {
+          form.addEventListener("submit", cadastrarCliente);
+          form.setAttribute("action", "javascript:void(0)");
         }
-
-        form.setAttribute("novalidate", "novalidate");
-        form.setAttribute("action", "javascript:void(0);");
-        button.type = "submit";
-
-        form.addEventListener("submit", (event) => {
-          event.preventDefault();
-          processClientSignup(event);
-        });
       });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
@@ -605,14 +597,7 @@
           <div class="client-signup-card">
             <h2 class="client-signup-card__title">Comece agora</h2>
             <p class="client-signup-card__subtitle">Preencha seus dados para desbloquear ofertas e agendar sem filas.</p>
-            <form
-              id="cadastroClienteForm"
-              class="signup-form"
-              method="post"
-              action="javascript:void(0);"
-              autocomplete="off"
-              novalidate
-            >
+            <form class="signup-form" autocomplete="off" action="javascript:void(0)">
               <div class="signup-field">
                 <label for="nome">Nome completo *</label>
                 <input id="nome" name="nome" type="text" required />

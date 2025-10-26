@@ -480,10 +480,37 @@
         form.setAttribute("action", "javascript:void(0);");
         button.type = "submit";
 
-        form.addEventListener("submit", (event) => {
-          event.preventDefault();
-          processSignup(event);
-        });
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event?.target?.result;
+          if (typeof result === "string") {
+            preview.src = result;
+            preview.hidden = false;
+            preview.setAttribute("data-has-image", "true");
+          }
+        };
+        reader.onerror = () => {
+          preview.src = "";
+          preview.hidden = true;
+          preview.removeAttribute("data-has-image");
+        };
+        reader.readAsDataURL(file);
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("cadastroForm");
+        if (form) {
+          form.addEventListener("submit", enviarCadastro);
+          form.setAttribute("action", "javascript:void(0)");
+        }
+
+        const fotoInput = document.getElementById("foto");
+        if (fotoInput) {
+          fotoInput.addEventListener("change", (event) => {
+            const arquivo = event.target?.files?.[0];
+            atualizarPreviewFoto(arquivo || null);
+          });
+        }
       });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
@@ -557,14 +584,7 @@
           <div class="pro-signup-card">
             <h2 class="pro-signup-card__title">Criar conta profissional</h2>
             <p class="pro-signup-card__subtitle">Leva menos de 3 minutos para começar a receber convites exclusivos.</p>
-            <form
-              id="cadastroForm"
-              class="signup-form"
-              method="post"
-              action="javascript:void(0);"
-              autocomplete="off"
-              novalidate
-            >
+            <form id="cadastroForm" class="signup-form" autocomplete="off" action="javascript:void(0)">
               <div class="signup-field">
                 <label for="nome">Nome completo *</label>
                 <input id="nome" name="nome" type="text" required />
