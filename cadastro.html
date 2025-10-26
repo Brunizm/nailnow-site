@@ -65,7 +65,43 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
+    const REQUEST_CONFIRMATION_ENDPOINT =
+      "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
 
+    function normalizeMailStatus(result) {
+      if (!result) return "";
+      const status = result.mailStatus ?? result.status ?? "";
+      return typeof status === "string" ? status.toLowerCase() : "";
+    }
+
+    async function requestConfirmationEmail(profilePath) {
+      try {
+        const response = await fetch(REQUEST_CONFIRMATION_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile: profilePath }),
+        });
+
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          console.warn("Não foi possível interpretar a resposta da confirmação", parseError);
+        }
+
+        if (!response.ok) {
+          const message = typeof data.error === "string" ? data.error : `http-${response.status}`;
+          throw new Error(message);
+        }
+
+        const mailStatus = normalizeMailStatus(data);
+        const queued = mailStatus === "queued" || mailStatus === "already-queued";
+        return { queued, mailStatus };
+      } catch (error) {
+        console.error("Falha ao solicitar confirmação do cadastro profissional", error);
+        return { queued: false, mailStatus: null, error };
+      }
+    }
     // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
 
@@ -183,10 +219,28 @@
         await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
         console.log(">> Firestore OK");
 
+        let confirmationQueued = false;
+        if (isNew) {
+          const confirmation = await requestConfirmationEmail(`profissionais/${uid}`);
+          confirmationQueued = confirmation.queued;
+          if (!confirmationQueued) {
+            console.warn(
+              "Confirmação do cadastro profissional não foi enfileirada automaticamente",
+              confirmation.mailStatus,
+            );
+          }
+        }
+
         // 4) Sair (opcional)
         await signOut(auth);
 
-        alert(isNew ? "✅ Cadastro enviado com sucesso!" : "✅ Dados profissionais atualizados!");
+        const successMessage = isNew
+          ? confirmationQueued
+            ? "✅ Cadastro enviado! Verifique seu e-mail (suporte@nailnow.app) para confirmar o acesso ao portal profissional."
+            : "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app."
+          : "✅ Dados profissionais atualizados!";
+
+        alert(successMessage);
         $("cadastroForm").reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
@@ -206,6 +260,8 @@
     document.addEventListener("DOMContentLoaded", () => {
       const form = $("cadastroForm");
       if (form) {
+        form.setAttribute("method", "post");
+        form.setAttribute("novalidate", "novalidate");
         form.addEventListener("submit", enviarCadastro);
         console.log(">> Listener conectado ao form");
       } else {
@@ -239,7 +295,7 @@
   <div class="container">
     <h1>Cadastro de Profissional 💅</h1>
 
-    <form id="cadastroForm">
+    <form id="cadastroForm" method="post" novalidate>
       <label for="nome">Nome completo *</label>
       <input id="nome" type="text" required />
 
