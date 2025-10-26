@@ -218,10 +218,17 @@
 
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
-          const successMessage = isNew
-            ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso."
-            : "✅ Perfil profissional atualizado!";
-          setFeedbackMessage(feedback, successMessage, "success");
+          setFeedbackMessage(
+            feedback,
+            isNew
+              ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso."
+              : "✅ Perfil profissional atualizado!",
+            "success",
+          );
+          if (feedback) {
+            feedback.focus();
+            feedback.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
           form.reset();
         } catch (error) {
           console.error(error);
