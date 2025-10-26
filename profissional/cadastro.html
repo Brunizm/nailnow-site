@@ -129,6 +129,7 @@
         try {
           const response = await fetch(REQUEST_CONFIRMATION_URL, {
             method: "POST",
+            mode: "cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ profile: profilePath }),
           });
@@ -178,27 +179,6 @@
         } catch (error) {
           console.error("Falha ao enfileirar e-mail de confirmação", error);
           return null;
-        }
-      }
-
-      async function solicitarConfirmacao(profilePath) {
-        try {
-          const response = await fetch(REQUEST_CONFIRMATION_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ profile: profilePath }),
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text().catch(() => "");
-            throw new Error(`request-failed-${response.status}-${errorText}`);
-          }
-
-          const payload = await response.json().catch(() => ({}));
-          return payload || {};
-        } catch (error) {
-          console.error("Falha ao solicitar e-mail de confirmação", error);
-          throw error;
         }
       }
 
@@ -277,6 +257,7 @@
           }
 
           let confirmationQueued = false;
+          let queueStatus = "not-requested";
 
           const profilePath = `profissionais/${uid}`;
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
@@ -284,22 +265,39 @@
           if (isNew) {
             try {
               const result = await solicitarConfirmacao(profilePath);
-              if (result?.status === "prepared" && result.mailPayload) {
-                const mailId = await enfileirarEmailConfirmacao(result.mailPayload, profilePath, "profissionais", uid);
+              const rawStatus = (result?.status || result?.mailStatus || "").toString();
+
+              if (rawStatus === "queued" || rawStatus === "already-queued") {
+                confirmationQueued = true;
+                queueStatus = rawStatus;
+              } else if (rawStatus === "prepared" && result?.mailPayload) {
+                const mailId = await enfileirarEmailConfirmacao(
+                  result.mailPayload,
+                  profilePath,
+                  "profissionais",
+                  uid,
+                );
                 confirmationQueued = Boolean(mailId);
+                queueStatus = confirmationQueued ? "queued" : "enqueue-failed";
+              } else if (rawStatus === "missing-email") {
+                confirmationQueued = false;
+                queueStatus = "missing-email";
               } else {
                 confirmationQueued = false;
+                queueStatus = rawStatus || "unknown";
               }
             } catch (error) {
               confirmationQueued = false;
+              queueStatus = "error";
             }
           }
 
           const successMessage = isNew
             ? confirmationQueued
               ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso ao portal profissional."
-              :
-                "✅ Cadastro enviado! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
+              : queueStatus === "missing-email"
+                ? "✅ Cadastro recebido! Assim que atualizarmos seu e-mail enviaremos a confirmação. Revise se o campo de e-mail foi preenchido corretamente e tente novamente."
+                : "✅ Cadastro enviado! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
             : "✅ Perfil profissional atualizado!";
 
           setFeedbackMessage(feedback, successMessage, "success");
@@ -343,7 +341,13 @@
         }
       }
 
-      window.enviarCadastro = enviarCadastro;
+      window.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("cadastroForm");
+        if (!form) return;
+        form.setAttribute("method", "post");
+        form.setAttribute("novalidate", "novalidate");
+        form.addEventListener("submit", enviarCadastro);
+      });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
     <script src="/assets/js/menu-toggle.js" defer></script>
@@ -416,7 +420,13 @@
           <div class="pro-signup-card">
             <h2 class="pro-signup-card__title">Criar conta profissional</h2>
             <p class="pro-signup-card__subtitle">Leva menos de 3 minutos para começar a receber convites exclusivos.</p>
-            <form id="cadastroForm" class="signup-form" onsubmit="enviarCadastro(event)" autocomplete="off">
+            <form
+              id="cadastroForm"
+              class="signup-form"
+              method="post"
+              autocomplete="off"
+              novalidate
+            >
               <div class="signup-field">
                 <label for="nome">Nome completo *</label>
                 <input id="nome" name="nome" type="text" required />

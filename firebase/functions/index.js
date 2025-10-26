@@ -146,7 +146,14 @@ async function persistSignupState(snap, data, role) {
   };
 }
 
-async function queueConfirmationForSnapshot(snap, role, sourcePath, queuedBy) {
+async function queueConfirmationForSnapshot(
+  snap,
+  role,
+  sourcePath,
+  queuedBy,
+  options = {},
+) {
+  const { queueMail = false, force = false } = options;
   const data = snap.data() || {};
   const email = data.email || data.contatoEmail || "";
   const name = data.nome || data.name || data.displayName || "";
@@ -168,41 +175,98 @@ async function queueConfirmationForSnapshot(snap, role, sourcePath, queuedBy) {
       requestedBy: queuedBy,
     });
 
-    await snap.ref.set(
-      {
-        signupConfirmation: {
-          ...signupConfirmation,
-          confirmationUrl,
-          preparedBy: queuedBy,
-          preparedAt: FieldValue.serverTimestamp(),
-        },
-      },
-      { merge: true },
-    );
+    const confirmationUpdate = {
+      ...signupConfirmation,
+      confirmationUrl,
+      preparedBy: queuedBy,
+      preparedAt: FieldValue.serverTimestamp(),
+    };
+
+    const existingMailId = signupConfirmation.mailId || signupConfirmation.mailDocumentId || null;
+    let mailStatus = signupConfirmation.mailStatus || "not-requested";
+    let mailId = existingMailId;
 
     if (!mailPayload) {
+      confirmationUpdate.mailStatus = "missing-email";
+      await snap.ref.set(
+        {
+          signupConfirmation: confirmationUpdate,
+        },
+        { merge: true },
+      );
       functions.logger.warn("Confirmação preparada sem email disponível", {
         role,
         sourcePath,
         queuedBy,
       });
       return {
-        status: "missing-email",
+        status: queueMail ? "missing-email" : "prepared",
         confirmationUrl,
         mailPayload: null,
+        mailStatus: "missing-email",
+        mailId: null,
       };
     }
+
+    if (queueMail) {
+      const shouldQueueMail = force || !existingMailId;
+      if (shouldQueueMail) {
+        const payload = {
+          ...mailPayload,
+          metadata: {
+            ...(mailPayload.metadata || {}),
+            role,
+            queuedBy,
+            profilePath: snap.ref.path,
+            sourcePath,
+          },
+        };
+
+        const mailRef = await firestore.collection("mail").add(payload);
+        mailId = mailRef.id;
+        mailStatus = "queued";
+        confirmationUpdate.mailId = mailId;
+        confirmationUpdate.mailDocumentId = mailId;
+        confirmationUpdate.mailQueuedAt = FieldValue.serverTimestamp();
+        confirmationUpdate.mailQueuedBy = queuedBy;
+        confirmationUpdate.mailStatus = "queued";
+        functions.logger.info("Email de confirmação enfileirado", {
+          role,
+          sourcePath,
+          queuedBy,
+          mailId,
+        });
+      } else {
+        mailStatus = "already-queued";
+        confirmationUpdate.mailStatus = "already-queued";
+        confirmationUpdate.mailId = existingMailId;
+        confirmationUpdate.mailDocumentId = existingMailId;
+      }
+    } else {
+      mailStatus = "requires-client-enqueue";
+      confirmationUpdate.mailStatus = "requires-client-enqueue";
+    }
+
+    await snap.ref.set(
+      {
+        signupConfirmation: confirmationUpdate,
+      },
+      { merge: true },
+    );
 
     functions.logger.info("Confirmação preparada", {
       role,
       sourcePath,
       queuedBy,
+      mailStatus,
     });
 
     return {
-      status: "prepared",
+      status: queueMail ? mailStatus : "prepared",
       confirmationUrl,
-      mailPayload,
+      mailPayload: queueMail ? null : mailPayload,
+      mailStatus,
+      mailId,
     };
   } catch (error) {
     functions.logger.error("Falha ao preparar confirmação", {
@@ -227,10 +291,13 @@ async function queueConfirmationForSnapshot(snap, role, sourcePath, queuedBy) {
 }
 
 async function handleProfileCreation(snap, context, role) {
-  return queueConfirmationForSnapshot(snap, role, context.resource?.name, "firestore-trigger");
+  return queueConfirmationForSnapshot(snap, role, context.resource?.name, "firestore-trigger", {
+    queueMail: true,
+    force: false,
+  });
 }
 
-async function queueConfirmationByRef(docRef, role, sourcePath, queuedBy) {
+async function queueConfirmationByRef(docRef, role, sourcePath, queuedBy, options = {}) {
   const snap = await docRef.get();
 
   if (!snap.exists) {
@@ -239,7 +306,7 @@ async function queueConfirmationByRef(docRef, role, sourcePath, queuedBy) {
     throw error;
   }
 
-  return queueConfirmationForSnapshot(snap, role, sourcePath, queuedBy);
+  return queueConfirmationForSnapshot(snap, role, sourcePath, queuedBy, options);
 }
 
 exports.queueClienteWelcomeEmail = functions
@@ -433,11 +500,17 @@ exports.requestSignupConfirmation = functions
         mapping.role,
         `requestSignupConfirmation:${profilePath}`,
         "requestSignupConfirmation",
+        {
+          queueMail: true,
+          force: req.method === "POST",
+        },
       );
 
       res.status(200).json({
         status: result.status,
         confirmationUrl: result.confirmationUrl,
+        mailStatus: result.mailStatus,
+        mailId: result.mailId || null,
         mailPayload: result.mailPayload || null,
       });
     } catch (error) {

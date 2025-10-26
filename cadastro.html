@@ -120,6 +120,7 @@
       try {
         const response = await fetch(REQUEST_CONFIRMATION_URL, {
           method: "POST",
+          mode: "cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ profile: profilePath }),
         });
@@ -266,6 +267,7 @@
         }
 
         let confirmationQueued = false;
+        let queueStatus = "not-requested";
 
         const profilePath = `profissionais/${uid}`;
         await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
@@ -274,14 +276,25 @@
         if (isNew) {
           try {
             const result = await solicitarConfirmacao(profilePath);
-            if (result?.status === "prepared" && result.mailPayload) {
+            const rawStatus = (result?.status || result?.mailStatus || "").toString();
+
+            if (rawStatus === "queued" || rawStatus === "already-queued") {
+              confirmationQueued = true;
+              queueStatus = rawStatus;
+            } else if (rawStatus === "prepared" && result?.mailPayload) {
               const mailId = await enfileirarEmailConfirmacao(result.mailPayload, profilePath, "profissionais", uid);
               confirmationQueued = Boolean(mailId);
+              queueStatus = confirmationQueued ? "queued" : "enqueue-failed";
+            } else if (rawStatus === "missing-email") {
+              confirmationQueued = false;
+              queueStatus = "missing-email";
             } else {
               confirmationQueued = false;
+              queueStatus = rawStatus || "unknown";
             }
           } catch (error) {
             confirmationQueued = false;
+            queueStatus = "error";
           }
         }
 
@@ -292,8 +305,9 @@
           isNew
             ? confirmationQueued
               ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso ao portal profissional."
-              :
-                "✅ Cadastro enviado! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
+              : queueStatus === "missing-email"
+                ? "✅ Cadastro recebido! Assim que atualizarmos seu e-mail enviaremos a confirmação. Revise se o endereço informado está correto."
+                : "✅ Cadastro enviado! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
             : "✅ Dados profissionais atualizados!",
         );
         $("cadastroForm").reset();
@@ -315,6 +329,8 @@
     document.addEventListener("DOMContentLoaded", () => {
       const form = $("cadastroForm");
       if (form) {
+        form.setAttribute("method", "post");
+        form.setAttribute("novalidate", "novalidate");
         form.addEventListener("submit", enviarCadastro);
         console.log(">> Listener conectado ao form");
       } else {
@@ -348,7 +364,7 @@
   <div class="container">
     <h1>Cadastro de Profissional 💅</h1>
 
-    <form id="cadastroForm">
+    <form id="cadastroForm" method="post" novalidate>
       <label for="nome">Nome completo *</label>
       <input id="nome" type="text" required />
 

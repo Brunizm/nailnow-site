@@ -5,12 +5,12 @@ Este pacote contém Cloud Functions que gerenciam o estado de confirmação de c
 ## Como funciona
 
 - Monitora criações nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures` para garantir que todo perfil comece como `pendente` e receba um `signupConfirmation.token` único.
-- A função HTTPS `requestSignupConfirmation` consolida a mesma lógica do gatilho, retornando para o front-end o `confirmationUrl` e o `mailPayload` pronto para ser salvo na coleção `mail`.
-- Os formulários da NailNow chamam esse endpoint após gravar o cadastro e, com a resposta, criam o documento `mail` diretamente pelo SDK Web (`addDoc(collection(db, "mail"), mailPayload)`), definindo também `welcomeEmailMailId`, `welcomeEmailQueuedAt` e `welcomeEmailQueuedBy` no perfil correspondente.
-- A extensão Trigger Email from Firestore envia a mensagem de confirmação usando o payload salvo pelo front-end.
+- A função HTTPS `requestSignupConfirmation` reutiliza a mesma lógica dos gatilhos Firestore, gera (ou reaproveita) o token e **enfileira automaticamente** o documento na coleção `mail`, retornando o `confirmationUrl` e o identificador do e-mail.
+- Os formulários da NailNow apenas solicitam a confirmação após salvar o cadastro; não é mais necessário (nem recomendado) criar documentos `mail` diretamente pelo navegador.
+- A extensão Trigger Email from Firestore envia a mensagem de confirmação assim que o documento `mail` criado pela função é processado.
 - Quando a usuária acessa o link do e-mail, a função HTTPS `verifySignupConfirmation` valida o token e altera o status do perfil para `confirmado`. A confirmação é exibida na página `confirmar-cadastro.html`, dispensando um segundo e-mail.
 
-> 💡 Caso o gatilho `onCreate` ainda não tenha sido atualizado no ambiente, o endpoint `requestSignupConfirmation` garante que o token seja gerado e retornado ao front-end para montar o documento `mail` corretamente.
+> 💡 Se precisar reenviar o e-mail manualmente, basta chamar o endpoint `requestSignupConfirmation` novamente; ele criará outro documento na coleção `mail` e atualizará o histórico de confirmação.
 
 ## Passo a passo para deploy
 
@@ -43,7 +43,7 @@ Este pacote contém Cloud Functions que gerenciam o estado de confirmação de c
 1. Cadastre um cliente (ou profissional) pelo site de homologação/produção.
 2. No Firestore, confirme que o perfil foi criado com `status: "pendente"` e um objeto `signupConfirmation` contendo `token`.
 3. Ainda no Firestore, abra a coleção `mail` e verifique se existe um documento recém-criado com `metadata.emailType = "confirmation"` e `metadata.profilePath` apontando para o cadastro.
-   - Caso não exista, use o endpoint manual para gerar o payload:
+   - Caso não exista, use o endpoint manual para reenfileirar o e-mail:
 
      ```bash
      curl -X POST \
@@ -52,7 +52,7 @@ Este pacote contém Cloud Functions que gerenciam o estado de confirmação de c
        https://southamerica-east1-<seu-projeto>.cloudfunctions.net/requestSignupConfirmation
      ```
 
-     O JSON de resposta inclui `confirmationUrl` e `mailPayload`; salve esse payload com `addDoc(collection(db, "mail"), mailPayload)` para acionar a extensão.
+     A resposta informará o `confirmationUrl`, o `status` (`queued`, `already-queued`, `missing-email`, etc.) e o `mailId` criado automaticamente.
 4. Abra o link de confirmação (`confirmationUrl`) em uma aba anônima. A função `verifySignupConfirmation` mudará o status para `confirmado`.
 5. Para acompanhar logs em tempo real, execute:
 

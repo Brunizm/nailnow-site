@@ -105,6 +105,7 @@
         try {
           const response = await fetch(REQUEST_CONFIRMATION_URL, {
             method: "POST",
+            mode: "cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ profile: profilePath }),
           });
@@ -245,6 +246,7 @@
           }
 
           let confirmationQueued = false;
+          let queueStatus = "not-requested";
 
           const profilePath = `clientes/${uid}`;
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
@@ -252,22 +254,34 @@
           if (isNew) {
             try {
               const result = await solicitarConfirmacao(profilePath);
-              if (result?.status === "prepared" && result.mailPayload) {
+              const rawStatus = (result?.status || result?.mailStatus || "").toString();
+
+              if (rawStatus === "queued" || rawStatus === "already-queued") {
+                confirmationQueued = true;
+                queueStatus = rawStatus;
+              } else if (rawStatus === "prepared" && result?.mailPayload) {
                 const mailId = await enfileirarEmailConfirmacao(result.mailPayload, profilePath, "clientes", uid);
                 confirmationQueued = Boolean(mailId);
+                queueStatus = confirmationQueued ? "queued" : "enqueue-failed";
+              } else if (rawStatus === "missing-email") {
+                confirmationQueued = false;
+                queueStatus = "missing-email";
               } else {
                 confirmationQueued = false;
+                queueStatus = rawStatus || "unknown";
               }
             } catch (error) {
               confirmationQueued = false;
+              queueStatus = "error";
             }
           }
 
           feedback.textContent = isNew
             ? confirmationQueued
               ? "✅ Conta criada! Verifique seu e-mail para confirmar o cadastro e liberar o acesso."
-              :
-                "✅ Conta criada! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
+              : queueStatus === "missing-email"
+                ? "✅ Cadastro recebido! Assim que atualizarmos seu e-mail enviaremos a confirmação. Revise se o endereço informado está correto e tente novamente."
+                : "✅ Conta criada! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
             : "✅ Dados atualizados!";
           feedback.style.color = "#2e7d32";
           form.reset();
@@ -289,7 +303,13 @@
         }
       }
 
-      window.cadastrarCliente = cadastrarCliente;
+      window.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("cadastroClienteForm");
+        if (!form) return;
+        form.setAttribute("method", "post");
+        form.setAttribute("novalidate", "novalidate");
+        form.addEventListener("submit", cadastrarCliente);
+      });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
     <script src="/assets/js/menu-toggle.js" defer></script>
@@ -363,7 +383,13 @@
           <div class="client-signup-card">
             <h2 class="client-signup-card__title">Comece agora</h2>
             <p class="client-signup-card__subtitle">Preencha seus dados para desbloquear ofertas e agendar sem filas.</p>
-            <form class="signup-form" onsubmit="cadastrarCliente(event)" autocomplete="off">
+            <form
+              id="cadastroClienteForm"
+              class="signup-form"
+              method="post"
+              autocomplete="off"
+              novalidate
+            >
               <div class="signup-field">
                 <label for="nome">Nome completo *</label>
                 <input id="nome" name="nome" type="text" required />
