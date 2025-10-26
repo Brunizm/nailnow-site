@@ -65,6 +65,8 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
+    const REQUEST_CONFIRMATION_URL =
+      "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
 
     // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
@@ -102,6 +104,27 @@
           const cred = await signInWithEmailAndPassword(auth, email, senha);
           return { user: cred.user, isNew: false };
         }
+        throw error;
+      }
+    }
+
+    async function solicitarConfirmacao(profilePath) {
+      try {
+        const response = await fetch(REQUEST_CONFIRMATION_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile: profilePath }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "");
+          throw new Error(`request-failed-${response.status}-${errorText}`);
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        return payload || {};
+      } catch (error) {
+        console.error("Falha ao solicitar e-mail de confirmação", error);
         throw error;
       }
     }
@@ -180,13 +203,31 @@
           payload.fotoUrl = fotoUrl;
         }
 
+        let confirmationQueued = false;
+
         await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
         console.log(">> Firestore OK");
+
+        if (isNew) {
+          try {
+            const result = await solicitarConfirmacao(`profissionais/${uid}`);
+            confirmationQueued = ["queued", "already-queued"].includes(result?.status);
+          } catch (error) {
+            confirmationQueued = false;
+          }
+        }
 
         // 4) Sair (opcional)
         await signOut(auth);
 
-        alert(isNew ? "✅ Cadastro enviado com sucesso!" : "✅ Dados profissionais atualizados!");
+        alert(
+          isNew
+            ? confirmationQueued
+              ? "✅ Cadastro enviado! Verifique seu e-mail para confirmar o acesso ao portal profissional."
+              :
+                "✅ Cadastro enviado! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
+            : "✅ Dados profissionais atualizados!",
+        );
         $("cadastroForm").reset();
       } catch (error) {
         console.error("Cadastro falhou:", error);
