@@ -73,42 +73,77 @@
     const db = getFirestore(app);
     const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
     const storage = getStorage(app);
-    const REQUEST_CONFIRMATION_ENDPOINT =
-      "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
+    const MAIL_COLLECTION = "mail";
+    const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
 
-    function normalizeMailStatus(result) {
-      if (!result) return "";
-      const status = result.mailStatus ?? result.status ?? "";
-      return typeof status === "string" ? status.toLowerCase() : "";
+    function generateConfirmationToken() {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID().replace(/-/g, "");
+      }
+
+      const buffer = new Uint8Array(16);
+      if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+        crypto.getRandomValues(buffer);
+      } else {
+        for (let i = 0; i < buffer.length; i += 1) {
+          buffer[i] = Math.floor(Math.random() * 256);
+        }
+      }
+
+      return Array.from(buffer, (byte) => byte.toString(16).padStart(2, "0")).join("");
     }
 
-    async function requestConfirmationEmail(profilePath) {
-      try {
-        const response = await fetch(REQUEST_CONFIRMATION_ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profile: profilePath }),
-        });
+    function buildConfirmationUrl(profilePath, token) {
+      const baseUrl = window.location?.origin || "https://www.nailnow.app";
+      const params = new URLSearchParams({ profile: profilePath, token });
+      return `${baseUrl}/confirmar-cadastro.html?${params.toString()}`;
+    }
 
-        let data = {};
-        try {
-          data = await response.json();
-        } catch (parseError) {
-          console.warn("Não foi possível interpretar a resposta da confirmação", parseError);
-        }
+    function buildConfirmationMessage({ name, confirmationUrl }) {
+      const displayName = name?.trim() || "Profissional";
+      const subject = "Confirme seu cadastro no NailNow 💅";
+      const text = [
+        `Olá, ${displayName}!`,
+        "Recebemos seu cadastro como profissional no NailNow e ele está aguardando confirmação.",
+        "Para confirmar sua conta e liberar o acesso ao portal, clique no link abaixo:",
+        confirmationUrl,
+        "Se você não solicitou este cadastro, pode ignorar esta mensagem.",
+        "Com carinho, equipe NailNow",
+      ].join("\n\n");
+      const html = [
+        `<p>Olá, <strong>${displayName}</strong>! 💖 Recebemos seu cadastro como profissional no NailNow e ele está aguardando confirmação.</p>`,
+        `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
+        `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
+        `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style="word-break:break-all;">${confirmationUrl}</span></p>`,
+        "<p>Com carinho, equipe NailNow 💅</p>",
+      ].join("");
 
-        if (!response.ok) {
-          const message = typeof data.error === "string" ? data.error : `http-${response.status}`;
-          throw new Error(message);
-        }
+      return { subject, text, html };
+    }
 
-        const mailStatus = normalizeMailStatus(data);
-        const queued = mailStatus === "queued" || mailStatus === "already-queued";
-        return { queued, mailStatus };
-      } catch (error) {
-        console.error("Falha ao solicitar confirmação do cadastro profissional", error);
-        return { queued: false, mailStatus: null, error };
+    async function queueConfirmationEmail({ email, name, profilePath, token, confirmationUrl }) {
+      const trimmedEmail = email?.trim();
+      if (!trimmedEmail) {
+        throw new Error("missing-email");
       }
+
+      const message = buildConfirmationMessage({ name, confirmationUrl });
+      const payload = {
+        to: [trimmedEmail.toLowerCase()],
+        from: SUPPORT_SENDER,
+        message,
+        metadata: {
+          role: "profissional",
+          emailType: "confirmation",
+          profilePath,
+          confirmationUrl,
+          confirmationToken: token,
+          queuedBy: "legacy-professional-signup",
+        },
+      };
+
+      const mailRef = await addDoc(collection(db, MAIL_COLLECTION), payload);
+      return { mailId: mailRef.id };
     }
     // ---------- Utils ----------
     const $ = (id) => document.getElementById(id);
@@ -293,6 +328,29 @@
           console.log(">> Foto URL:", fotoUrl);
         }
 
+        const profilePath = `profissionais/${uid}`;
+        const confirmationToken = generateConfirmationToken();
+        const confirmationUrl = buildConfirmationUrl(profilePath, confirmationToken);
+
+        let mailId = null;
+        let confirmationQueued = false;
+
+        if (isNew) {
+          try {
+            const result = await queueConfirmationEmail({
+              email,
+              name: nome,
+              profilePath,
+              token: confirmationToken,
+              confirmationUrl,
+            });
+            mailId = result.mailId;
+            confirmationQueued = true;
+          } catch (mailError) {
+            console.error("Falha ao enfileirar e-mail de confirmação (cadastro simplificado)", mailError);
+          }
+        }
+
         // 3) Firestore
         console.log(">> Gravando no Firestore…");
         let mailDocId = null;
@@ -322,12 +380,27 @@
         if (isNew) {
           payload.createdAt = serverTimestamp();
           payload.status = "pendente";
+          payload.emailVerificado = false;
           payload.fotoUrl = fotoUrl || null;
-          if (mailDocId) {
-            payload.welcomeEmailQueuedAt = serverTimestamp();
-            payload.welcomeEmailQueuedBy = "web";
-            payload.welcomeEmailMailId = mailDocId;
-          }
+          payload.signupConfirmation = {
+            token: confirmationToken,
+            status: "pending",
+            role: "profissional",
+            confirmationUrl,
+            preparedBy: "legacy-professional-signup",
+            preparedAt: serverTimestamp(),
+            ...(confirmationQueued && mailId
+              ? {
+                  mailStatus: "queued",
+                  mailId,
+                  mailDocumentId: mailId,
+                  mailQueuedAt: serverTimestamp(),
+                  mailQueuedBy: "legacy-professional-signup",
+                }
+              : {
+                  mailStatus: "error",
+                }),
+          };
         } else if (fotoUrl) {
           payload.fotoUrl = fotoUrl;
         }
