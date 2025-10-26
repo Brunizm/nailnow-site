@@ -70,30 +70,29 @@
       const db = getFirestore(app);
       const CONFIRMATION_ENDPOINT =
         "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
+
       const FEEDBACK_COLORS = {
         info: "#4527a0",
         error: "#c62828",
         success: "#2e7d32",
       };
 
+      const FORM_ID = "cadastroForm";
+      const SUBMIT_ID = "signup-submit";
+      const FEEDBACK_ID = "signup-feedback";
+
       function setFeedbackMessage(element, message, variant = "info") {
         if (!element) return;
-        element.textContent = message;
         if (!message) {
+          element.textContent = "";
           element.removeAttribute("data-variant");
           element.style.removeProperty("color");
           return;
         }
 
+        element.textContent = message;
         element.dataset.variant = variant;
         element.style.color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
-      }
-
-      function clearFeedback(element) {
-        if (!element) return;
-        element.textContent = "";
-        element.removeAttribute("data-variant");
-        element.style.removeProperty("color");
       }
 
       async function requestConfirmation(profilePath) {
@@ -104,6 +103,7 @@
         try {
           const response = await fetch(CONFIRMATION_ENDPOINT, {
             method: "POST",
+            mode: "cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ profile: profilePath }),
           });
@@ -111,13 +111,14 @@
           if (!response.ok) {
             let errorCode = `http-${response.status}`;
             try {
-              const errorPayload = await response.json();
-              if (errorPayload?.error) {
-                errorCode = errorPayload.error;
+              const payload = await response.json();
+              if (payload?.error) {
+                errorCode = payload.error;
               }
             } catch (parseError) {
-              /* ignore json parse error */
+              /* ignore parse error */
             }
+
             const httpError = new Error(errorCode);
             httpError.code = errorCode;
             throw httpError;
@@ -141,6 +142,7 @@
           throw error;
         }
       }
+
       async function safeSignOut() {
         try {
           const mailRef = await addDoc(collection(db, "mail"), payload);
@@ -161,68 +163,82 @@
         }
       }
 
-      async function processSignup() {
-        const form = document.getElementById("cadastroForm");
-        const btn = document.getElementById("signup-submit");
-        const feedback = document.getElementById("signup-feedback");
+      function getCheckedValues(form, selector) {
+        return Array.from(form.querySelectorAll(selector)).map((el) => el.value);
+      }
 
-        if (!form || !btn) {
+      function setSubmittingState(button, isSubmitting, idleLabel) {
+        if (!button) return;
+        button.disabled = isSubmitting;
+        if (isSubmitting) {
+          button.setAttribute("aria-busy", "true");
+        } else {
+          button.removeAttribute("aria-busy");
+        }
+        button.textContent = isSubmitting ? "Enviando…" : idleLabel;
+      }
+
+      let isProcessing = false;
+
+      async function processSignup(event) {
+        event?.preventDefault();
+        if (isProcessing) {
+          return;
+        }
+
+        const form = document.getElementById(FORM_ID);
+        const button = document.getElementById(SUBMIT_ID);
+        const feedback = document.getElementById(FEEDBACK_ID);
+
+        if (!form || !button) {
           console.warn("Formulário de cadastro profissional não encontrado");
           return;
         }
 
-        clearFeedback(feedback);
+        isProcessing = true;
+        setFeedbackMessage(feedback, "", "info");
 
         try {
-          const nome = form.nome.value.trim();
-          const cpf = form.cpf.value.trim();
-          const email = form.email.value.trim().toLowerCase();
-          const senha = form.senha.value;
-          const confirmar = form.confirmarSenha.value;
-          const telefone = form.telefone.value.trim();
-          const endereco = form.endereco_text.value.trim();
-          const cidade = form.cidade.value.trim();
-          const bio = form.bio.value.trim();
-          const servicos = Array.from(form.querySelectorAll('input[name="servicos"]:checked')).map((el) => el.value);
+          const formData = new FormData(form);
+          const nome = (formData.get("nome") || "").toString().trim();
+          const cpf = (formData.get("cpf") || "").toString().replace(/\D+/g, "");
+          const email = (formData.get("email") || "").toString().trim().toLowerCase();
+          const senha = (formData.get("senha") || "").toString();
+          const confirmarSenha = (formData.get("confirmarSenha") || "").toString();
+          const telefone = (formData.get("telefone") || "").toString().trim();
+          const endereco = (formData.get("endereco_text") || "").toString().trim();
+          const cidade = (formData.get("cidade") || "").toString().trim();
+          const bio = (formData.get("bio") || "").toString().trim();
+          const enderecoFormatado = (formData.get("endereco_formatado") || "").toString();
+          const placeId = (formData.get("place_id") || "").toString();
+          const lat = (formData.get("lat") || "").toString();
+          const lng = (formData.get("lng") || "").toString();
+          const servicos = getCheckedValues(form, 'input[name="servicos"]:checked');
 
-          const endereco_formatado = form.endereco_formatado.value || "";
-          const place_id = form.place_id.value || "";
-          const lat = form.lat.value || "";
-          const lng = form.lng.value || "";
-
-          if (!nome || !cpf || !email || !senha || !confirmar || !cidade) {
+          if (!nome || !cpf || !email || !senha || !confirmarSenha || !cidade) {
             setFeedbackMessage(feedback, "❌ Erro: Preencha os campos obrigatórios (*).", "error");
-            if (feedback) {
-              feedback.focus();
-            }
+            feedback?.focus();
+            isProcessing = false;
             return;
           }
-          if (senha !== confirmar) {
+
+          if (senha !== confirmarSenha) {
             setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
-            form.confirmarSenha.focus();
-            if (feedback) {
-              feedback.focus();
-            }
+            form.querySelector("#confirmarSenha")?.focus();
+            isProcessing = false;
             return;
           }
 
-          btn.disabled = true;
-          btn.setAttribute("aria-busy", "true");
-          btn.textContent = "Criando conta…";
-
+          setSubmittingState(button, true, "Cadastrar profissional");
+          button.textContent = "Criando conta…";
           setFeedbackMessage(feedback, "Validando seus dados…", "info");
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
-          btn.textContent = "Processando cadastro…";
+
+          button.textContent = "Salvando cadastro…";
 
           const profilePath = `profissionais/${uid}`;
-          let confirmationQueued = false;
-          let confirmationResult = null;
-          let confirmationError = null;
-
-          btn.textContent = "Finalizando cadastro…";
-
           const payload = {
             uid,
             nome,
@@ -230,8 +246,8 @@
             email,
             telefone,
             endereco,
-            endereco_formatado,
-            place_id,
+            endereco_formatado: enderecoFormatado,
+            place_id: placeId,
             lat,
             lng,
             cidade,
@@ -239,6 +255,7 @@
             servicos,
             atualizadoEm: serverTimestamp(),
           };
+
           if (isNew) {
             payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
@@ -257,18 +274,21 @@
           const profilePath = `profissionais/${uid}`;
           await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
 
+          let confirmationQueued = false;
+          let confirmationError = null;
+
           if (isNew) {
-            btn.textContent = "Solicitando confirmação…";
+            button.textContent = "Solicitando confirmação…";
             try {
-              confirmationResult = await requestConfirmation(profilePath);
-              const mailStatus = (confirmationResult?.mailStatus || "").toLowerCase();
+              const result = await requestConfirmation(profilePath);
+              const mailStatus = (result?.mailStatus || "").toLowerCase();
               confirmationQueued = ["queued", "already-queued"].includes(mailStatus);
             } catch (error) {
               confirmationError = error;
             }
           }
 
-          const successMessage = isNew
+          const message = isNew
             ? confirmationQueued
               ? "✅ Cadastro enviado! Verifique seu e-mail (suporte@nailnow.app) para confirmar o acesso ao portal profissional."
               : confirmationError
@@ -277,18 +297,17 @@
             : "✅ Perfil profissional atualizado!";
 
           const variant = !isNew ? "success" : confirmationQueued ? "success" : "info";
-          setFeedbackMessage(feedback, successMessage, variant);
-          if (feedback) {
-            feedback.focus();
-            feedback.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
+          setFeedbackMessage(feedback, message, variant);
+          feedback?.focus({ preventScroll: false });
+          feedback?.scrollIntoView({ behavior: "smooth", block: "center" });
           form.reset();
-        } catch (err) {
-          console.error(err);
-          const errorCode = err?.code || "erro-desconhecido";
-          let friendlyMessage = `❌ Erro: ${errorCode}`;
-
-          const errorMessages = {
+          form.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+            checkbox.checked = false;
+          });
+        } catch (error) {
+          console.error(error);
+          const code = error?.code || "erro-desconhecido";
+          const overrides = {
             "auth/email-already-in-use": "❌ Erro: Já existe uma conta com este e-mail. Faça login com a mesma senha informada anteriormente.",
             "auth/invalid-email": "❌ Erro: Informe um e-mail válido para prosseguir.",
             "auth/weak-password": "❌ Erro: Use uma senha com pelo menos 6 caracteres.",
@@ -297,44 +316,32 @@
             "auth/current-user-missing": "❌ Erro: Não foi possível confirmar sua sessão. Atualize a página e tente novamente.",
           };
 
-          if (errorMessages[errorCode]) {
-            friendlyMessage = errorMessages[errorCode];
-          }
+          const friendly =
+            overrides[code] ||
+            (error?.message ? `❌ Erro: ${error.message.replace(/^Firebase: /, "")}` : `❌ Erro: ${code}`);
 
-          if (!errorMessages[errorCode] && err?.message) {
-            friendlyMessage = `❌ Erro: ${err.message.replace(/^Firebase: /, "")}`;
-          }
-
-          setFeedbackMessage(feedback, friendlyMessage, "error");
-          if (feedback) {
-            feedback.focus();
-            feedback.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
+          setFeedbackMessage(document.getElementById(FEEDBACK_ID), friendly, "error");
+          document.getElementById(FEEDBACK_ID)?.focus({ preventScroll: false });
+          document.getElementById(FEEDBACK_ID)?.scrollIntoView({ behavior: "smooth", block: "center" });
         } finally {
           await safeSignOut();
-          btn.disabled = false;
-          btn.removeAttribute("aria-busy");
-          btn.textContent = "Cadastrar profissional";
+          setSubmittingState(document.getElementById(SUBMIT_ID), false, "Cadastrar profissional");
+          isProcessing = false;
         }
       }
 
       window.addEventListener("DOMContentLoaded", () => {
-        const form = document.getElementById("cadastroForm");
-        const btn = document.getElementById("signup-submit");
-        if (!form || !btn) return;
-        form.setAttribute("novalidate", "novalidate");
-        const handleSubmit = (event) => {
-          event.preventDefault();
-          processSignup();
-        };
+        const form = document.getElementById(FORM_ID);
+        const button = document.getElementById(SUBMIT_ID);
+        if (!form || !button) {
+          console.warn("Formulário de cadastro profissional não encontrado");
+          return;
+        }
 
-        form.addEventListener("submit", handleSubmit);
-        btn.addEventListener("click", handleSubmit);
-        form.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" && event.target?.tagName !== "TEXTAREA") {
-            handleSubmit(event);
-          }
-        });
+        form.setAttribute("novalidate", "novalidate");
+        button.type = "submit";
+
+        form.addEventListener("submit", processSignup);
       });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
@@ -513,7 +520,7 @@
                 <textarea id="bio" name="bio" rows="3" placeholder="Ex.: 5 anos de experiência, especializada em gel..."></textarea>
               </div>
 
-              <button id="signup-submit" class="signup-submit" type="button">Cadastrar profissional</button>
+              <button id="signup-submit" class="signup-submit" type="submit">Cadastrar profissional</button>
               <p
                 id="signup-feedback"
                 class="signup-feedback"
