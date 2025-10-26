@@ -628,6 +628,12 @@
       }
 
       document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("cadastroForm");
+        if (form) {
+          form.addEventListener("submit", enviarCadastro);
+          form.setAttribute("action", "javascript:void(0)");
+        }
+
         const fotoInput = document.getElementById("foto");
         if (fotoInput) {
           fotoInput.addEventListener("change", (event) => {
@@ -708,7 +714,7 @@
           <div class="pro-signup-card">
             <h2 class="pro-signup-card__title">Criar conta profissional</h2>
             <p class="pro-signup-card__subtitle">Leva menos de 3 minutos para começar a receber convites exclusivos.</p>
-            <form id="cadastroForm" class="signup-form" onsubmit="enviarCadastro(event)" autocomplete="off">
+            <form id="cadastroForm" class="signup-form" autocomplete="off" action="javascript:void(0)">
               <div class="signup-field">
                 <label for="nome">Nome completo *</label>
                 <input id="nome" name="nome" type="text" required />
@@ -873,7 +879,7 @@
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
-          <a href="mailto:nailnowbr@gmail.com">nailnowbr@gmail.com</a>
+          <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
