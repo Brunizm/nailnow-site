@@ -192,6 +192,38 @@
         element.style.color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
       }
 
+      function setFeedback(element, message, variant = "info") {
+        if (!element) return;
+        if (!message) {
+          element.textContent = "";
+          element.style.removeProperty("color");
+          element.removeAttribute("data-variant");
+          return;
+        }
+
+        element.textContent = message;
+        element.dataset.variant = variant;
+        element.style.color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
+      }
+
+        const message = buildConfirmationMessage({ name, confirmationUrl });
+        const payload = {
+          to: [trimmedEmail.toLowerCase()],
+          from: SUPPORT_SENDER,
+          message,
+          metadata: {
+            role: "cliente",
+            emailType: "confirmation",
+            profilePath,
+            confirmationUrl,
+            confirmationToken: token,
+            queuedBy: "client-signup-form",
+          },
+        };
+
+        const mailRef = await addDoc(collection(db, MAIL_COLLECTION), payload);
+        return { mailId: mailRef.id };
+      }
       async function ensureAuthAccount(email, senha) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, senha);
@@ -323,6 +355,18 @@
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
+          btn.textContent = "Salvando cadastro…";
+
+          const profilePath = `clientes/${uid}`;
+          let confirmationQueued = false;
+          let confirmationError = null;
+
+          const profilePath = `clientes/${uid}`;
+          const confirmationToken = generateConfirmationToken();
+          const confirmationUrl = buildConfirmationUrl(profilePath, confirmationToken);
+
+          let mailId = null;
+          let confirmationQueued = false;
 
           button.textContent = "Salvando cadastro…";
 
@@ -345,6 +389,7 @@
             atualizadoEm: serverTimestamp(),
           };
 
+          let welcomeEmailQueued = null;
           if (isNew) {
             payload.criadoEm = serverTimestamp();
             payload.status = "pendente";

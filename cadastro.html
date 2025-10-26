@@ -69,6 +69,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
     const storage = getStorage(app);
     const CONFIRMATION_ENDPOINT =
       "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
