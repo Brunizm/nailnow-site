@@ -75,6 +75,43 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+      const REQUEST_CONFIRMATION_ENDPOINT =
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
+
+      function normalizeMailStatus(result) {
+        if (!result) return "";
+        const status = result.mailStatus ?? result.status ?? "";
+        return typeof status === "string" ? status.toLowerCase() : "";
+      }
+
+      async function requestConfirmationEmail(profilePath) {
+        try {
+          const response = await fetch(REQUEST_CONFIRMATION_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profile: profilePath }),
+          });
+
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (parseError) {
+            console.warn("Não foi possível interpretar a resposta da confirmação", parseError);
+          }
+
+          if (!response.ok) {
+            const message = typeof data.error === "string" ? data.error : `http-${response.status}`;
+            throw new Error(message);
+          }
+
+          const mailStatus = normalizeMailStatus(data);
+          const queued = mailStatus === "queued" || mailStatus === "already-queued";
+          return { queued, mailStatus };
+        } catch (error) {
+          console.error("Falha ao solicitar confirmação de cadastro", error);
+          return { queued: false, mailStatus: null, error };
+        }
+      }
       async function ensureAuthAccount(email, senha) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, senha);
@@ -280,12 +317,26 @@
           const profilePath = `clientes/${uid}`;
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
+          let confirmationQueued = false;
+          if (isNew) {
+            const confirmation = await requestConfirmationEmail(`clientes/${uid}`);
+            confirmationQueued = confirmation.queued;
+            if (!confirmationQueued) {
+              console.warn(
+                "Confirmação do cadastro do cliente não foi enfileirada automaticamente",
+                confirmation.mailStatus,
+              );
+            }
+          }
+
           const successMessage = isNew
-            ? "✅ Conta criada! Verifique seu e-mail (suporte@nailnow.app) para confirmar o cadastro e liberar o acesso."
+            ? confirmationQueued
+              ? "✅ Conta criada! Verifique seu e-mail (suporte@nailnow.app) para confirmar o cadastro e liberar o acesso."
+              : "⚠️ Conta criada! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, conclua o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app."
             : "✅ Dados atualizados!";
 
           feedback.textContent = successMessage;
-          feedback.style.color = "#2e7d32";
+          feedback.style.color = confirmationQueued || !isNew ? "#2e7d32" : "#c77800";
           form.reset();
           form.querySelector("[name='aceiteTermos']").checked = false;
         } catch (error) {
