@@ -38,7 +38,7 @@ function buildConfirmationMessage({ name, role, confirmationUrl }) {
   const html = [
     `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.</p>`,
     `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
-    `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
+    `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#f55ba2;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
     `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`,
     "<p>Com carinho, equipe NailNow 💅</p>",
   ].join("");
@@ -97,8 +97,14 @@ function ensureSignupConfirmation(data, role) {
     hasChanges = true;
   }
 
-  if (!existing.status) {
-    updates.status = "pending";
+  const normalizedStatus = (existing.status || "").toString().toLowerCase();
+  if (!normalizedStatus || normalizedStatus === "pending") {
+    updates.status = "pendente";
+    hasChanges = true;
+  }
+
+  if (!existing.statusCode || existing.statusCode === "pending") {
+    updates.statusCode = "pending";
     hasChanges = true;
   }
 
@@ -141,6 +147,8 @@ async function persistSignupState(snap, data, role) {
     status: finalStatus,
     signupConfirmation: {
       ...confirmation,
+      status: confirmation.status || "pendente",
+      statusCode: confirmation.statusCode || "pending",
       token: confirmation.token,
     },
   };
@@ -177,6 +185,8 @@ async function queueConfirmationForSnapshot(
 
     const confirmationUpdate = {
       ...signupConfirmation,
+      status: signupConfirmation.status || "pendente",
+      statusCode: signupConfirmation.statusCode || "pending",
       confirmationUrl,
       preparedBy: queuedBy,
       preparedAt: FieldValue.serverTimestamp(),
@@ -454,6 +464,47 @@ const CONFIRMATION_COLLECTIONS = {
   manicures: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
 };
 
+function parseJsonBody(req) {
+  if (!req || !req.method || req.method.toUpperCase() !== "POST") {
+    return {};
+  }
+
+  const body = req.body;
+
+  if (body && typeof body === "object" && !Buffer.isBuffer(body)) {
+    return body;
+  }
+
+  const rawBody = typeof body === "string" && body.trim().length
+    ? body
+    : req.rawBody
+    ? req.rawBody.toString()
+    : "";
+
+  if (!rawBody) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(rawBody);
+  } catch (error) {
+    functions.logger.warn("Falha ao converter body em JSON", error?.message);
+    return {};
+  }
+}
+
+function readHttpPayload(req) {
+  if (!req) {
+    return {};
+  }
+
+  if (req.method && req.method.toUpperCase() === "POST") {
+    return parseJsonBody(req);
+  }
+
+  return req.query || {};
+}
+
 exports.verifySignupConfirmation = functions
   .region("southamerica-east1")
   .https.onRequest(async (req, res) => {
@@ -466,7 +517,7 @@ exports.verifySignupConfirmation = functions
       return;
     }
 
-    const payload = req.method === "POST" ? req.body || {} : req.query || {};
+    const payload = readHttpPayload(req);
     const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
     const token = typeof payload.token === "string" ? payload.token.trim() : "";
 
@@ -515,11 +566,17 @@ exports.verifySignupConfirmation = functions
 
       const normalizedStatus = (profileData.status || "").toString().toLowerCase();
       const confirmationStatus = (confirmation.status || "").toString().toLowerCase();
+      const confirmationStatusCode = (confirmation.statusCode || "").toString().toLowerCase();
       const alreadyConfirmed =
         normalizedStatus === "confirmado" ||
         normalizedStatus === "confirmada" ||
         normalizedStatus === "confirmed" ||
-        confirmationStatus === "confirmed";
+        confirmationStatus === "confirmado" ||
+        confirmationStatus === "confirmada" ||
+        confirmationStatus === "confirmed" ||
+        confirmationStatusCode === "confirmado" ||
+        confirmationStatusCode === "confirmada" ||
+        confirmationStatusCode === "confirmed";
 
       if (alreadyConfirmed) {
         res.status(200).json({
@@ -532,7 +589,8 @@ exports.verifySignupConfirmation = functions
 
       const confirmationUpdate = {
         ...confirmation,
-        status: "confirmed",
+        status: "confirmado",
+        statusCode: "confirmed",
         confirmedAt: FieldValue.serverTimestamp(),
         confirmedBy: "email-link",
         tokenLastUsedAt: FieldValue.serverTimestamp(),
@@ -581,7 +639,7 @@ exports.requestSignupConfirmation = functions
       return;
     }
 
-    const payload = req.method === "POST" ? req.body || {} : req.query || {};
+    const payload = readHttpPayload(req);
     const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
 
     if (!rawProfile) {

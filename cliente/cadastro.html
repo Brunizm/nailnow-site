@@ -78,11 +78,36 @@
         error: "#c62828",
       };
 
+      const MAIL_COLLECTION = "mail";
+      const MAIL_SOURCE = "web-client-signup";
+      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+      const FORM_ID = "cadastroClienteForm";
+
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
-      const REQUEST_CONFIRMATION_URL =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
+
+      function sanitize(value) {
+        if (typeof value === "string") {
+          return value.replace(/\s+/g, " ").trim();
+        }
+        if (value === null || value === undefined) {
+          return "";
+        }
+        return `${value}`.trim();
+      }
+
+      function setFeedbackMessage(element, message, variant = "info") {
+        if (!element) return;
+        element.textContent = message || "";
+        element.style.color = FEEDBACK_COLORS[variant] || FEEDBACK_COLORS.info;
+      }
+
+      function clearFeedback(element) {
+        if (!element) return;
+        element.textContent = "";
+        element.removeAttribute("style");
+      }
 
       async function ensureAuthAccount(email, senha) {
         try {
@@ -107,69 +132,148 @@
         }
       }
 
-      async function solicitarConfirmacao(profilePath) {
-        try {
-          const response = await fetch(REQUEST_CONFIRMATION_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ profile: profilePath }),
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text().catch(() => "");
-            throw new Error(`request-failed-${response.status}-${errorText}`);
-          }
-
-          const payload = await response.json().catch(() => ({}));
-          return payload || {};
-        } catch (error) {
-          console.error("Falha ao solicitar e-mail de confirmação", error);
-          throw error;
-        }
-      }
-
       function normalizarDestinatarios(valor) {
         if (!valor) return [];
         if (Array.isArray(valor)) {
-          return valor.map((item) => `${item}`.trim()).filter(Boolean);
+          return valor.map((item) => sanitize(item)).filter(Boolean);
         }
-        return [`${valor}`.trim()].filter(Boolean);
+        return [sanitize(valor)].filter(Boolean);
       }
 
-      async function queueWelcomeEmail(mailPayload) {
-        try {
-          if (!mailPayload || typeof mailPayload !== "object") {
-            throw new Error("mail-payload-invalido");
-          }
-
-          const to = normalizarDestinatarios(mailPayload.to);
-          if (!to.length) {
-            throw new Error("mail-sem-destinatario");
-          }
-
-          const message = mailPayload.message || {};
-          if (!message.subject && !message.templateId) {
-            throw new Error("mail-sem-assunto");
-          }
-
-          const payload = {
-            ...mailPayload,
-            to,
-            message,
-            from: mailPayload.from || "NailNow <suporte@nailnow.app>",
-          };
-
-          const docRef = await addDoc(collection(db, "mail"), payload);
-          return docRef.id;
-        } catch (error) {
-          console.error("Falha ao criar fallback do e-mail de confirmação", error);
+      function sanitizeMailPayload(mailPayload = {}, context = {}) {
+        const to = normalizarDestinatarios(mailPayload.to);
+        if (!to.length) {
           return null;
+        }
+
+        const message = mailPayload.message || {};
+        const subject = sanitize(message.subject || "Confirme seu cadastro no NailNow 💅");
+        const confirmationUrl = sanitize(
+          context.confirmationUrl || mailPayload.metadata?.confirmationUrl || "",
+        );
+
+        const text = message.text
+          ? message.text
+          : confirmationUrl
+              ? `Olá! Confirme seu cadastro acessando: ${confirmationUrl}`
+              : "Olá! Confirme seu cadastro no NailNow.";
+        const html = message.html
+          ? message.html
+          : confirmationUrl
+              ? `<p>Olá! 💖 Confirme seu cadastro clicando no botão abaixo:</p><p style="margin:24px 0;"><a href="${confirmationUrl}" style="background-color:#f55ba2;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p><p>Se o botão não funcionar, copie e cole este link:<br /><span style="word-break:break-all;">${confirmationUrl}</span></p>`
+              : "<p>Olá! 💖 Confirme seu cadastro no NailNow.</p>";
+
+        return {
+          to,
+          from: mailPayload.from ? sanitize(mailPayload.from) : SUPPORT_SENDER,
+          message: {
+            subject,
+            text,
+            html,
+          },
+          metadata: {
+            role: context.role || mailPayload.metadata?.role || "cliente",
+            queuedBy: context.queuedBy || mailPayload.metadata?.queuedBy || MAIL_SOURCE,
+            profilePath: context.profilePath || mailPayload.metadata?.profilePath || null,
+            confirmationUrl: confirmationUrl || null,
+            emailType: mailPayload.metadata?.emailType || "confirmation",
+            confirmationToken:
+              context.confirmationToken || mailPayload.metadata?.confirmationToken || null,
+            name: mailPayload.metadata?.name || context.name || null,
+          },
+        };
+      }
+
+      function gerarTokenConfirmacao() {
+        try {
+          if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+            return crypto.randomUUID().replace(/-/g, "");
+          }
+        } catch (error) {
+          console.warn("Falha ao gerar token com crypto.randomUUID", error);
+        }
+
+        return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`
+          .replace(/[^a-z0-9]/gi, "")
+          .padEnd(32, "0")
+          .slice(0, 32);
+      }
+
+      function construirUrlConfirmacao(profilePath, token) {
+        const params = new URLSearchParams({
+          profile: profilePath,
+          token,
+        });
+        return `https://www.nailnow.app/confirmar-cadastro.html?${params.toString()}`;
+      }
+
+      function construirMensagemConfirmacao({ nome, confirmationUrl }) {
+        const safeName = sanitize(nome || "Cliente");
+        const subject = "Confirme seu cadastro no NailNow 💅";
+        const greetingName = safeName || "Cliente";
+        const textLines = [
+          `Olá, ${greetingName}!`,
+          "Recebemos seu cadastro como cliente no NailNow e ele está aguardando confirmação.",
+          "Para confirmar sua conta e liberar o acesso ao portal, clique no link abaixo:",
+          confirmationUrl,
+          "Se você não solicitou este cadastro, pode ignorar esta mensagem.",
+          "Com carinho, equipe NailNow",
+        ];
+
+        const html = [
+          `<p>Olá, <strong>${greetingName}</strong>! 💖 Recebemos seu cadastro como cliente no NailNow e ele está aguardando confirmação.</p>`,
+          "<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>",
+          `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#f55ba2;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
+          `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style="word-break:break-all;">${confirmationUrl}</span></p>`,
+          "<p>Com carinho, equipe NailNow 💅</p>",
+        ].join("");
+
+        return {
+          subject,
+          text: textLines.join("\n\n"),
+          html,
+        };
+      }
+
+      function criarPayloadEmailConfirmacao({ email, nome, confirmationUrl, confirmationToken }) {
+        if (!email || !confirmationUrl) {
+          return null;
+        }
+
+        const message = construirMensagemConfirmacao({ nome, confirmationUrl });
+
+        return {
+          to: [email],
+          from: SUPPORT_SENDER,
+          message,
+          metadata: {
+            emailType: "confirmation",
+            confirmationUrl,
+            confirmationToken,
+            name: sanitize(nome),
+          },
+        };
+      }
+
+      async function queueConfirmationEmail(mailPayload = {}, context = {}) {
+        try {
+          const sanitized = sanitizeMailPayload(mailPayload, context);
+          if (!sanitized) {
+            return { mailId: null, mailStatus: "missing-email" };
+          }
+
+          const mailRef = await addDoc(collection(db, MAIL_COLLECTION), sanitized);
+          return { mailId: mailRef.id, mailStatus: "queued" };
+        } catch (error) {
+          console.error("Falha ao enfileirar e-mail de confirmação", error);
+          return { mailId: null, mailStatus: "error" };
         }
       }
 
       async function cadastrarCliente(event) {
         event.preventDefault();
-        const form = event.target;
+
+        const form = event.currentTarget;
         const btn = form.querySelector("button[type='submit']");
         const feedback = document.getElementById("signup-feedback");
         clearFeedback(feedback);
@@ -177,15 +281,15 @@
         try {
           const nome = sanitize(form.nome.value);
           const email = sanitize(form.email.value).toLowerCase();
-          const senha = form.senha.value;
-          const confirmarSenha = form.confirmarSenha.value;
+          const senha = form.senha.value || "";
+          const confirmarSenha = form.confirmarSenha.value || "";
           const telefone = sanitize(form.telefone.value);
           const endereco = sanitize(form.endereco_text.value);
           const complemento = sanitize(form.complemento.value);
-          const aceiteTermos = form.aceiteTermos.checked;
+          const aceiteTermos = Boolean(form.aceiteTermos?.checked);
 
-          const endereco_formatado = sanitize(form.endereco_formatado.value);
-          const place_id = sanitize(form.place_id.value);
+          const enderecoFormatado = sanitize(form.endereco_formatado.value);
+          const placeId = sanitize(form.place_id.value);
           const lat = sanitize(form.lat.value);
           const lng = sanitize(form.lng.value);
 
@@ -205,37 +309,21 @@
             return;
           }
 
-          btn.disabled = true;
-          btn.setAttribute("aria-busy", "true");
-          btn.textContent = "Criando conta…";
+          if (btn) {
+            btn.disabled = true;
+            btn.setAttribute("aria-busy", "true");
+            btn.textContent = "Criando conta…";
+          }
           setFeedbackMessage(feedback, "Validando seus dados…", "info");
 
           const { user, isNew } = await ensureAuthAccount(email, senha);
           const uid = user.uid;
-          btn.textContent = "Salvando cadastro…";
 
-          const profilePath = `clientes/${uid}`;
-          let confirmationQueued = false;
-          let confirmationError = null;
-
-          const profilePath = `clientes/${uid}`;
-          const confirmationToken = generateConfirmationToken();
-          const confirmationUrl = buildConfirmationUrl(profilePath, confirmationToken);
-
-          let mailDocId = null;
-
-          if (isNew) {
-            try {
-              mailDocId = await queueWelcomeEmail({
-                email,
-                nome,
-                profilePath: `clientes/${uid}`,
-              });
-            } catch (queueError) {
-              console.error("Falha ao enfileirar e-mail de boas-vindas (web)", queueError);
-            }
+          if (btn) {
+            btn.textContent = "Salvando cadastro…";
           }
 
+          const profilePath = `clientes/${uid}`;
           const payload = {
             uid,
             nome,
@@ -249,48 +337,93 @@
             lng,
             preferencias: [],
             newsletter: false,
-            aceiteTermos: Boolean(aceiteTermos),
+            aceiteTermos: aceiteTermos,
             atualizadoEm: serverTimestamp(),
           };
 
-          let welcomeEmailQueued = null;
+          let confirmationToken = "";
+          let confirmationUrl = "";
+
           if (isNew) {
             payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
-            payload.status = "pendente";
+            confirmationToken = gerarTokenConfirmacao();
+            confirmationUrl = construirUrlConfirmacao(profilePath, confirmationToken);
+            payload.signupConfirmation = {
+              token: confirmationToken,
+              status: "pendente",
+              statusCode: "pending",
+              role: "cliente",
+              issuedAt: serverTimestamp(),
+              preparedBy: MAIL_SOURCE,
+              preparedAt: serverTimestamp(),
+              confirmationUrl,
+              mailStatus: "pending",
+            };
           }
-
-          let confirmationQueued = false;
-          let mailPayload = null;
-          let mailDocId = null;
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
-          if (isNew) {
-            try {
-              const result = await solicitarConfirmacao(`clientes/${uid}`);
-              confirmationQueued = ["queued", "already-queued"].includes(result?.status);
-              if (result?.mailPayload) {
-                mailPayload = result.mailPayload;
+          let confirmationQueued = !isNew;
+
+          if (isNew && confirmationUrl) {
+            const confirmationMailPayload =
+              criarPayloadEmailConfirmacao({
+                email,
+                nome,
+                confirmationUrl,
+                confirmationToken,
+              }) || null;
+
+            if (confirmationMailPayload) {
+              const { mailId, mailStatus } = await queueConfirmationEmail(confirmationMailPayload, {
+                role: "cliente",
+                queuedBy: MAIL_SOURCE,
+                profilePath,
+                confirmationUrl,
+                confirmationToken,
+                name: nome,
+              });
+
+              confirmationQueued = mailStatus === "queued";
+
+              const confirmationUpdates = {
+                "signupConfirmation.mailStatus": mailStatus,
+                "signupConfirmation.mailUpdatedAt": serverTimestamp(),
+              };
+
+              if (mailId) {
+                confirmationUpdates["signupConfirmation.mailId"] = mailId;
+                confirmationUpdates["signupConfirmation.mailDocumentId"] = mailId;
+                confirmationUpdates["signupConfirmation.mailQueuedAt"] = serverTimestamp();
+                confirmationUpdates["signupConfirmation.mailQueuedBy"] = MAIL_SOURCE;
               }
-            } catch (error) {
+
+              await setDoc(doc(db, "clientes", uid), confirmationUpdates, { merge: true });
+
+              if (mailId) {
+                console.info("E-mail de confirmação enfileirado", mailId);
+              }
+            } else {
+              console.warn("Não foi possível preparar o e-mail de confirmação para", email);
+              await setDoc(
+                doc(db, "clientes", uid),
+                {
+                  "signupConfirmation.mailStatus": "missing-email",
+                  "signupConfirmation.mailUpdatedAt": serverTimestamp(),
+                },
+                { merge: true },
+              );
               confirmationQueued = false;
             }
           }
 
-          if (isNew && !confirmationQueued && mailPayload) {
-            mailDocId = await queueWelcomeEmail(mailPayload);
-            confirmationQueued = Boolean(mailDocId);
-            if (mailDocId) {
-              console.info("E-mail de confirmação enfileirado via fallback", mailDocId);
-            }
-          }
-
-          feedback.textContent = isNew
+          const successMessage = isNew
             ? confirmationQueued
-              ? "✅ Conta criada! Verifique seu e-mail para confirmar o cadastro e liberar o acesso."
+              ? "✅ Conta criada! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
               : "✅ Conta criada! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
             : "✅ Dados atualizados!";
+
           setFeedbackMessage(feedback, successMessage, "success");
           form.reset();
           const termos = form.querySelector("[name='aceiteTermos']");
@@ -298,7 +431,7 @@
             termos.checked = false;
           }
         } catch (error) {
-          console.error(error);
+          console.error("Falha ao cadastrar cliente", error);
           const code = error?.code || "erro-desconhecido";
           const mensagemPorCodigo = {
             "auth/email-already-in-use": "❌ Erro: Já existe uma conta com este e-mail. Utilize a mesma senha cadastrada anteriormente.",
@@ -308,7 +441,7 @@
             "auth/invalid-login-credentials": "❌ Erro: Não foi possível confirmar seus dados de acesso.",
           };
 
-          const friendly = mensagemPorCodigo[code] ?? `❌ Erro: ${code}`;
+          const friendly = mensagemPorCodigo[code] ?? "❌ Erro: Não foi possível concluir o cadastro. Tente novamente.";
           setFeedbackMessage(feedback, friendly, "error");
         } finally {
           await safeSignOut();
@@ -321,7 +454,7 @@
       }
 
       document.addEventListener("DOMContentLoaded", () => {
-        const form = document.getElementById("cadastroClienteForm");
+        const form = document.getElementById(FORM_ID);
         if (!form) {
           console.error("Formulário de cadastro de cliente não encontrado na página.");
           return;
