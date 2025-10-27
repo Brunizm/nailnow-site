@@ -97,8 +97,14 @@ function ensureSignupConfirmation(data, role) {
     hasChanges = true;
   }
 
-  if (!existing.status) {
-    updates.status = "pending";
+  const normalizedStatus = (existing.status || "").toString().toLowerCase();
+  if (!normalizedStatus || normalizedStatus === "pending") {
+    updates.status = "pendente";
+    hasChanges = true;
+  }
+
+  if (!existing.statusCode || existing.statusCode === "pending") {
+    updates.statusCode = "pending";
     hasChanges = true;
   }
 
@@ -141,6 +147,8 @@ async function persistSignupState(snap, data, role) {
     status: finalStatus,
     signupConfirmation: {
       ...confirmation,
+      status: confirmation.status || "pendente",
+      statusCode: confirmation.statusCode || "pending",
       token: confirmation.token,
     },
   };
@@ -177,6 +185,8 @@ async function queueConfirmationForSnapshot(
 
     const confirmationUpdate = {
       ...signupConfirmation,
+      status: signupConfirmation.status || "pendente",
+      statusCode: signupConfirmation.statusCode || "pending",
       confirmationUrl,
       preparedBy: queuedBy,
       preparedAt: FieldValue.serverTimestamp(),
@@ -556,11 +566,17 @@ exports.verifySignupConfirmation = functions
 
       const normalizedStatus = (profileData.status || "").toString().toLowerCase();
       const confirmationStatus = (confirmation.status || "").toString().toLowerCase();
+      const confirmationStatusCode = (confirmation.statusCode || "").toString().toLowerCase();
       const alreadyConfirmed =
         normalizedStatus === "confirmado" ||
         normalizedStatus === "confirmada" ||
         normalizedStatus === "confirmed" ||
-        confirmationStatus === "confirmed";
+        confirmationStatus === "confirmado" ||
+        confirmationStatus === "confirmada" ||
+        confirmationStatus === "confirmed" ||
+        confirmationStatusCode === "confirmado" ||
+        confirmationStatusCode === "confirmada" ||
+        confirmationStatusCode === "confirmed";
 
       if (alreadyConfirmed) {
         res.status(200).json({
@@ -573,7 +589,8 @@ exports.verifySignupConfirmation = functions
 
       const confirmationUpdate = {
         ...confirmation,
-        status: "confirmed",
+        status: "confirmado",
+        statusCode: "confirmed",
         confirmedAt: FieldValue.serverTimestamp(),
         confirmedBy: "email-link",
         tokenLastUsedAt: FieldValue.serverTimestamp(),

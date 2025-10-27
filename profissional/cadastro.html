@@ -363,7 +363,8 @@
             confirmationUrl = construirUrlConfirmacao(profilePath, confirmationToken);
             payload.signupConfirmation = {
               token: confirmationToken,
-              status: "pending",
+              status: "pendente",
+              statusCode: "pending",
               role: "profissional",
               issuedAt: serverTimestamp(),
               preparedBy: MAIL_SOURCE,
