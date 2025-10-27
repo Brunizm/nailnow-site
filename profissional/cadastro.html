@@ -189,6 +189,12 @@
             role: context.role || mailPayload.metadata?.role || "profissional",
             queuedBy: context.queuedBy || mailPayload.metadata?.queuedBy || MAIL_SOURCE,
             profilePath: context.profilePath || mailPayload.metadata?.profilePath || null,
+            confirmationKey:
+              context.confirmationKey ||
+              mailPayload.metadata?.confirmationKey ||
+              context.profilePath ||
+              mailPayload.metadata?.profilePath ||
+              null,
             confirmationUrl: confirmationUrl || null,
             emailType: mailPayload.metadata?.emailType || "confirmation",
             confirmationToken:
@@ -367,6 +373,7 @@
               issuedAt: serverTimestamp(),
               preparedBy: MAIL_SOURCE,
               preparedAt: serverTimestamp(),
+              autoQueueOptOut: true,
               confirmationUrl,
               mailStatus: "pending",
             };

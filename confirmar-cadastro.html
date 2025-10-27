@@ -150,6 +150,25 @@
 
     <script src="/assets/js/menu-toggle.js" defer></script>
     <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getAuth,
+        signInWithCustomToken,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
+        authDomain: "nailnow-site.firebaseapp.com",
+        projectId: "nailnow-site",
+        storageBucket: "nailnow-site.appspot.com",
+        messagingSenderId: "726392294571",
+        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+      };
+
+      const firebaseApp = initializeApp(firebaseConfig);
+      const auth = getAuth(firebaseApp);
+
       const statusEl = document.getElementById("confirmation-status");
       const detailsEl = document.getElementById("confirmation-details");
       const actionsEl = document.getElementById("confirmation-actions");
@@ -180,9 +199,53 @@
         const button = document.createElement("a");
         button.className = "auth-link-button auth-link-button--primary";
         button.href = loginUrl;
-        button.textContent = role === "profissional" ? "Ir para o portal profissional" : "Ir para o portal da cliente";
+        button.textContent =
+          role === "profissional"
+            ? "Acessar portal profissional"
+            : "Acessar portal da cliente";
         actionsEl.appendChild(button);
         actionsEl.hidden = false;
+
+        const redirectDelay = 1500;
+        const redirectTimer = window.setTimeout(() => {
+          window.location.assign(loginUrl);
+        }, redirectDelay);
+
+        button.addEventListener("click", () => {
+          window.clearTimeout(redirectTimer);
+        });
+      };
+
+      const attemptAutoLogin = async (authData, redirectUrl, role) => {
+        if (!authData?.customToken) {
+          return false;
+        }
+
+        try {
+          if (auth.currentUser) {
+            if (!authData.uid || auth.currentUser.uid !== authData.uid) {
+              await signOut(auth);
+            }
+          }
+        } catch (signOutError) {
+          console.warn("Não foi possível encerrar sessão anterior", signOutError);
+        }
+
+        try {
+          await signInWithCustomToken(auth, authData.customToken);
+          setStatus("success", "Acesso liberado! Estamos abrindo seu portal…");
+          detailsEl.textContent =
+            role === "profissional"
+              ? "Você será redirecionada automaticamente para o painel profissional."
+              : "Você será redirecionada automaticamente para o portal da cliente.";
+          setTimeout(() => {
+            window.location.assign(redirectUrl);
+          }, 1200);
+          return true;
+        } catch (error) {
+          console.error("Falha ao autenticar automaticamente", error);
+          return false;
+        }
       };
 
       const confirmSignup = async () => {
@@ -205,28 +268,47 @@
           const payload = await response.json().catch(() => ({}));
 
           if (response.ok) {
-            const loginUrl = payload.loginUrl ||
+            const loginUrl =
+              payload.loginUrl ||
               (payload.role === "profissional"
                 ? `${APP_URL}/profissional/index.html`
                 : `${APP_URL}/cliente/index.html`);
+            const portalUrl = payload.portalUrl || loginUrl;
+            const role = payload.role;
 
             if (payload.status === "confirmed") {
-              setStatus("success", "Cadastro confirmado com sucesso!" );
-              detailsEl.textContent = "Agora você já pode acessar o portal e aproveitar todos os recursos da NailNow.";
-              showActions(loginUrl, payload.role);
+              const autoLogged = await attemptAutoLogin(payload.auth, portalUrl, role);
+              if (autoLogged) {
+                return;
+              }
+              setStatus("success", "Cadastro confirmado com sucesso!");
+              detailsEl.textContent =
+                "Estamos abrindo seu portal automaticamente. Caso não aconteça, use o link abaixo.";
+              showActions(loginUrl, role);
               return;
             }
 
             if (payload.status === "already-confirmed") {
-              setStatus("success", "Cadastro já estava confirmado." );
-              detailsEl.textContent = "Você já tem acesso liberado. Se preferir, faça login novamente pelo portal.";
-              showActions(loginUrl, payload.role);
+              const autoLogged = await attemptAutoLogin(payload.auth, portalUrl, role);
+              if (autoLogged) {
+                return;
+              }
+              setStatus("success", "Cadastro já estava confirmado.");
+              detailsEl.textContent =
+                "Vamos redirecionar você para o portal em instantes. Se não funcionar, utilize o link abaixo.";
+              showActions(loginUrl, role);
               return;
             }
 
-            setStatus("success", "Confirmação concluída." );
-            detailsEl.textContent = "Tudo certo! Caso não consiga acessar o portal, fale com o suporte NailNow.";
-            showActions(loginUrl, payload.role);
+            const autoLogged = await attemptAutoLogin(payload.auth, portalUrl, role);
+            if (autoLogged) {
+              return;
+            }
+
+            setStatus("success", "Confirmação concluída.");
+            detailsEl.textContent =
+              "Vamos abrir o portal automaticamente. Caso algo impeça, utilize o link abaixo ou fale com o suporte NailNow.";
+            showActions(loginUrl, role);
             return;
           }
 
@@ -235,7 +317,10 @@
           detailsEl.textContent = "Se o problema persistir, envie um e-mail para suporte@nailnow.app com este código: " + errorKey;
         } catch (error) {
           console.error("Falha ao confirmar cadastro", error);
-          setStatus("error", "Não foi possível validar seu cadastro agora. Tente novamente em instantes." );
+          setStatus(
+            "error",
+            "Não foi possível validar seu cadastro agora. Tente novamente em instantes.",
+          );
           detailsEl.textContent = "Caso o erro continue, fale com suporte@nailnow.app informando que o link de confirmação falhou.";
         }
       };
