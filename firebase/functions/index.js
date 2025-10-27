@@ -73,6 +73,7 @@ function buildConfirmationMailPayload({
   }
 
   const message = buildConfirmationMessage({ name, role, confirmationUrl });
+  const confirmationKey = profilePath || (profileId ? `${role || ""}:${profileId}` : null);
 
   return {
     to: [trimmedEmail],
@@ -89,6 +90,7 @@ function buildConfirmationMailPayload({
       emailType: "confirmation",
       requestedBy: requestedBy || null,
       name: name || null,
+      confirmationKey: confirmationKey || profilePath || null,
     },
   };
 }
@@ -197,6 +199,7 @@ async function queueConfirmationForSnapshot(
       preparedBy: queuedBy,
       preparedAt: FieldValue.serverTimestamp(),
       autoQueueOptOut: false,
+      confirmationKey: mailPayload?.metadata?.confirmationKey || signupConfirmation.confirmationKey || null,
     };
 
     const existingMailId = signupConfirmation.mailId || signupConfirmation.mailDocumentId || null;
@@ -295,20 +298,72 @@ async function queueConfirmationForSnapshot(
           },
         };
 
-        const mailRef = await firestore.collection("mail").add(payload);
-        mailId = mailRef.id;
-        mailStatus = "queued";
-        confirmationUpdate.mailId = mailId;
-        confirmationUpdate.mailDocumentId = mailId;
-        confirmationUpdate.mailQueuedAt = FieldValue.serverTimestamp();
-        confirmationUpdate.mailQueuedBy = queuedBy;
-        confirmationUpdate.mailStatus = "queued";
-        functions.logger.info("Email de confirmação enfileirado", {
-          role,
-          sourcePath,
-          queuedBy,
-          mailId,
-        });
+        const dedupKey = payload.metadata?.confirmationKey || null;
+        let reusedExistingMail = false;
+
+        if (!force && dedupKey) {
+          const existingSnapshot = await firestore
+            .collection("mail")
+            .where("metadata.confirmationKey", "==", dedupKey)
+            .limit(1)
+            .get();
+
+          if (!existingSnapshot.empty) {
+            const existingDoc = existingSnapshot.docs[0];
+            const existingData = existingDoc.data() || {};
+            const existingMetadata = existingData.metadata || {};
+            const existingToken = existingMetadata.confirmationToken || null;
+            const existingUrl = existingMetadata.confirmationUrl || null;
+
+            reusedExistingMail = true;
+            mailId = existingDoc.id;
+            mailStatus = "already-queued";
+            confirmationUpdate.mailId = mailId;
+            confirmationUpdate.mailDocumentId = mailId;
+            confirmationUpdate.mailStatus = "already-queued";
+            confirmationUpdate.mailQueuedBy =
+              signupConfirmation.mailQueuedBy || existingMetadata.queuedBy || queuedBy;
+            if (signupConfirmation.mailQueuedAt) {
+              confirmationUpdate.mailQueuedAt = signupConfirmation.mailQueuedAt;
+            } else if (existingDoc.createTime) {
+              confirmationUpdate.mailQueuedAt = existingDoc.createTime;
+            }
+
+            if (existingUrl) {
+              confirmationUpdate.confirmationUrl = existingUrl;
+            }
+
+            if (existingToken && existingToken !== confirmationUpdate.token) {
+              confirmationUpdate.token = existingToken;
+              confirmationUpdate.confirmationUrl =
+                existingUrl || buildConfirmationUrl(snap.ref.path, existingToken);
+            }
+
+            functions.logger.info("Email de confirmação reutilizado", {
+              role,
+              sourcePath,
+              queuedBy,
+              mailId,
+            });
+          }
+        }
+
+        if (!reusedExistingMail) {
+          const mailRef = await firestore.collection("mail").add(payload);
+          mailId = mailRef.id;
+          mailStatus = "queued";
+          confirmationUpdate.mailId = mailId;
+          confirmationUpdate.mailDocumentId = mailId;
+          confirmationUpdate.mailQueuedAt = FieldValue.serverTimestamp();
+          confirmationUpdate.mailQueuedBy = queuedBy;
+          confirmationUpdate.mailStatus = "queued";
+          functions.logger.info("Email de confirmação enfileirado", {
+            role,
+            sourcePath,
+            queuedBy,
+            mailId,
+          });
+        }
       } else {
         mailId = claimed.mailId || existingMailId;
         const fallbackMailStatus = mailId
