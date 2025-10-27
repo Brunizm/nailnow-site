@@ -505,12 +505,34 @@ function readHttpPayload(req) {
   return req.query || {};
 }
 
+const ALLOWED_ORIGINS = new Set([
+  "https://www.nailnow.app",
+  "https://nailnow.app",
+  "https://nailnow-site.web.app",
+  "https://nailnow-site.firebaseapp.com",
+  "http://localhost:5000",
+  "http://127.0.0.1:5000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+]);
+
+function applyCors(req, res) {
+  const origin = req.headers?.origin;
+  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://www.nailnow.app";
+  res.set("Access-Control-Allow-Origin", allowedOrigin);
+  res.set("Vary", "Origin");
+  res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.set(
+    "Access-Control-Allow-Headers",
+    "Origin, Content-Type, Accept, X-Requested-With, X-Client-Data, X-Firebase-AppCheck",
+  );
+  res.set("Access-Control-Max-Age", "3600");
+}
+
 exports.verifySignupConfirmation = functions
   .region("southamerica-east1")
   .https.onRequest(async (req, res) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type");
+    applyCors(req, res);
 
     if (req.method === "OPTIONS") {
       res.status(204).send("");
@@ -625,9 +647,7 @@ exports.verifySignupConfirmation = functions
 exports.requestSignupConfirmation = functions
   .region("southamerica-east1")
   .https.onRequest(async (req, res) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type");
+    applyCors(req, res);
 
     if (req.method === "OPTIONS") {
       res.status(204).send("");
