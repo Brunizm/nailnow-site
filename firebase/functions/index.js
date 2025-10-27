@@ -1,5 +1,6 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const cors = require("cors");
 const crypto = require("node:crypto");
 
 admin.initializeApp();
@@ -516,6 +517,33 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:5173",
 ]);
 
+const corsHandler = cors({
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, APP_URL);
+      return;
+    }
+
+    if (ALLOWED_ORIGINS.has(origin)) {
+      callback(null, origin);
+      return;
+    }
+
+    callback(null, APP_URL);
+  },
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: [
+    "Origin",
+    "Content-Type",
+    "Accept",
+    "X-Requested-With",
+    "X-Client-Data",
+    "X-Firebase-AppCheck",
+    "Authorization",
+  ],
+  optionsSuccessStatus: 204,
+});
+
 function applyCors(req, res) {
   const origin = req.headers?.origin;
   const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://www.nailnow.app";
@@ -531,117 +559,128 @@ function applyCors(req, res) {
 
 exports.verifySignupConfirmation = functions
   .region("southamerica-east1")
-  .https.onRequest(async (req, res) => {
-    applyCors(req, res);
+  .https.onRequest((req, res) => {
+    corsHandler(req, res, async () => {
+      const origin = req.headers?.origin;
+      const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : APP_URL;
+      res.set("Access-Control-Allow-Origin", allowedOrigin);
+      res.set("Vary", "Origin");
+      res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      res.set(
+        "Access-Control-Allow-Headers",
+        "Origin, Content-Type, Accept, X-Requested-With, X-Client-Data, X-Firebase-AppCheck, Authorization",
+      );
+      res.set("Access-Control-Max-Age", "3600");
 
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
-    }
-
-    const payload = readHttpPayload(req);
-    const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
-    const token = typeof payload.token === "string" ? payload.token.trim() : "";
-
-    if (!rawProfile || !token) {
-      res.status(400).json({ error: "missing-parameters" });
-      return;
-    }
-
-    const profilePath = decodeURIComponent(rawProfile);
-    const parts = profilePath.split("/");
-    if (parts.length !== 2) {
-      res.status(400).json({ error: "invalid-profile-path" });
-      return;
-    }
-
-    const [collection, documentId] = parts;
-    const mapping = CONFIRMATION_COLLECTIONS[collection];
-
-    if (!mapping) {
-      res.status(400).json({ error: "unsupported-profile" });
-      return;
-    }
-
-    try {
-      const docRef = firestore.collection(collection).doc(documentId);
-      const snapshot = await docRef.get();
-
-      if (!snapshot.exists) {
-        res.status(404).json({ error: "profile-not-found" });
+      if (req.method === "OPTIONS") {
+        res.status(204).send("");
         return;
       }
 
-      const profileData = snapshot.data() || {};
-      const confirmation = profileData.signupConfirmation || {};
+      const payload = readHttpPayload(req);
+      const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
+      const token = typeof payload.token === "string" ? payload.token.trim() : "";
 
-      if (!confirmation.token) {
-        res.status(400).json({ error: "confirmation-missing" });
+      if (!rawProfile || !token) {
+        res.status(400).json({ error: "missing-parameters" });
         return;
       }
 
-      const storedToken = confirmation.token;
-      if (storedToken !== token) {
-        res.status(400).json({ error: "invalid-token" });
+      const profilePath = decodeURIComponent(rawProfile);
+      const parts = profilePath.split("/");
+      if (parts.length !== 2) {
+        res.status(400).json({ error: "invalid-profile-path" });
         return;
       }
 
-      const normalizedStatus = (profileData.status || "").toString().toLowerCase();
-      const confirmationStatus = (confirmation.status || "").toString().toLowerCase();
-      const confirmationStatusCode = (confirmation.statusCode || "").toString().toLowerCase();
-      const alreadyConfirmed =
-        normalizedStatus === "confirmado" ||
-        normalizedStatus === "confirmada" ||
-        normalizedStatus === "confirmed" ||
-        confirmationStatus === "confirmado" ||
-        confirmationStatus === "confirmada" ||
-        confirmationStatus === "confirmed" ||
-        confirmationStatusCode === "confirmado" ||
-        confirmationStatusCode === "confirmada" ||
-        confirmationStatusCode === "confirmed";
+      const [collection, documentId] = parts;
+      const mapping = CONFIRMATION_COLLECTIONS[collection];
 
-      if (alreadyConfirmed) {
+      if (!mapping) {
+        res.status(400).json({ error: "unsupported-profile" });
+        return;
+      }
+
+      try {
+        const docRef = firestore.collection(collection).doc(documentId);
+        const snapshot = await docRef.get();
+
+        if (!snapshot.exists) {
+          res.status(404).json({ error: "profile-not-found" });
+          return;
+        }
+
+        const profileData = snapshot.data() || {};
+        const confirmation = profileData.signupConfirmation || {};
+
+        if (!confirmation.token) {
+          res.status(400).json({ error: "confirmation-missing" });
+          return;
+        }
+
+        const storedToken = confirmation.token;
+        if (storedToken !== token) {
+          res.status(400).json({ error: "invalid-token" });
+          return;
+        }
+
+        const normalizedStatus = (profileData.status || "").toString().toLowerCase();
+        const confirmationStatus = (confirmation.status || "").toString().toLowerCase();
+        const confirmationStatusCode = (confirmation.statusCode || "").toString().toLowerCase();
+        const alreadyConfirmed =
+          normalizedStatus === "confirmado" ||
+          normalizedStatus === "confirmada" ||
+          normalizedStatus === "confirmed" ||
+          confirmationStatus === "confirmado" ||
+          confirmationStatus === "confirmada" ||
+          confirmationStatus === "confirmed" ||
+          confirmationStatusCode === "confirmado" ||
+          confirmationStatusCode === "confirmada" ||
+          confirmationStatusCode === "confirmed";
+
+        if (alreadyConfirmed) {
+          res.status(200).json({
+            status: "already-confirmed",
+            role: mapping.role,
+            loginUrl: `${APP_URL}${mapping.loginPath}`,
+          });
+          return;
+        }
+
+        const confirmationUpdate = {
+          ...confirmation,
+          status: "confirmado",
+          statusCode: "confirmed",
+          confirmedAt: FieldValue.serverTimestamp(),
+          confirmedBy: "email-link",
+          tokenLastUsedAt: FieldValue.serverTimestamp(),
+        };
+
+        const updates = {
+          status: "confirmado",
+          statusUpdatedAt: FieldValue.serverTimestamp(),
+          signupConfirmation: confirmationUpdate,
+        };
+
+        await docRef.set(updates, { merge: true });
+        functions.logger.info("Cadastro confirmado", {
+          profilePath,
+          role: mapping.role,
+        });
+
         res.status(200).json({
-          status: "already-confirmed",
+          status: "confirmed",
           role: mapping.role,
           loginUrl: `${APP_URL}${mapping.loginPath}`,
         });
-        return;
+      } catch (error) {
+        functions.logger.error("Falha ao confirmar cadastro", {
+          profilePath,
+          error: error?.message,
+        });
+        res.status(500).json({ error: "internal-error" });
       }
-
-      const confirmationUpdate = {
-        ...confirmation,
-        status: "confirmado",
-        statusCode: "confirmed",
-        confirmedAt: FieldValue.serverTimestamp(),
-        confirmedBy: "email-link",
-        tokenLastUsedAt: FieldValue.serverTimestamp(),
-      };
-
-      const updates = {
-        status: "confirmado",
-        statusUpdatedAt: FieldValue.serverTimestamp(),
-        signupConfirmation: confirmationUpdate,
-      };
-
-      await docRef.set(updates, { merge: true });
-      functions.logger.info("Cadastro confirmado", {
-        profilePath,
-        role: mapping.role,
-      });
-
-      res.status(200).json({
-        status: "confirmed",
-        role: mapping.role,
-        loginUrl: `${APP_URL}${mapping.loginPath}`,
-      });
-    } catch (error) {
-      functions.logger.error("Falha ao confirmar cadastro", {
-        profilePath,
-        error: error?.message,
-      });
-      res.status(500).json({ error: "internal-error" });
-    }
+    });
   });
 
 exports.requestSignupConfirmation = functions
