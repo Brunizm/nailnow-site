@@ -220,8 +220,64 @@ async function queueConfirmationForSnapshot(
     }
 
     if (queueMail) {
-      const shouldQueueMail = force || !existingMailId;
-      if (shouldQueueMail) {
+      const claimed = await firestore.runTransaction(async (transaction) => {
+        const freshSnap = await transaction.get(snap.ref);
+        const freshData = freshSnap.data() || {};
+        const freshConfirmation = freshData.signupConfirmation || {};
+        const freshMailId =
+          freshConfirmation.mailId || freshConfirmation.mailDocumentId || null;
+        const freshMailStatus = normalizeLower(
+          freshConfirmation.mailStatus || "",
+        );
+
+        if (!force) {
+          if (freshMailId) {
+            return {
+              shouldQueue: false,
+              mailId: freshMailId,
+              mailStatus: freshConfirmation.mailStatus || "already-queued",
+              confirmation: freshConfirmation,
+            };
+          }
+
+          if (["queued", "queuing", "already-queued"].includes(freshMailStatus)) {
+            return {
+              shouldQueue: false,
+              mailId: freshMailId,
+              mailStatus: freshConfirmation.mailStatus || "already-queued",
+              confirmation: freshConfirmation,
+            };
+          }
+        }
+
+        const updatedConfirmation = {
+          ...signupConfirmation,
+          ...freshConfirmation,
+          status: freshConfirmation.status || signupConfirmation.status || "pendente",
+          statusCode:
+            freshConfirmation.statusCode ||
+            signupConfirmation.statusCode ||
+            "pending",
+          mailStatus: "queuing",
+          mailQueuedBy: queuedBy,
+          mailQueuedAt: FieldValue.serverTimestamp(),
+        };
+
+        transaction.set(
+          snap.ref,
+          {
+            signupConfirmation: updatedConfirmation,
+          },
+          { merge: true },
+        );
+
+        return {
+          shouldQueue: true,
+          confirmation: updatedConfirmation,
+        };
+      });
+
+      if (claimed.shouldQueue) {
         const payload = {
           ...mailPayload,
           metadata: {
@@ -248,10 +304,16 @@ async function queueConfirmationForSnapshot(
           mailId,
         });
       } else {
-        mailStatus = "already-queued";
-        confirmationUpdate.mailStatus = "already-queued";
-        confirmationUpdate.mailId = existingMailId;
-        confirmationUpdate.mailDocumentId = existingMailId;
+        mailId = claimed.mailId || existingMailId;
+        const fallbackMailStatus = mailId
+          ? "already-queued"
+          : signupConfirmation.mailStatus || "already-queued";
+        mailStatus = claimed.mailStatus || fallbackMailStatus;
+        confirmationUpdate.mailStatus = mailStatus;
+        if (mailId) {
+          confirmationUpdate.mailId = mailId;
+          confirmationUpdate.mailDocumentId = mailId;
+        }
       }
     } else {
       mailStatus = "requires-client-enqueue";
