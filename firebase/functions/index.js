@@ -454,6 +454,47 @@ const CONFIRMATION_COLLECTIONS = {
   manicures: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
 };
 
+function parseJsonBody(req) {
+  if (!req || !req.method || req.method.toUpperCase() !== "POST") {
+    return {};
+  }
+
+  const body = req.body;
+
+  if (body && typeof body === "object" && !Buffer.isBuffer(body)) {
+    return body;
+  }
+
+  const rawBody = typeof body === "string" && body.trim().length
+    ? body
+    : req.rawBody
+    ? req.rawBody.toString()
+    : "";
+
+  if (!rawBody) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(rawBody);
+  } catch (error) {
+    functions.logger.warn("Falha ao converter body em JSON", error?.message);
+    return {};
+  }
+}
+
+function readHttpPayload(req) {
+  if (!req) {
+    return {};
+  }
+
+  if (req.method && req.method.toUpperCase() === "POST") {
+    return parseJsonBody(req);
+  }
+
+  return req.query || {};
+}
+
 exports.verifySignupConfirmation = functions
   .region("southamerica-east1")
   .https.onRequest(async (req, res) => {
@@ -466,7 +507,7 @@ exports.verifySignupConfirmation = functions
       return;
     }
 
-    const payload = req.method === "POST" ? req.body || {} : req.query || {};
+    const payload = readHttpPayload(req);
     const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
     const token = typeof payload.token === "string" ? payload.token.trim() : "";
 
@@ -581,7 +622,7 @@ exports.requestSignupConfirmation = functions
       return;
     }
 
-    const payload = req.method === "POST" ? req.body || {} : req.query || {};
+    const payload = readHttpPayload(req);
     const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
 
     if (!rawProfile) {
