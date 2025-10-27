@@ -82,8 +82,6 @@
       const MAIL_SOURCE = "web-client-signup";
       const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
       const FORM_ID = "cadastroClienteForm";
-      const REQUEST_CONFIRMATION_URL =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
@@ -134,27 +132,6 @@
         }
       }
 
-      async function solicitarConfirmacao(profilePath) {
-        if (!profilePath) {
-          throw new Error("missing-profile-path");
-        }
-
-        const response = await fetch(REQUEST_CONFIRMATION_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profile: profilePath }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => "");
-          const httpError = new Error(`request-failed-${response.status}`);
-          httpError.details = errorText;
-          throw httpError;
-        }
-
-        return response.json().catch(() => ({}));
-      }
-
       function normalizarDestinatarios(valor) {
         if (!valor) return [];
         if (Array.isArray(valor)) {
@@ -200,11 +177,85 @@
             profilePath: context.profilePath || mailPayload.metadata?.profilePath || null,
             confirmationUrl: confirmationUrl || null,
             emailType: mailPayload.metadata?.emailType || "confirmation",
+            confirmationToken:
+              context.confirmationToken || mailPayload.metadata?.confirmationToken || null,
+            name: mailPayload.metadata?.name || context.name || null,
           },
         };
       }
 
-      async function queueWelcomeEmail(mailPayload = {}, context = {}) {
+      function gerarTokenConfirmacao() {
+        try {
+          if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+            return crypto.randomUUID().replace(/-/g, "");
+          }
+        } catch (error) {
+          console.warn("Falha ao gerar token com crypto.randomUUID", error);
+        }
+
+        return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`
+          .replace(/[^a-z0-9]/gi, "")
+          .padEnd(32, "0")
+          .slice(0, 32);
+      }
+
+      function construirUrlConfirmacao(profilePath, token) {
+        const params = new URLSearchParams({
+          profile: profilePath,
+          token,
+        });
+        return `https://www.nailnow.app/confirmar-cadastro.html?${params.toString()}`;
+      }
+
+      function construirMensagemConfirmacao({ nome, confirmationUrl }) {
+        const safeName = sanitize(nome || "Cliente");
+        const subject = "Confirme seu cadastro no NailNow 💅";
+        const greetingName = safeName || "Cliente";
+        const textLines = [
+          `Olá, ${greetingName}!`,
+          "Recebemos seu cadastro como cliente no NailNow e ele está aguardando confirmação.",
+          "Para confirmar sua conta e liberar o acesso ao portal, clique no link abaixo:",
+          confirmationUrl,
+          "Se você não solicitou este cadastro, pode ignorar esta mensagem.",
+          "Com carinho, equipe NailNow",
+        ];
+
+        const html = [
+          `<p>Olá, <strong>${greetingName}</strong>! 💖 Recebemos seu cadastro como cliente no NailNow e ele está aguardando confirmação.</p>`,
+          "<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>",
+          `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
+          `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style="word-break:break-all;">${confirmationUrl}</span></p>`,
+          "<p>Com carinho, equipe NailNow 💅</p>",
+        ].join("");
+
+        return {
+          subject,
+          text: textLines.join("\n\n"),
+          html,
+        };
+      }
+
+      function criarPayloadEmailConfirmacao({ email, nome, confirmationUrl, confirmationToken }) {
+        if (!email || !confirmationUrl) {
+          return null;
+        }
+
+        const message = construirMensagemConfirmacao({ nome, confirmationUrl });
+
+        return {
+          to: [email],
+          from: SUPPORT_SENDER,
+          message,
+          metadata: {
+            emailType: "confirmation",
+            confirmationUrl,
+            confirmationToken,
+            name: sanitize(nome),
+          },
+        };
+      }
+
+      async function queueConfirmationEmail(mailPayload = {}, context = {}) {
         try {
           const sanitized = sanitizeMailPayload(mailPayload, context);
           if (!sanitized) {
@@ -214,7 +265,7 @@
           const mailRef = await addDoc(collection(db, MAIL_COLLECTION), sanitized);
           return { mailId: mailRef.id, mailStatus: "queued" };
         } catch (error) {
-          console.error("Falha ao enfileirar fallback de confirmação", error);
+          console.error("Falha ao enfileirar e-mail de confirmação", error);
           return { mailId: null, mailStatus: "error" };
         }
       }
@@ -290,45 +341,85 @@
             atualizadoEm: serverTimestamp(),
           };
 
+          let confirmationToken = "";
+          let confirmationUrl = "";
+
           if (isNew) {
             payload.status = "pendente";
             payload.criadoEm = serverTimestamp();
+            confirmationToken = gerarTokenConfirmacao();
+            confirmationUrl = construirUrlConfirmacao(profilePath, confirmationToken);
+            payload.signupConfirmation = {
+              token: confirmationToken,
+              status: "pending",
+              role: "cliente",
+              issuedAt: serverTimestamp(),
+              preparedBy: MAIL_SOURCE,
+              preparedAt: serverTimestamp(),
+              confirmationUrl,
+              mailStatus: "pending",
+            };
           }
 
           await setDoc(doc(db, "clientes", uid), payload, { merge: true });
 
           let confirmationQueued = !isNew;
-          let confirmationMailPayload = null;
 
-          if (isNew) {
-            try {
-              const result = await solicitarConfirmacao(profilePath);
-              const normalizedStatus = (result?.status || "").toLowerCase();
-              confirmationQueued = ["queued", "already-queued"].includes(normalizedStatus);
-              if (result?.mailPayload) {
-                confirmationMailPayload = result.mailPayload;
+          if (isNew && confirmationUrl) {
+            const confirmationMailPayload =
+              criarPayloadEmailConfirmacao({
+                email,
+                nome,
+                confirmationUrl,
+                confirmationToken,
+              }) || null;
+
+            if (confirmationMailPayload) {
+              const { mailId, mailStatus } = await queueConfirmationEmail(confirmationMailPayload, {
+                role: "cliente",
+                queuedBy: MAIL_SOURCE,
+                profilePath,
+                confirmationUrl,
+                confirmationToken,
+                name: nome,
+              });
+
+              confirmationQueued = mailStatus === "queued";
+
+              const confirmationUpdates = {
+                "signupConfirmation.mailStatus": mailStatus,
+                "signupConfirmation.mailUpdatedAt": serverTimestamp(),
+              };
+
+              if (mailId) {
+                confirmationUpdates["signupConfirmation.mailId"] = mailId;
+                confirmationUpdates["signupConfirmation.mailDocumentId"] = mailId;
+                confirmationUpdates["signupConfirmation.mailQueuedAt"] = serverTimestamp();
+                confirmationUpdates["signupConfirmation.mailQueuedBy"] = MAIL_SOURCE;
               }
-            } catch (error) {
-              console.warn("Falha ao solicitar e-mail de confirmação imediato", error);
-              confirmationQueued = false;
-            }
-          }
 
-          if (isNew && !confirmationQueued && confirmationMailPayload) {
-            const { mailId, mailStatus } = await queueWelcomeEmail(confirmationMailPayload, {
-              role: "cliente",
-              queuedBy: MAIL_SOURCE,
-              profilePath,
-            });
-            confirmationQueued = mailStatus === "queued";
-            if (mailId) {
-              console.info("E-mail de confirmação enfileirado via fallback", mailId);
+              await setDoc(doc(db, "clientes", uid), confirmationUpdates, { merge: true });
+
+              if (mailId) {
+                console.info("E-mail de confirmação enfileirado", mailId);
+              }
+            } else {
+              console.warn("Não foi possível preparar o e-mail de confirmação para", email);
+              await setDoc(
+                doc(db, "clientes", uid),
+                {
+                  "signupConfirmation.mailStatus": "missing-email",
+                  "signupConfirmation.mailUpdatedAt": serverTimestamp(),
+                },
+                { merge: true },
+              );
+              confirmationQueued = false;
             }
           }
 
           const successMessage = isNew
             ? confirmationQueued
-              ? "✅ Conta criada! Verifique seu e-mail para confirmar o cadastro e liberar o acesso."
+              ? "✅ Conta criada! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
               : "✅ Conta criada! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
             : "✅ Dados atualizados!";
 
