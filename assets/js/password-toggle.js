@@ -13,10 +13,9 @@
     button.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
     button.classList.toggle('password-toggle--visible', isHidden);
 
-    const label = button.querySelector('.password-toggle__label');
-    if (label) {
-      label.textContent = isHidden ? 'Ocultar senha' : 'Mostrar senha';
-    }
+    const nextLabel = isHidden ? 'Ocultar senha' : 'Mostrar senha';
+    button.setAttribute('aria-label', nextLabel);
+    button.setAttribute('title', nextLabel);
   }
 
   document.addEventListener('DOMContentLoaded', function () {
