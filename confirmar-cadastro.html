@@ -19,8 +19,10 @@
     />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://www.nailnow.app/confirmar-cadastro.html" />
+    <link rel="alternate" hreflang="pt-BR" href="https://www.nailnow.app/confirmar-cadastro.html" />
     <meta property="og:site_name" content="NailNow" />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
     <meta property="og:title" content="Confirmação de cadastro | NailNow" />
     <meta
       property="og:description"
@@ -53,7 +55,20 @@
         "name": "NailNow",
         "url": "https://www.nailnow.app/",
         "logo": "https://www.nailnow.app/assets/nailnow-logo.svg",
-        "sameAs": ["https://www.instagram.com/nailnowbr/"]
+        "sameAs": ["https://www.instagram.com/nailnowbr/"],
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "suporte@nailnow.app",
+            "availableLanguage": ["pt-BR"],
+            "areaServed": "BR"
+          }
+        ],
+        "areaServed": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
       }
     </script>
   </head>
@@ -61,7 +76,7 @@
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
-          <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
+          <img src="/assets/nailnow-logo.svg" alt="Logotipo da NailNow" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
         <button class="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="site-navigation">
@@ -158,7 +173,27 @@
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
 
-    <script src="/assets/js/menu-toggle.js" defer></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": "https://www.nailnow.app/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Confirmação de cadastro",
+            "item": "https://www.nailnow.app/confirmar-cadastro.html"
+          }
+        ]
+      }
+    </script>
+<script src="/assets/js/menu-toggle.js" defer></script>
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import {

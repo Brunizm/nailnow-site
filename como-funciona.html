@@ -19,8 +19,10 @@
     />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://www.nailnow.app/como-funciona.html" />
+    <link rel="alternate" hreflang="pt-BR" href="https://www.nailnow.app/como-funciona.html" />
     <meta property="og:site_name" content="NailNow" />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
     <meta property="og:title" content="Como funciona | NailNow" />
     <meta
       property="og:description"
@@ -51,16 +53,86 @@
         "name": "NailNow",
         "url": "https://www.nailnow.app/",
         "logo": "https://www.nailnow.app/assets/nailnow-logo.svg",
-        "sameAs": ["https://www.instagram.com/nailnowbr/"]
+        "sameAs": ["https://www.instagram.com/nailnowbr/"],
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "suporte@nailnow.app",
+            "availableLanguage": ["pt-BR"],
+            "areaServed": "BR"
+          }
+        ],
+        "areaServed": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
       }
     </script>
-    <script src="/assets/js/menu-toggle.js" defer></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "Como agendar com a NailNow",
+        "description": "Passo a passo para escolher serviços, definir horário e confirmar o agendamento na plataforma NailNow.",
+        "step": [
+          {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "Escolha o serviço perfeito",
+            "itemListElement": {
+              "@type": "HowToDirection",
+              "text": "Selecione manicure, pedicure ou combos pensados pelas especialistas NailNow."
+            }
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Defina horário e local",
+            "itemListElement": {
+              "@type": "HowToDirection",
+              "text": "Informe o endereço do atendimento e escolha o horário ideal com profissionais próximas."
+            }
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Confirme e acompanhe",
+            "itemListElement": {
+              "@type": "HowToDirection",
+              "text": "Finalize o agendamento, receba notificações e conte com suporte em cada etapa."
+            }
+          }
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": "https://www.nailnow.app/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Como funciona",
+            "item": "https://www.nailnow.app/como-funciona.html"
+          }
+        ]
+      }
+    </script>
+<script src="/assets/js/menu-toggle.js" defer></script>
   </head>
   <body>
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
-          <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
+          <img src="/assets/nailnow-logo.svg" alt="Logotipo da NailNow" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
         <button
