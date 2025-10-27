@@ -266,8 +266,8 @@ main {
   border: none;
   border-radius: 999px;
   font-weight: 600;
-  font-size: 1rem;
-  padding: 0.9rem 1.6rem;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.5rem;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
@@ -304,6 +304,7 @@ main {
 .auth-actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.75rem;
 }
 
@@ -314,7 +315,7 @@ main {
   color: var(--pink-primary);
   font-weight: 600;
   font-size: 0.95rem;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -328,15 +329,15 @@ main {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 1rem 2.5rem;
+  padding: 0.85rem 2rem;
   border-radius: 999px;
   background: #f45ca2;
   color: #fff;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
   text-decoration: none;
-  box-shadow: 0 12px 24px rgba(244, 92, 162, 0.3);
+  box-shadow: 0 10px 20px rgba(244, 92, 162, 0.28);
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
@@ -344,7 +345,7 @@ main {
 .auth-link-button--primary:focus-visible {
   text-decoration: none;
   transform: translateY(-2px);
-  box-shadow: 0 16px 32px rgba(244, 92, 162, 0.35);
+  box-shadow: 0 14px 26px rgba(244, 92, 162, 0.32);
   filter: brightness(1.05);
 }
 
@@ -364,7 +365,7 @@ main {
 }
 
 .auth-actions--stacked {
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
 }
 
@@ -39301,7 +39302,7 @@ main {
 .services-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.75rem 1rem;
+  gap: 0.25rem 0.75rem;
 }
 
 .services-grid--compact {
@@ -39311,7 +39312,8 @@ main {
 .services-grid label {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  line-height: 1.2;
   font-weight: 500;
   color: var(--text-muted);
 }
