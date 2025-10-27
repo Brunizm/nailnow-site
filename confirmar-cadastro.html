@@ -201,10 +201,51 @@
         button.href = loginUrl;
         button.textContent =
           role === "profissional"
-            ? "Fazer login no portal profissional"
-            : "Fazer login no portal da cliente";
+            ? "Acessar portal profissional"
+            : "Acessar portal da cliente";
         actionsEl.appendChild(button);
         actionsEl.hidden = false;
+
+        const redirectDelay = 1500;
+        const redirectTimer = window.setTimeout(() => {
+          window.location.assign(loginUrl);
+        }, redirectDelay);
+
+        button.addEventListener("click", () => {
+          window.clearTimeout(redirectTimer);
+        });
+      };
+
+      const attemptAutoLogin = async (authData, redirectUrl, role) => {
+        if (!authData?.customToken) {
+          return false;
+        }
+
+        try {
+          if (auth.currentUser) {
+            if (!authData.uid || auth.currentUser.uid !== authData.uid) {
+              await signOut(auth);
+            }
+          }
+        } catch (signOutError) {
+          console.warn("Não foi possível encerrar sessão anterior", signOutError);
+        }
+
+        try {
+          await signInWithCustomToken(auth, authData.customToken);
+          setStatus("success", "Acesso liberado! Estamos abrindo seu portal…");
+          detailsEl.textContent =
+            role === "profissional"
+              ? "Você será redirecionada automaticamente para o painel profissional."
+              : "Você será redirecionada automaticamente para o portal da cliente.";
+          setTimeout(() => {
+            window.location.assign(redirectUrl);
+          }, 1200);
+          return true;
+        } catch (error) {
+          console.error("Falha ao autenticar automaticamente", error);
+          return false;
+        }
       };
 
       const attemptAutoLogin = async (authData, redirectUrl, role) => {
@@ -274,7 +315,7 @@
               }
               setStatus("success", "Cadastro confirmado com sucesso!");
               detailsEl.textContent =
-                "Caso o acesso automático não aconteça, use o botão abaixo para entrar no portal.";
+                "Estamos abrindo seu portal automaticamente. Caso não aconteça, use o link abaixo.";
               showActions(loginUrl, role);
               return;
             }
@@ -286,7 +327,7 @@
               }
               setStatus("success", "Cadastro já estava confirmado.");
               detailsEl.textContent =
-                "Se preferir, faça login novamente pelo portal usando o botão abaixo.";
+                "Vamos redirecionar você para o portal em instantes. Se não funcionar, utilize o link abaixo.";
               showActions(loginUrl, role);
               return;
             }
@@ -298,7 +339,7 @@
 
             setStatus("success", "Confirmação concluída.");
             detailsEl.textContent =
-              "Tudo certo! Caso não consiga acessar o portal, fale com o suporte NailNow ou utilize o botão para fazer login.";
+              "Vamos abrir o portal automaticamente. Caso algo impeça, utilize o link abaixo ou fale com o suporte NailNow.";
             showActions(loginUrl, role);
             return;
           }
