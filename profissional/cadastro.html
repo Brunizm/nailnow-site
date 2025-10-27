@@ -299,7 +299,6 @@
           const confirmar = form.confirmarSenha.value || "";
           const telefone = sanitize(form.telefone.value);
           const endereco = sanitize(form.endereco_text.value);
-          const cidade = sanitize(form.cidade.value);
           const bio = sanitize(form.bio.value);
           const servicos = coletarServicos(form);
 
@@ -308,7 +307,7 @@
           const lat = sanitize(form.lat.value);
           const lng = sanitize(form.lng.value);
 
-          if (!nome || !cpf || !email || !senha || !confirmar || !cidade) {
+          if (!nome || !cpf || !email || !senha || !confirmar) {
             setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
             return;
           }
@@ -346,7 +345,6 @@
             place_id: placeId,
             lat,
             lng,
-            cidade,
             bio,
             servicos,
             atualizadoEm: serverTimestamp(),
@@ -609,11 +607,6 @@
               <input type="hidden" id="place_id" name="place_id" />
               <input type="hidden" id="lat" name="lat" />
               <input type="hidden" id="lng" name="lng" />
-
-              <div class="signup-field">
-                <label for="cidade">Cidade *</label>
-                <input id="cidade" name="cidade" type="text" required />
-              </div>
 
               <div class="signup-field">
                 <span class="signup-field__legend">Serviços oferecidos</span>

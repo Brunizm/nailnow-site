@@ -285,12 +285,11 @@
         const senha = (formData.get("senha") || "").toString();
         const confirmarSenha = (formData.get("confirmarSenha") || "").toString();
         const telefone = (formData.get("telefone") || "").toString().trim();
-        const cidade = (formData.get("cidade") || "").toString().trim();
         const bio = (formData.get("bio") || "").toString().trim();
         const servicos = formData.getAll("servicos");
         const fotoFile = form.querySelector("#foto")?.files?.[0] || null;
 
-        if (!nome || !email || !senha || !confirmarSenha || !cidade) {
+        if (!nome || !email || !senha || !confirmarSenha) {
           setFeedback("❌ Erro: Preencha os campos obrigatórios (*).", "error");
           isProcessing = false;
           setSubmittingState(false);
@@ -322,7 +321,6 @@
           nome,
           email,
           telefone,
-          cidade,
           bio,
           servicos,
           atualizadoEm: serverTimestamp(),
@@ -535,9 +533,6 @@
 
       <label for="telefone">Telefone / WhatsApp</label>
       <input id="telefone" type="text" />
-
-      <label for="cidade">Cidade *</label>
-      <input id="cidade" type="text" required />
 
       <label>Serviços oferecidos:</label>
       <div class="servicos">
