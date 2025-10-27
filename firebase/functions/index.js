@@ -16,6 +16,11 @@ const ROLE_LOGIN_PATH = {
   profissional: "/profissional/index.html",
 };
 
+const ROLE_PORTAL_PATH = {
+  cliente: "/cliente/portal.html",
+  profissional: "/profissional/portal.html",
+};
+
 function buildConfirmationUrl(profilePath, token) {
   const params = new URLSearchParams({
     profile: profilePath,
@@ -191,6 +196,7 @@ async function queueConfirmationForSnapshot(
       confirmationUrl,
       preparedBy: queuedBy,
       preparedAt: FieldValue.serverTimestamp(),
+      autoQueueOptOut: false,
     };
 
     const existingMailId = signupConfirmation.mailId || signupConfirmation.mailDocumentId || null;
@@ -393,6 +399,11 @@ function shouldAttemptQueueOnWrite(beforeData, afterData) {
     return { shouldQueue: false, force: false };
   }
 
+  const afterConfirmation = afterData.signupConfirmation || {};
+  if (afterConfirmation.autoQueueOptOut === true) {
+    return { shouldQueue: false, force: false };
+  }
+
   const statusNormalized = normalizeLower(afterData.status || "");
   if (["confirmado", "confirmada", "confirmed"].includes(statusNormalized)) {
     return { shouldQueue: false, force: false };
@@ -403,7 +414,6 @@ function shouldAttemptQueueOnWrite(beforeData, afterData) {
     return { shouldQueue: false, force: false };
   }
 
-  const afterConfirmation = afterData.signupConfirmation || {};
   const beforeConfirmation = (beforeData && beforeData.signupConfirmation) || {};
   const afterMailStatus = getSignupMailStatus(afterData);
   const beforeMailStatus = getSignupMailStatus(beforeData || {});
@@ -520,11 +530,31 @@ exports.queueProfessionalWelcomeEmailEn = functions
   .onWrite((change, context) => handleProfileWrite(change, context, "profissional"));
 
 const CONFIRMATION_COLLECTIONS = {
-  clientes: { role: "cliente", loginPath: ROLE_LOGIN_PATH.cliente },
-  clients: { role: "cliente", loginPath: ROLE_LOGIN_PATH.cliente },
-  profissionais: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
-  professionals: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
-  manicures: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
+  clientes: {
+    role: "cliente",
+    loginPath: ROLE_LOGIN_PATH.cliente,
+    portalPath: ROLE_PORTAL_PATH.cliente,
+  },
+  clients: {
+    role: "cliente",
+    loginPath: ROLE_LOGIN_PATH.cliente,
+    portalPath: ROLE_PORTAL_PATH.cliente,
+  },
+  profissionais: {
+    role: "profissional",
+    loginPath: ROLE_LOGIN_PATH.profissional,
+    portalPath: ROLE_PORTAL_PATH.profissional,
+  },
+  professionals: {
+    role: "profissional",
+    loginPath: ROLE_LOGIN_PATH.profissional,
+    portalPath: ROLE_PORTAL_PATH.profissional,
+  },
+  manicures: {
+    role: "profissional",
+    loginPath: ROLE_LOGIN_PATH.profissional,
+    portalPath: ROLE_PORTAL_PATH.profissional,
+  },
 };
 
 function parseJsonBody(req) {
@@ -619,6 +649,53 @@ function applyCors(req, res) {
   res.set("Access-Control-Max-Age", "3600");
 }
 
+async function buildAutoLoginAuth(profileData, mapping, documentId, profilePath) {
+  if (!profileData || !mapping) {
+    return null;
+  }
+
+  const candidateUids = [
+    profileData.uid,
+    profileData.userId,
+    profileData.authUid,
+    profileData.userUid,
+    profileData.accountUid,
+    profileData.accountId,
+    profileData.firebaseUid,
+    documentId,
+  ]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter((value, index, array) => value && array.indexOf(value) === index);
+
+  for (const candidate of candidateUids) {
+    try {
+      const userRecord = await admin.auth().getUser(candidate);
+      const customToken = await admin.auth().createCustomToken(userRecord.uid, {
+        signupRole: mapping.role,
+        signupConfirmed: true,
+      });
+
+      return {
+        customToken,
+        uid: userRecord.uid,
+        email: userRecord.email || null,
+      };
+    } catch (error) {
+      if (error?.code === "auth/user-not-found") {
+        continue;
+      }
+
+      functions.logger.warn("Falha ao gerar token de login automático", {
+        profilePath,
+        candidateUid: candidate,
+        error: error?.message,
+      });
+    }
+  }
+
+  return null;
+}
+
 exports.verifySignupConfirmation = functions
   .region("southamerica-east1")
   .https.onRequest((req, res) => {
@@ -700,11 +777,22 @@ exports.verifySignupConfirmation = functions
           confirmationStatusCode === "confirmada" ||
           confirmationStatusCode === "confirmed";
 
+        const portalUrl = `${APP_URL}${mapping.portalPath || mapping.loginPath}`;
+
         if (alreadyConfirmed) {
+          const authPayload = await buildAutoLoginAuth(
+            profileData,
+            mapping,
+            documentId,
+            profilePath,
+          );
+
           res.status(200).json({
             status: "already-confirmed",
             role: mapping.role,
             loginUrl: `${APP_URL}${mapping.loginPath}`,
+            portalUrl,
+            auth: authPayload,
           });
           return;
         }
@@ -730,10 +818,19 @@ exports.verifySignupConfirmation = functions
           role: mapping.role,
         });
 
+        const authPayload = await buildAutoLoginAuth(
+          profileData,
+          mapping,
+          documentId,
+          profilePath,
+        );
+
         res.status(200).json({
           status: "confirmed",
           role: mapping.role,
           loginUrl: `${APP_URL}${mapping.loginPath}`,
+          portalUrl,
+          auth: authPayload,
         });
       } catch (error) {
         functions.logger.error("Falha ao confirmar cadastro", {
@@ -762,6 +859,15 @@ exports.requestSignupConfirmation = functions
 
     const payload = readHttpPayload(req);
     const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
+    const rawForce = payload.force;
+    const forceRequest = (() => {
+      if (typeof rawForce === "string") {
+        const normalized = rawForce.trim().toLowerCase();
+        return ["1", "true", "yes"].includes(normalized);
+      }
+
+      return Boolean(rawForce);
+    })();
 
     if (!rawProfile) {
       res.status(400).json({ error: "missing-profile" });
@@ -793,7 +899,7 @@ exports.requestSignupConfirmation = functions
         "requestSignupConfirmation",
         {
           queueMail: true,
-          force: req.method === "POST",
+          force: forceRequest,
         },
       );
 
