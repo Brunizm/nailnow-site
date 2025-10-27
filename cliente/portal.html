@@ -206,6 +206,48 @@
             </p>
           </div>
           <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
+            <div class="booking-card__field booking-card__field--wide booking-card__field--location">
+              <label class="booking-card__label" for="search-location">Onde você quer ser atendida?</label>
+              <div class="booking-card__control booking-card__control--line booking-card__control--with-action">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
+                  <path
+                    d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
+                  />
+                </svg>
+                <input
+                  type="search"
+                  id="search-location"
+                  class="booking-card__input"
+                  placeholder="Digite o endereço do atendimento"
+                  autocomplete="street-address"
+                />
+                <button type="button" id="detect-location" class="booking-card__action">Usar localização</button>
+              </div>
+              <p id="search-location-status" class="auth-status" role="status" aria-live="polite" hidden></p>
+            </div>
+            <div class="booking-card__row booking-card__row--filters">
+              <div class="booking-card__field">
+                <label class="booking-card__label" for="search-radius">Buscar manicures em até</label>
+                <div class="booking-card__control booking-card__control--compact">
+                  <select id="search-radius" class="booking-card__input booking-card__input--select">
+                    <option value="5">5 km</option>
+                    <option value="10" selected>10 km</option>
+                    <option value="15">15 km</option>
+                    <option value="20">20 km</option>
+                    <option value="30">30 km</option>
+                    <option value="50">50 km</option>
+                  </select>
+                </div>
+              </div>
+              <div class="booking-card__field">
+                <label class="booking-card__label" for="search-service">Serviço desejado</label>
+                <div class="booking-card__control booking-card__control--compact">
+                  <select id="search-service" class="booking-card__input booking-card__input--select">
+                    <option value="" selected>Todos os serviços</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             <div class="booking-card__field booking-card__field--wide">
               <label class="booking-card__label" for="professional-search">Buscar manicure</label>
               <div class="booking-card__control booking-card__control--line">
@@ -224,11 +266,11 @@
               </div>
               <div id="professional-results" class="request-results request-results--inline" role="list"></div>
               <p id="professional-results-empty" class="request-results__empty" hidden>
-                Não encontramos manicures com esse filtro agora. Ajuste os termos e tente novamente.
+                Informe seu endereço e ajuste os filtros acima para encontrar manicures próximas a você.
               </p>
             </div>
             <p id="request-form-empty" class="booking-card__hint">
-              Escolha uma manicure acima para liberar os detalhes da solicitação.
+              Defina sua localização, selecione uma manicure e complete os detalhes para enviar a solicitação.
             </p>
             <div class="booking-card__field" data-request-field="professional" hidden>
               <label class="booking-card__label" for="request-professional">Profissional selecionada</label>
