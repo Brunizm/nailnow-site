@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NKTL1PLZ2J');
+</script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta
@@ -9,8 +19,10 @@
   />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://www.nailnow.app/cadastro.html" />
+    <link rel="alternate" hreflang="pt-BR" href="https://www.nailnow.app/cadastro.html" />
   <meta property="og:site_name" content="NailNow" />
   <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
   <meta property="og:title" content="Cadastro de Manicure | NailNow" />
   <meta
     property="og:description"
@@ -26,16 +38,49 @@
   />
   <meta name="twitter:image" content="https://www.nailnow.app/assets/nail1.png" />
   <title>Cadastro de Manicure | NailNow 💅</title>
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "NailNow",
-      "url": "https://www.nailnow.app/",
-      "logo": "https://www.nailnow.app/assets/nailnow-logo.svg",
-      "sameAs": ["https://www.instagram.com/nailnowbr/"]
-    }
-  </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "NailNow",
+        "url": "https://www.nailnow.app/",
+        "logo": "https://www.nailnow.app/assets/nailnow-logo.svg",
+        "sameAs": ["https://www.instagram.com/nailnowbr/"],
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "suporte@nailnow.app",
+            "availableLanguage": ["pt-BR"],
+            "areaServed": "BR"
+          }
+        ],
+        "areaServed": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": "https://www.nailnow.app/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Cadastro de Manicure",
+            "item": "https://www.nailnow.app/cadastro.html"
+          }
+        ]
+      }
+    </script>
 
   <!-- Firebase + integração do formulário -->
   <script type="module">
@@ -207,6 +252,12 @@
           role: context.role || metadata.role || "profissional",
           queuedBy: context.queuedBy || metadata.queuedBy || MAIL_SOURCE,
           profilePath: context.profilePath || metadata.profilePath || null,
+          confirmationKey:
+            context.confirmationKey ||
+            metadata.confirmationKey ||
+            context.profilePath ||
+            metadata.profilePath ||
+            null,
           confirmationUrl: confirmationUrl || null,
           emailType: metadata.emailType || "confirmation",
         },
@@ -339,6 +390,7 @@
             role: "profissional",
             preparedBy: "legacy-professional-signup",
             preparedAt: serverTimestamp(),
+            autoQueueOptOut: true,
           };
         }
 

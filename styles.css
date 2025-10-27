@@ -800,6 +800,17 @@ main {
   font-size: 0.95rem;
 }
 
+.request-card__distance {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+  color: var(--pink-primary);
+}
+
+.request-card__distance--muted {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .request-card__hint {
   margin: 0;
   font-size: 0.92rem;
@@ -819,6 +830,12 @@ main {
   justify-content: space-between;
   gap: 0.75rem;
   font-size: 0.95rem;
+}
+
+.request-card__service--highlight {
+  background: rgba(244, 92, 162, 0.12);
+  border-radius: 12px;
+  padding: 0.35rem 0.55rem;
 }
 
 .request-card__service span:last-child {
@@ -39949,6 +39966,16 @@ main {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.booking-card__row--filters {
+  gap: clamp(0.75rem, 2.5vw, 1.5rem);
+}
+
+@media (min-width: 720px) {
+  .booking-card__row--filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .booking-card__field {
   display: flex;
   flex-direction: column;
@@ -39995,6 +40022,11 @@ main {
   background: var(--surface);
   border: 1px solid var(--border-soft);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.booking-card__control--with-action {
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 .booking-card__control--with-trailing-icon {
@@ -40058,6 +40090,35 @@ main {
   flex: 1;
   appearance: none;
   -webkit-appearance: none;
+}
+
+.booking-card__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 92, 162, 0.55);
+  background: rgba(244, 92, 162, 0.12);
+  color: var(--pink-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  flex-shrink: 0;
+}
+
+.booking-card__action:hover,
+.booking-card__action:focus-visible {
+  background: var(--pink-primary);
+  color: #fff;
+  border-color: var(--pink-primary);
+}
+
+.booking-card__action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .booking-card__input--textarea {

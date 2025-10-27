@@ -50,6 +50,11 @@ const cancelledList = document.getElementById("cancelled-list");
 const professionalSearchInput = document.getElementById("professional-search");
 const professionalResults = document.getElementById("professional-results");
 const professionalResultsEmpty = document.getElementById("professional-results-empty");
+const searchLocationInput = document.getElementById("search-location");
+const detectLocationButton = document.getElementById("detect-location");
+const searchLocationStatus = document.getElementById("search-location-status");
+const searchRadiusSelect = document.getElementById("search-radius");
+const searchServiceSelect = document.getElementById("search-service");
 const requestForm = document.getElementById("service-request-form");
 const requestFormEmpty = document.getElementById("request-form-empty");
 const requestFields = document.querySelectorAll("[data-request-field]");
@@ -68,8 +73,24 @@ let professionalsCatalog = [];
 let filteredProfessionals = [];
 let selectedProfessional = null;
 let selectedService = null;
+let customerLocation = { coords: null, label: "" };
+let activeRadiusKm = 10;
+let activeServiceFilter = "";
+let currentSearchTerm = "";
+let currentSearchTokens = [];
+let geocodeAbortController = null;
+
+if (searchRadiusSelect) {
+  const initialRadius = Number.parseFloat(searchRadiusSelect.value || "10");
+  if (Number.isFinite(initialRadius)) {
+    activeRadiusKm = initialRadius;
+  }
+}
 
 const POSTAL_CODE_REGEX = /\b\d{5}-?\d{3}\b/g;
+const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
+const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
+const NOMINATIM_EMAIL = "suporte@nailnow.app";
 
 const stripPostalCode = (value = "") => {
   if (typeof value !== "string") {
@@ -89,6 +110,190 @@ const sanitizeAreaParts = (parts = []) => {
     .map((part) => stripPostalCode(part))
     .map((part) => part.replace(/\s{2,}/g, " ").trim())
     .filter(Boolean);
+};
+
+const toFiniteNumber = (value) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const normalized = value.replace(/[^0-9,.-]+/g, " ").trim().replace(/,/g, ".");
+    if (!normalized) {
+      return null;
+    }
+    const tokens = normalized.split(/\s+/).filter((token) => /^-?\d+(?:\.\d+)?$/.test(token));
+    const target = tokens.length ? tokens[0] : normalized;
+    const parsed = Number.parseFloat(target);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const parseCoordinateString = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const matches = value.match(/-?\d{1,3}(?:\.\d+)?/g);
+  if (!matches || matches.length < 2) {
+    return null;
+  }
+  const hasDecimal = matches.some((match) => match.includes("."));
+  if (!hasDecimal) {
+    return null;
+  }
+  const latitude = Number.parseFloat(matches[0]);
+  const longitude = Number.parseFloat(matches[1]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+  return { latitude, longitude };
+};
+
+const extractCoordinatePair = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return parseCoordinateString(value);
+  }
+  if (Array.isArray(value) && value.length >= 2) {
+    const latitude = toFiniteNumber(value[0]);
+    const longitude = toFiniteNumber(value[1]);
+    if (latitude !== null && longitude !== null) {
+      return { latitude, longitude };
+    }
+  }
+  if (typeof value === "object") {
+    const latitude =
+      toFiniteNumber(value.latitude ?? value.lat ?? value.Latitude ?? value.Lat ?? value._lat ?? value.x ?? value.X) ??
+      null;
+    const longitude =
+      toFiniteNumber(value.longitude ?? value.lng ?? value.lon ?? value.Longitude ?? value.Long ?? value._long ?? value.y ?? value.Y) ??
+      null;
+    if (latitude !== null && longitude !== null) {
+      return { latitude, longitude };
+    }
+    if (typeof value.toJSON === "function") {
+      return extractCoordinatePair(value.toJSON());
+    }
+  }
+  return null;
+};
+
+const coordinateCandidateKeys = [
+  "coordenadas",
+  "coordinates",
+  "coordenadasAtendimento",
+  "localizacao",
+  "localization",
+  "location",
+  "posicao",
+  "position",
+  "geo",
+  "geopoint",
+  "geolocation",
+  "centro",
+  "center",
+  "centroAtendimento",
+  "ponto",
+  "pontoAtendimento",
+  "address",
+  "endereco",
+  "atendimento",
+  "area",
+];
+
+const extractCoordinates = (source, depth = 0, visited = new Set()) => {
+  if (!source || depth > 4) {
+    return null;
+  }
+  const direct = extractCoordinatePair(source);
+  if (direct) {
+    return direct;
+  }
+  if (typeof source !== "object") {
+    return null;
+  }
+  for (const key of coordinateCandidateKeys) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
+    }
+    const value = source[key];
+    if (!value || visited.has(value)) {
+      continue;
+    }
+    visited.add(value);
+    const nested = extractCoordinates(value, depth + 1, visited);
+    if (nested) {
+      return nested;
+    }
+  }
+  return null;
+};
+
+const parseRadiusValue = (value) => {
+  const numeric = toFiniteNumber(value);
+  if (numeric === null) {
+    return null;
+  }
+  if (numeric > 500) {
+    return numeric / 1000;
+  }
+  return numeric;
+};
+
+const formatDistance = (distanceKm) => {
+  if (!Number.isFinite(distanceKm)) {
+    return "";
+  }
+  if (distanceKm < 1) {
+    const meters = Math.round(distanceKm * 1000);
+    if (meters < 100) {
+      return `${meters} m`;
+    }
+    const rounded = Math.round(meters / 10) * 10;
+    return `${rounded} m`;
+  }
+  if (distanceKm < 10) {
+    return `${distanceKm.toFixed(1).replace(".", ",")} km`;
+  }
+  return `${Math.round(distanceKm)} km`;
+};
+
+const haversineDistanceKm = (origin, target) => {
+  if (!origin || !target) {
+    return null;
+  }
+  const { latitude: lat1, longitude: lon1 } = origin;
+  const { latitude: lat2, longitude: lon2 } = target;
+  if ([lat1, lon1, lat2, lon2].some((value) => !Number.isFinite(value))) {
+    return null;
+  }
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const deltaLat = toRadians(lat2 - lat1);
+  const deltaLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
+const updateProfessionalDistances = () => {
+  professionalsCatalog.forEach((professional) => {
+    if (customerLocation.coords && professional.coordinates) {
+      const distance = haversineDistanceKm(customerLocation.coords, professional.coordinates);
+      professional.distanceKm = Number.isFinite(distance) ? distance : null;
+    } else {
+      professional.distanceKm = null;
+    }
+    if (typeof professional.coverageRadiusKm === "number" && Number.isFinite(professional.distanceKm)) {
+      professional.isOutsideCoverage = professional.distanceKm > professional.coverageRadiusKm + 0.1;
+    } else {
+      professional.isOutsideCoverage = false;
+    }
+  });
 };
 
 const appointmentCollections = {
@@ -168,6 +373,18 @@ const setRequestFeedback = (message, type = "") => {
   }
 };
 
+const setLocationStatus = (message, type = "") => {
+  if (!searchLocationStatus) {
+    return;
+  }
+  searchLocationStatus.textContent = message;
+  searchLocationStatus.hidden = !message;
+  searchLocationStatus.classList.remove("auth-status--error", "auth-status--success");
+  if (type) {
+    searchLocationStatus.classList.add(`auth-status--${type}`);
+  }
+};
+
 const resetDashboard = () => {
   pendingList.innerHTML = "";
   confirmedList.innerHTML = "";
@@ -206,6 +423,20 @@ const resetDashboard = () => {
   selectedService = null;
   professionalsCatalog = [];
   filteredProfessionals = [];
+  customerLocation = { coords: null, label: "" };
+  currentSearchTerm = "";
+  activeServiceFilter = "";
+  if (searchRadiusSelect) {
+    const radiusValue = Number.parseFloat(searchRadiusSelect.value || "10");
+    activeRadiusKm = Number.isFinite(radiusValue) ? radiusValue : 10;
+  }
+  if (searchLocationInput) {
+    searchLocationInput.value = "";
+  }
+  if (searchServiceSelect) {
+    searchServiceSelect.value = "";
+  }
+  setLocationStatus("");
 };
 
 const formatCurrency = (value) => {
@@ -288,6 +519,13 @@ const normalizeServiceEntry = (entry, index = 0) => {
     };
   }
   return null;
+};
+
+const normalizeServiceName = (name) => {
+  if (typeof name !== "string") {
+    return "";
+  }
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 };
 
 const parseDateValue = (rawDate, rawTime) => {
@@ -455,6 +693,31 @@ const normalizeProfessionalProfile = (snapshot) => {
   const ratingRaw = data.avaliacao || data.rating || data.nota || data.mediaAvaliacoes;
   const rating = typeof ratingRaw === "number" ? ratingRaw.toFixed(1) : ratingRaw;
   const collectionName = snapshot.ref?.parent?.id || data.collection || "profissionais";
+  const coordinates = extractCoordinates(data);
+  const coverageCandidates = [
+    data.raioAtendimento,
+    data.raio_atendimento,
+    data.raio,
+    data.radius,
+    data.maxDistance,
+    data.distanciaMaxima,
+    data.distancia_maxima,
+    data.cobertura?.raio,
+    data.cobertura?.radius,
+    data.cobertura?.distancia,
+    data.area?.raio,
+    data.area?.radius,
+    data.atendimento?.raio,
+    data.atendimento?.radius,
+  ];
+  let coverageRadiusKm = null;
+  for (const candidate of coverageCandidates) {
+    const parsed = parseRadiusValue(candidate);
+    if (parsed !== null && parsed > 0) {
+      coverageRadiusKm = parsed;
+      break;
+    }
+  }
 
   return {
     id,
@@ -465,6 +728,8 @@ const normalizeProfessionalProfile = (snapshot) => {
     collection: collectionName,
     email: data.email || data.emailLowercase || data.contato?.email || "",
     telefone: data.telefone || data.phone || data.celular || "",
+    coordinates,
+    coverageRadiusKm,
     raw: data,
   };
 };
@@ -476,6 +741,16 @@ const renderProfessionalResults = (items = []) => {
   professionalResults.innerHTML = "";
 
   if (!items.length) {
+    if (customerLocation.coords) {
+      professionalResultsEmpty.textContent =
+        "Não encontramos manicures dentro desse raio agora. Ajuste a distância ou tente outro serviço.";
+    } else if (currentSearchTerm) {
+      professionalResultsEmpty.textContent =
+        "Nenhuma manicure corresponde aos termos informados. Revise a busca ou informe outro endereço.";
+    } else {
+      professionalResultsEmpty.textContent =
+        "Informe seu endereço e ajuste os filtros acima para encontrar manicures próximas a você.";
+    }
     professionalResultsEmpty.hidden = false;
     return;
   }
@@ -506,10 +781,29 @@ const renderProfessionalResults = (items = []) => {
     meta.textContent = metaParts.join(" • ") || "Área a combinar";
     card.appendChild(meta);
 
+    if (Number.isFinite(professional.distanceKm)) {
+      const distance = document.createElement("p");
+      distance.className = "request-card__distance";
+      distance.textContent = `A ${formatDistance(professional.distanceKm)} de você`;
+      card.appendChild(distance);
+    } else if (customerLocation.coords) {
+      const distance = document.createElement("p");
+      distance.className = "request-card__distance request-card__distance--muted";
+      distance.textContent = "Distância indisponível";
+      card.appendChild(distance);
+    }
+
     const servicesHint = document.createElement("p");
     servicesHint.className = "request-card__hint";
+    const hasMatchingService = Boolean(
+      activeServiceFilter && professional.servicos?.some((service) => normalizeServiceName(service.name) === activeServiceFilter),
+    );
     if (selectedProfessional && selectedProfessional.id === professional.id) {
-      servicesHint.textContent = "Confira os serviços e valores no formulário ao lado.";
+      servicesHint.textContent = "Confira os serviços e finalize sua solicitação ao lado.";
+    } else if (professional.isOutsideCoverage) {
+      servicesHint.textContent = "Fora do raio informado pela manicure — confirme a disponibilidade ao selecionar.";
+    } else if (hasMatchingService) {
+      servicesHint.textContent = "Oferece o serviço escolhido.";
     } else if (professional.servicos && professional.servicos.length) {
       const count = professional.servicos.length;
       servicesHint.textContent =
@@ -521,6 +815,31 @@ const renderProfessionalResults = (items = []) => {
     }
 
     card.appendChild(servicesHint);
+
+    if (professional.servicos && professional.servicos.length) {
+      const servicesList = document.createElement("ul");
+      servicesList.className = "request-card__services";
+      professional.servicos.slice(0, 3).forEach((service) => {
+        const item = document.createElement("li");
+        item.className = "request-card__service";
+        if (activeServiceFilter && normalizeServiceName(service.name) === activeServiceFilter) {
+          item.classList.add("request-card__service--highlight");
+        }
+        const priceLabel =
+          service.priceLabel ||
+          (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+        item.innerHTML = `<span>${service.name}</span><span>${priceLabel}</span>`;
+        servicesList.appendChild(item);
+      });
+      card.appendChild(servicesList);
+    }
+
+    if (typeof professional.coverageRadiusKm === "number" && !professional.isOutsideCoverage) {
+      const coverageNote = document.createElement("p");
+      coverageNote.className = "request-card__hint";
+      coverageNote.textContent = `Atende até ${formatDistance(professional.coverageRadiusKm)} a partir do ponto informado.`;
+      card.appendChild(coverageNote);
+    }
 
     const selectButton = document.createElement("button");
     selectButton.type = "button";
@@ -549,6 +868,29 @@ const populateRequestForm = (professional) => {
     return;
   }
 
+  if (!professional) {
+    requestFields.forEach((field) => {
+      field.hidden = true;
+    });
+    if (requestFormEmpty) {
+      requestFormEmpty.hidden = false;
+    }
+    if (requestProfessionalInput) {
+      requestProfessionalInput.value = "";
+    }
+    if (requestServiceSelect) {
+      requestServiceSelect.innerHTML = "";
+      requestServiceSelect.disabled = true;
+    }
+    if (requestPriceInput) {
+      requestPriceInput.value = "";
+    }
+    selectedService = null;
+    setRequestFeedback("");
+    updateRequestSubmitState();
+    return;
+  }
+
   if (requestFormEmpty) {
     requestFormEmpty.hidden = true;
   }
@@ -563,16 +905,30 @@ const populateRequestForm = (professional) => {
   if (requestServiceSelect) {
     requestServiceSelect.innerHTML = "";
     if (professional.servicos && professional.servicos.length) {
+      const preferredIndex = (() => {
+        if (!activeServiceFilter) {
+          return 0;
+        }
+        const matchIndex = professional.servicos.findIndex(
+          (service) => normalizeServiceName(service.name) === activeServiceFilter,
+        );
+        return matchIndex >= 0 ? matchIndex : 0;
+      })();
+
       professional.servicos.forEach((service, index) => {
         const option = document.createElement("option");
         option.value = service.id || `service-${index}`;
-        option.textContent = `${service.name} — ${service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta")}`;
+        const priceLabel = service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+        option.textContent = `${service.name} — ${priceLabel}`;
         option.dataset.serviceIndex = String(index);
+        if (index === preferredIndex) {
+          option.selected = true;
+        }
         requestServiceSelect.appendChild(option);
       });
       requestServiceSelect.disabled = false;
-      requestServiceSelect.selectedIndex = 0;
-      selectedService = professional.servicos[0];
+      requestServiceSelect.selectedIndex = preferredIndex;
+      selectedService = professional.servicos[preferredIndex] || professional.servicos[0];
     } else {
       const option = document.createElement("option");
       option.value = "";
@@ -599,8 +955,12 @@ const populateRequestForm = (professional) => {
     }
   }
 
-  if (requestLocationInput && !requestLocationInput.value && currentProfile?.endereco) {
-    requestLocationInput.value = currentProfile.endereco;
+  if (requestLocationInput && !requestLocationInput.value) {
+    if (currentProfile?.endereco) {
+      requestLocationInput.value = currentProfile.endereco;
+    } else if (customerLocation.label) {
+      requestLocationInput.value = customerLocation.label;
+    }
   }
 
   setRequestFeedback("");
@@ -609,17 +969,41 @@ const populateRequestForm = (professional) => {
 
 const selectProfessional = (professional) => {
   selectedProfessional = professional;
-  selectedService = professional.servicos?.[0] || null;
+  if (!professional) {
+    populateRequestForm(null);
+    renderProfessionalResults(filteredProfessionals);
+    return;
+  }
+  if (professional.servicos && professional.servicos.length) {
+    const preferredIndex = activeServiceFilter
+      ? professional.servicos.findIndex((service) => normalizeServiceName(service.name) === activeServiceFilter)
+      : 0;
+    selectedService =
+      professional.servicos[preferredIndex >= 0 ? preferredIndex : 0] || professional.servicos[0] || null;
+  } else {
+    selectedService = null;
+  }
   renderProfessionalResults(filteredProfessionals);
   populateRequestForm(professional);
 };
 
 const filterProfessionals = (term) => {
   if (!term) {
-    filteredProfessionals = [...professionalsCatalog];
+    currentSearchTerm = "";
+    currentSearchTokens = [];
   } else {
-    const normalized = term.trim().toLowerCase();
-    filteredProfessionals = professionalsCatalog.filter((professional) => {
+    const normalized = term.toLowerCase().trim();
+    currentSearchTerm = normalized;
+    currentSearchTokens = normalized.split(/\s+/).filter(Boolean);
+  }
+  applyProfessionalFilters();
+};
+
+const applyProfessionalFilters = () => {
+  let list = [...professionalsCatalog];
+
+  if (currentSearchTokens.length) {
+    list = list.filter((professional) => {
       const keywords = [
         professional.nome,
         professional.area,
@@ -628,10 +1012,362 @@ const filterProfessionals = (term) => {
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-      return keywords.includes(normalized);
+      return currentSearchTokens.every((token) => keywords.includes(token));
     });
   }
-  renderProfessionalResults(filteredProfessionals);
+
+  if (activeServiceFilter) {
+    list = list.filter((professional) =>
+      professional.servicos?.some((service) => normalizeServiceName(service.name) === activeServiceFilter),
+    );
+  }
+
+  if (customerLocation.coords) {
+    updateProfessionalDistances();
+    if (Number.isFinite(activeRadiusKm)) {
+      list = list.filter((professional) => Number.isFinite(professional.distanceKm) && professional.distanceKm <= activeRadiusKm + 0.05);
+    }
+  } else {
+    professionalsCatalog.forEach((professional) => {
+      professional.distanceKm = null;
+      professional.isOutsideCoverage = false;
+    });
+  }
+
+  list.sort((a, b) => {
+    const distanceA = Number.isFinite(a.distanceKm) ? a.distanceKm : null;
+    const distanceB = Number.isFinite(b.distanceKm) ? b.distanceKm : null;
+    if (distanceA !== null && distanceB !== null) {
+      return distanceA - distanceB;
+    }
+    if (distanceA !== null) {
+      return -1;
+    }
+    if (distanceB !== null) {
+      return 1;
+    }
+    const nameA = getProfessionalDisplayName(a).toLowerCase();
+    const nameB = getProfessionalDisplayName(b).toLowerCase();
+    return nameA.localeCompare(nameB, "pt-BR");
+  });
+
+  filteredProfessionals = list;
+
+  const selectionStillVisible =
+    selectedProfessional && list.some((professional) => professional.id === selectedProfessional.id);
+  if (!selectionStillVisible && selectedProfessional) {
+    selectedProfessional = null;
+    selectedService = null;
+    populateRequestForm(null);
+  }
+
+  renderProfessionalResults(list);
+  updateRequestSubmitState();
+};
+
+const setCustomerLocation = (coords, label = "", options = {}) => {
+  if (!coords || !Number.isFinite(coords.latitude) || !Number.isFinite(coords.longitude)) {
+    customerLocation = { coords: null, label: "" };
+    if (!options.preserveInput && searchLocationInput) {
+      searchLocationInput.value = "";
+    }
+    updateProfessionalDistances();
+    applyProfessionalFilters();
+    return;
+  }
+
+  const normalized = {
+    latitude: Number(coords.latitude),
+    longitude: Number(coords.longitude),
+  };
+
+  customerLocation = {
+    coords: normalized,
+    label: label || customerLocation.label || "",
+  };
+
+  if (!options.preserveInput && searchLocationInput && label) {
+    searchLocationInput.value = label;
+  }
+
+  updateProfessionalDistances();
+  applyProfessionalFilters();
+};
+
+const populateServiceFilterOptions = (catalog = []) => {
+  if (!searchServiceSelect) {
+    return;
+  }
+
+  const serviceMap = new Map();
+
+  catalog.forEach((professional) => {
+    (professional.servicos || []).forEach((service) => {
+      const normalizedName = normalizeServiceName(service.name);
+      if (!normalizedName) {
+        return;
+      }
+      const existing = serviceMap.get(normalizedName) || { name: service.name, count: 0 };
+      existing.count += 1;
+      if (!existing.name || existing.name.length < service.name.length) {
+        existing.name = service.name;
+      }
+      serviceMap.set(normalizedName, existing);
+    });
+  });
+
+  const entries = Array.from(serviceMap.entries()).sort((a, b) => {
+    const nameA = a[1].name.toLowerCase();
+    const nameB = b[1].name.toLowerCase();
+    return nameA.localeCompare(nameB, "pt-BR");
+  });
+
+  searchServiceSelect.innerHTML = "";
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "Todos os serviços";
+  searchServiceSelect.appendChild(defaultOption);
+
+  entries.forEach(([value, info]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = info.count > 1 ? `${info.name} (${info.count})` : info.name;
+    searchServiceSelect.appendChild(option);
+  });
+
+  if (activeServiceFilter && !serviceMap.has(activeServiceFilter)) {
+    activeServiceFilter = "";
+  }
+
+  searchServiceSelect.value = activeServiceFilter || "";
+};
+
+const geocodeAddress = async (query, signal) => {
+  const params = new URLSearchParams({
+    format: "json",
+    addressdetails: "1",
+    limit: "1",
+    q: query,
+    email: NOMINATIM_EMAIL,
+  });
+
+  const fetchOptions = { headers: { "Accept-Language": "pt-BR" } };
+  if (signal) {
+    fetchOptions.signal = signal;
+  }
+
+  const response = await fetch(`${NOMINATIM_SEARCH_URL}?${params.toString()}`, fetchOptions);
+
+  if (!response.ok) {
+    const error = new Error("geocode-failed");
+    error.status = response.status;
+    throw error;
+  }
+
+  const payload = await response.json();
+  if (!Array.isArray(payload) || !payload.length) {
+    return null;
+  }
+
+  const candidate = payload[0];
+  const latitude = Number.parseFloat(candidate.lat);
+  const longitude = Number.parseFloat(candidate.lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  return {
+    coords: { latitude, longitude },
+    label: candidate.display_name || query,
+    raw: candidate,
+  };
+};
+
+const reverseGeocodeCoordinates = async (coords, signal) => {
+  const params = new URLSearchParams({
+    format: "json",
+    addressdetails: "1",
+    zoom: "16",
+    lat: String(coords.latitude),
+    lon: String(coords.longitude),
+    email: NOMINATIM_EMAIL,
+  });
+
+  const fetchOptions = { headers: { "Accept-Language": "pt-BR" } };
+  if (signal) {
+    fetchOptions.signal = signal;
+  }
+
+  const response = await fetch(`${NOMINATIM_REVERSE_URL}?${params.toString()}`, fetchOptions);
+
+  if (!response.ok) {
+    const error = new Error("reverse-geocode-failed");
+    error.status = response.status;
+    throw error;
+  }
+
+  const payload = await response.json();
+  return {
+    label: payload.display_name || "",
+    raw: payload,
+  };
+};
+
+const geocodeAndApplyLocation = async (query, options = {}) => {
+  const trimmed = (query || "").trim();
+  if (!trimmed) {
+    setCustomerLocation(null);
+    setLocationStatus("Informe um endereço para localizar manicures próximas.");
+    return;
+  }
+
+  if (geocodeAbortController && typeof geocodeAbortController.abort === "function") {
+    geocodeAbortController.abort();
+  }
+
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  geocodeAbortController = controller;
+
+  if (!options.silent) {
+    setLocationStatus("Buscando o endereço informado...");
+  }
+
+  try {
+    const result = await geocodeAddress(trimmed, controller ? controller.signal : undefined);
+    if (!result) {
+      if (!options.silent) {
+        setLocationStatus("Não encontramos esse endereço. Ajuste os detalhes e tente novamente.", "error");
+      }
+      return;
+    }
+    setCustomerLocation(result.coords, result.label, { preserveInput: options.preserveInput });
+    if (!options.silent) {
+      setLocationStatus("Endereço localizado! Ajustamos a lista de manicures para você.", "success");
+    }
+  } catch (error) {
+    if (error.name === "AbortError") {
+      return;
+    }
+    console.warn("Falha ao geocodificar endereço", error);
+    if (!options.silent) {
+      setLocationStatus("Não foi possível buscar o endereço agora. Tente novamente em instantes.", "error");
+    }
+  } finally {
+    if (geocodeAbortController === controller) {
+      geocodeAbortController = null;
+    }
+  }
+};
+
+const handleManualLocationLookup = () => {
+  if (!searchLocationInput) {
+    return;
+  }
+  geocodeAndApplyLocation(searchLocationInput.value);
+};
+
+const handleDetectLocation = () => {
+  if (!navigator.geolocation) {
+    setLocationStatus("Seu navegador não permite detectar a localização automaticamente.", "error");
+    return;
+  }
+
+  if (geocodeAbortController) {
+    geocodeAbortController.abort();
+    geocodeAbortController = null;
+  }
+
+  if (detectLocationButton) {
+    detectLocationButton.disabled = true;
+  }
+  setLocationStatus("Buscando sua localização atual...");
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      if (detectLocationButton) {
+        detectLocationButton.disabled = false;
+      }
+
+      const coords = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+
+      const fallbackLabel = `Coordenadas aproximadas (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`;
+      setCustomerLocation(coords, fallbackLabel, { preserveInput: true });
+
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      geocodeAbortController = controller;
+
+      try {
+        const result = await reverseGeocodeCoordinates(coords, controller ? controller.signal : undefined);
+        const label = result?.label || fallbackLabel;
+        setCustomerLocation(coords, label);
+        setLocationStatus("Localização atual definida automaticamente!", "success");
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return;
+        }
+        console.warn("Falha ao identificar endereço da localização atual", error);
+        setCustomerLocation(coords, fallbackLabel);
+        setLocationStatus("Localização capturada! Ajuste o endereço se preferir.");
+      } finally {
+        if (geocodeAbortController === controller) {
+          geocodeAbortController = null;
+        }
+      }
+    },
+    (error) => {
+      if (detectLocationButton) {
+        detectLocationButton.disabled = false;
+      }
+      let message = "Não foi possível obter sua localização.";
+      if (error.code === error.PERMISSION_DENIED) {
+        message = "Precisamos da sua permissão para usar a localização automática.";
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        message = "Não conseguimos acessar o serviço de localização. Tente novamente em instantes.";
+      } else if (error.code === error.TIMEOUT) {
+        message = "A busca pela localização demorou demais. Tente novamente.";
+      }
+      setLocationStatus(message, "error");
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 0,
+    },
+  );
+};
+
+const attemptPrefillLocationFromProfile = async (profile) => {
+  if (!profile || customerLocation.coords) {
+    return;
+  }
+
+  const existingCoords = extractCoordinates(profile);
+  const profileLabel = profile.endereco || profile.address || profile.endereco_formatado || "Localização cadastrada";
+
+  if (existingCoords && Number.isFinite(existingCoords.latitude) && Number.isFinite(existingCoords.longitude)) {
+    setCustomerLocation(existingCoords, profileLabel);
+    setLocationStatus("Usamos o endereço do seu cadastro para calcular as distâncias.", "success");
+    return;
+  }
+
+  const addressCandidate = (profile.endereco || profile.address || profile.endereco_formatado || "").trim();
+  if (addressCandidate.length < 6) {
+    return;
+  }
+
+  if (searchLocationInput && !searchLocationInput.value) {
+    searchLocationInput.value = addressCandidate;
+  }
+
+  await geocodeAndApplyLocation(addressCandidate, { silent: true });
+  if (customerLocation.coords) {
+    setLocationStatus("Encontramos manicures próximas ao endereço do seu cadastro!", "success");
+  } else {
+    setLocationStatus("Ajuste o endereço acima para encontrar manicures próximas.");
+  }
 };
 
 const loadProfessionalsCatalog = async () => {
@@ -665,25 +1401,24 @@ const loadProfessionalsCatalog = async () => {
   });
 
   professionalsCatalog = catalog;
-  if (!catalog.some((professional) => professional.id === selectedProfessional?.id)) {
-    selectedProfessional = null;
-    selectedService = null;
-    requestFields.forEach((field) => {
-      field.hidden = true;
-    });
-    if (requestFormEmpty) {
-      requestFormEmpty.hidden = false;
+  populateServiceFilterOptions(professionalsCatalog);
+  updateProfessionalDistances();
+
+  if (selectedProfessional) {
+    const updatedSelection = professionalsCatalog.find((professional) => professional.id === selectedProfessional.id);
+    if (updatedSelection) {
+      selectedProfessional = updatedSelection;
+      populateRequestForm(updatedSelection);
+    } else {
+      selectedProfessional = null;
+      selectedService = null;
+      populateRequestForm(null);
     }
-    if (requestProfessionalInput) {
-      requestProfessionalInput.value = "";
-    }
-    if (requestPriceInput) {
-      requestPriceInput.value = "";
-    }
+  } else {
+    populateRequestForm(null);
   }
-  filteredProfessionals = [...catalog];
-  renderProfessionalResults(filteredProfessionals);
-  updateRequestSubmitState();
+
+  applyProfessionalFilters();
 };
 
 const handleServiceSelectionChange = () => {
@@ -813,6 +1548,48 @@ const handleRequestSubmission = async (event) => {
 
 professionalSearchInput?.addEventListener("input", (event) => {
   filterProfessionals(event.target.value);
+});
+
+searchLocationInput?.addEventListener("change", handleManualLocationLookup);
+searchLocationInput?.addEventListener("search", handleManualLocationLookup);
+searchLocationInput?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    handleManualLocationLookup();
+  }
+});
+
+detectLocationButton?.addEventListener("click", handleDetectLocation);
+
+searchRadiusSelect?.addEventListener("change", (event) => {
+  const nextRadius = Number.parseFloat(event.target.value);
+  if (Number.isFinite(nextRadius)) {
+    activeRadiusKm = nextRadius;
+  }
+  applyProfessionalFilters();
+});
+
+searchServiceSelect?.addEventListener("change", (event) => {
+  const value = event.target.value;
+  activeServiceFilter = value ? value : "";
+  if (
+    selectedProfessional &&
+    activeServiceFilter &&
+    !selectedProfessional.servicos?.some((service) => normalizeServiceName(service.name) === activeServiceFilter)
+  ) {
+    selectProfessional(null);
+  } else if (selectedProfessional) {
+    if (activeServiceFilter) {
+      const matchIndex = selectedProfessional.servicos?.findIndex(
+        (service) => normalizeServiceName(service.name) === activeServiceFilter,
+      );
+      if (typeof matchIndex === "number" && matchIndex >= 0) {
+        selectedService = selectedProfessional.servicos?.[matchIndex] || selectedService;
+      }
+    }
+    populateRequestForm(selectedProfessional);
+  }
+  applyProfessionalFilters();
 });
 
 requestServiceSelect?.addEventListener("change", handleServiceSelectionChange);
@@ -1179,6 +1956,7 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
 
   updateProfileDisplay(currentProfile, fallbackEmail);
   await loadProfessionalsCatalog();
+  await attemptPrefillLocationFromProfile(currentProfile);
   return loadAppointmentsForProfile(currentProfile);
 };
 
