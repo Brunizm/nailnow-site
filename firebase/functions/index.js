@@ -38,7 +38,7 @@ function buildConfirmationMessage({ name, role, confirmationUrl }) {
   const html = [
     `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.</p>`,
     `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
-    `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
+    `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#f55ba2;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
     `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`,
     "<p>Com carinho, equipe NailNow 💅</p>",
   ].join("");
