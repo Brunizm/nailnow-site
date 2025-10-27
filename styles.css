@@ -39302,7 +39302,7 @@ main {
 .services-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.5rem 1rem;
+  gap: 0.25rem 0.75rem;
 }
 
 .services-grid--compact {
@@ -39312,7 +39312,8 @@ main {
 .services-grid label {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  line-height: 1.2;
   font-weight: 500;
   color: var(--text-muted);
 }
