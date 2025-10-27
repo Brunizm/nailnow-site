@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-NKTL1PLZ2J');
+  </script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta
@@ -207,6 +217,12 @@
           role: context.role || metadata.role || "profissional",
           queuedBy: context.queuedBy || metadata.queuedBy || MAIL_SOURCE,
           profilePath: context.profilePath || metadata.profilePath || null,
+          confirmationKey:
+            context.confirmationKey ||
+            metadata.confirmationKey ||
+            context.profilePath ||
+            metadata.profilePath ||
+            null,
           confirmationUrl: confirmationUrl || null,
           emailType: metadata.emailType || "confirmation",
         },
@@ -339,6 +355,7 @@
             role: "profissional",
             preparedBy: "legacy-professional-signup",
             preparedAt: serverTimestamp(),
+            autoQueueOptOut: true,
           };
         }
 
