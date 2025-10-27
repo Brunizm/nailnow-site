@@ -118,8 +118,9 @@
           return { user: cred.user, isNew: true };
         } catch (error) {
           if (error.code === "auth/email-already-in-use") {
-            const cred = await signInWithEmailAndPassword(auth, email, senha);
-            return { user: cred.user, isNew: false };
+            const duplicateError = new Error("signup/email-already-in-use");
+            duplicateError.code = "signup/email-already-in-use";
+            throw duplicateError;
           }
           throw error;
         }
@@ -351,7 +352,7 @@
           const docRef = doc(db, "clientes", uid);
           await setDoc(docRef, payload, { merge: true });
 
-          let confirmationQueued = !isNew;
+          let confirmationQueued = false;
           let confirmationError = null;
           let confirmationMailStatus = "not-requested";
           let confirmationMailId = null;
@@ -407,15 +408,13 @@
             }
           }
 
-          const successMessage = isNew
-            ? confirmationQueued
-              ? "✅ Conta criada! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
-              : confirmationError
-                ? "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação."
-                : confirmationMailStatus === "missing-email"
-                  ? "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app."
-                  : "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app."
-            : "✅ Dados atualizados!";
+          const successMessage = confirmationQueued
+            ? "✅ Conta criada! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
+            : confirmationError
+              ? "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação."
+              : confirmationMailStatus === "missing-email"
+                ? "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app."
+                : "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
 
           setFeedbackMessage(feedback, successMessage, "success");
           form.reset();
@@ -432,6 +431,7 @@
             "auth/weak-password": "❌ Erro: Use uma senha com pelo menos 6 caracteres.",
             "auth/wrong-password": "❌ Erro: A senha informada não confere com a conta existente.",
             "auth/invalid-login-credentials": "❌ Erro: Não foi possível confirmar seus dados de acesso.",
+            "signup/email-already-in-use": "❌ Este e-mail já está cadastrado. Use outra conta ou acesse o portal para continuar.",
           };
 
           const friendly = mensagemPorCodigo[code] ?? "❌ Erro: Não foi possível concluir o cadastro. Tente novamente.";
