@@ -196,6 +196,7 @@ async function queueConfirmationForSnapshot(
       confirmationUrl,
       preparedBy: queuedBy,
       preparedAt: FieldValue.serverTimestamp(),
+      autoQueueOptOut: false,
     };
 
     const existingMailId = signupConfirmation.mailId || signupConfirmation.mailDocumentId || null;
@@ -398,6 +399,11 @@ function shouldAttemptQueueOnWrite(beforeData, afterData) {
     return { shouldQueue: false, force: false };
   }
 
+  const afterConfirmation = afterData.signupConfirmation || {};
+  if (afterConfirmation.autoQueueOptOut === true) {
+    return { shouldQueue: false, force: false };
+  }
+
   const statusNormalized = normalizeLower(afterData.status || "");
   if (["confirmado", "confirmada", "confirmed"].includes(statusNormalized)) {
     return { shouldQueue: false, force: false };
@@ -408,7 +414,6 @@ function shouldAttemptQueueOnWrite(beforeData, afterData) {
     return { shouldQueue: false, force: false };
   }
 
-  const afterConfirmation = afterData.signupConfirmation || {};
   const beforeConfirmation = (beforeData && beforeData.signupConfirmation) || {};
   const afterMailStatus = getSignupMailStatus(afterData);
   const beforeMailStatus = getSignupMailStatus(beforeData || {});
