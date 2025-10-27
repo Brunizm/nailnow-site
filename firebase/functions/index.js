@@ -38,7 +38,7 @@ function buildConfirmationMessage({ name, role, confirmationUrl }) {
   const html = [
     `<p>Olá, <strong>${safeName}</strong>! 💖 Recebemos seu cadastro como ${roleLabel} no NailNow e ele está aguardando confirmação.</p>`,
     `<p>Para confirmar sua conta e liberar o acesso ao portal, clique no botão abaixo:</p>`,
-    `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#7c3aed;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
+    `<p style="margin: 24px 0;"><a href="${confirmationUrl}" style="background-color:#f55ba2;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p>`,
     `<p>Se o botão não funcionar, copie e cole o link em seu navegador:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`,
     "<p>Com carinho, equipe NailNow 💅</p>",
   ].join("");
@@ -454,6 +454,47 @@ const CONFIRMATION_COLLECTIONS = {
   manicures: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
 };
 
+function parseJsonBody(req) {
+  if (!req || !req.method || req.method.toUpperCase() !== "POST") {
+    return {};
+  }
+
+  const body = req.body;
+
+  if (body && typeof body === "object" && !Buffer.isBuffer(body)) {
+    return body;
+  }
+
+  const rawBody = typeof body === "string" && body.trim().length
+    ? body
+    : req.rawBody
+    ? req.rawBody.toString()
+    : "";
+
+  if (!rawBody) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(rawBody);
+  } catch (error) {
+    functions.logger.warn("Falha ao converter body em JSON", error?.message);
+    return {};
+  }
+}
+
+function readHttpPayload(req) {
+  if (!req) {
+    return {};
+  }
+
+  if (req.method && req.method.toUpperCase() === "POST") {
+    return parseJsonBody(req);
+  }
+
+  return req.query || {};
+}
+
 exports.verifySignupConfirmation = functions
   .region("southamerica-east1")
   .https.onRequest(async (req, res) => {
@@ -466,7 +507,7 @@ exports.verifySignupConfirmation = functions
       return;
     }
 
-    const payload = req.method === "POST" ? req.body || {} : req.query || {};
+    const payload = readHttpPayload(req);
     const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
     const token = typeof payload.token === "string" ? payload.token.trim() : "";
 
@@ -581,7 +622,7 @@ exports.requestSignupConfirmation = functions
       return;
     }
 
-    const payload = req.method === "POST" ? req.body || {} : req.query || {};
+    const payload = readHttpPayload(req);
     const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
 
     if (!rawProfile) {
