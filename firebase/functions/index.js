@@ -16,6 +16,27 @@ const ROLE_LOGIN_PATH = {
   profissional: "/profissional/index.html",
 };
 
+const ROLE_PORTAL_PATH = {
+  cliente: "/cliente/portal.html",
+  profissional: "/profissional/portal.html",
+};
+
+function sanitizeString(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value.replace(/\s+/g, " ").trim();
+  }
+
+  return String(value).trim();
+}
+
+function sanitizeEmail(value) {
+  return sanitizeString(value).toLowerCase();
+}
+
 function buildConfirmationUrl(profilePath, token) {
   const params = new URLSearchParams({
     profile: profilePath,
@@ -68,6 +89,7 @@ function buildConfirmationMailPayload({
   }
 
   const message = buildConfirmationMessage({ name, role, confirmationUrl });
+  const confirmationKey = profilePath || (profileId ? `${role || ""}:${profileId}` : null);
 
   return {
     to: [trimmedEmail],
@@ -84,6 +106,7 @@ function buildConfirmationMailPayload({
       emailType: "confirmation",
       requestedBy: requestedBy || null,
       name: name || null,
+      confirmationKey: confirmationKey || profilePath || null,
     },
   };
 }
@@ -191,6 +214,8 @@ async function queueConfirmationForSnapshot(
       confirmationUrl,
       preparedBy: queuedBy,
       preparedAt: FieldValue.serverTimestamp(),
+      autoQueueOptOut: false,
+      confirmationKey: mailPayload?.metadata?.confirmationKey || signupConfirmation.confirmationKey || null,
     };
 
     const existingMailId = signupConfirmation.mailId || signupConfirmation.mailDocumentId || null;
@@ -289,20 +314,72 @@ async function queueConfirmationForSnapshot(
           },
         };
 
-        const mailRef = await firestore.collection("mail").add(payload);
-        mailId = mailRef.id;
-        mailStatus = "queued";
-        confirmationUpdate.mailId = mailId;
-        confirmationUpdate.mailDocumentId = mailId;
-        confirmationUpdate.mailQueuedAt = FieldValue.serverTimestamp();
-        confirmationUpdate.mailQueuedBy = queuedBy;
-        confirmationUpdate.mailStatus = "queued";
-        functions.logger.info("Email de confirmação enfileirado", {
-          role,
-          sourcePath,
-          queuedBy,
-          mailId,
-        });
+        const dedupKey = payload.metadata?.confirmationKey || null;
+        let reusedExistingMail = false;
+
+        if (!force && dedupKey) {
+          const existingSnapshot = await firestore
+            .collection("mail")
+            .where("metadata.confirmationKey", "==", dedupKey)
+            .limit(1)
+            .get();
+
+          if (!existingSnapshot.empty) {
+            const existingDoc = existingSnapshot.docs[0];
+            const existingData = existingDoc.data() || {};
+            const existingMetadata = existingData.metadata || {};
+            const existingToken = existingMetadata.confirmationToken || null;
+            const existingUrl = existingMetadata.confirmationUrl || null;
+
+            reusedExistingMail = true;
+            mailId = existingDoc.id;
+            mailStatus = "already-queued";
+            confirmationUpdate.mailId = mailId;
+            confirmationUpdate.mailDocumentId = mailId;
+            confirmationUpdate.mailStatus = "already-queued";
+            confirmationUpdate.mailQueuedBy =
+              signupConfirmation.mailQueuedBy || existingMetadata.queuedBy || queuedBy;
+            if (signupConfirmation.mailQueuedAt) {
+              confirmationUpdate.mailQueuedAt = signupConfirmation.mailQueuedAt;
+            } else if (existingDoc.createTime) {
+              confirmationUpdate.mailQueuedAt = existingDoc.createTime;
+            }
+
+            if (existingUrl) {
+              confirmationUpdate.confirmationUrl = existingUrl;
+            }
+
+            if (existingToken && existingToken !== confirmationUpdate.token) {
+              confirmationUpdate.token = existingToken;
+              confirmationUpdate.confirmationUrl =
+                existingUrl || buildConfirmationUrl(snap.ref.path, existingToken);
+            }
+
+            functions.logger.info("Email de confirmação reutilizado", {
+              role,
+              sourcePath,
+              queuedBy,
+              mailId,
+            });
+          }
+        }
+
+        if (!reusedExistingMail) {
+          const mailRef = await firestore.collection("mail").add(payload);
+          mailId = mailRef.id;
+          mailStatus = "queued";
+          confirmationUpdate.mailId = mailId;
+          confirmationUpdate.mailDocumentId = mailId;
+          confirmationUpdate.mailQueuedAt = FieldValue.serverTimestamp();
+          confirmationUpdate.mailQueuedBy = queuedBy;
+          confirmationUpdate.mailStatus = "queued";
+          functions.logger.info("Email de confirmação enfileirado", {
+            role,
+            sourcePath,
+            queuedBy,
+            mailId,
+          });
+        }
       } else {
         mailId = claimed.mailId || existingMailId;
         const fallbackMailStatus = mailId
@@ -393,6 +470,11 @@ function shouldAttemptQueueOnWrite(beforeData, afterData) {
     return { shouldQueue: false, force: false };
   }
 
+  const afterConfirmation = afterData.signupConfirmation || {};
+  if (afterConfirmation.autoQueueOptOut === true) {
+    return { shouldQueue: false, force: false };
+  }
+
   const statusNormalized = normalizeLower(afterData.status || "");
   if (["confirmado", "confirmada", "confirmed"].includes(statusNormalized)) {
     return { shouldQueue: false, force: false };
@@ -403,7 +485,6 @@ function shouldAttemptQueueOnWrite(beforeData, afterData) {
     return { shouldQueue: false, force: false };
   }
 
-  const afterConfirmation = afterData.signupConfirmation || {};
   const beforeConfirmation = (beforeData && beforeData.signupConfirmation) || {};
   const afterMailStatus = getSignupMailStatus(afterData);
   const beforeMailStatus = getSignupMailStatus(beforeData || {});
@@ -520,11 +601,31 @@ exports.queueProfessionalWelcomeEmailEn = functions
   .onWrite((change, context) => handleProfileWrite(change, context, "profissional"));
 
 const CONFIRMATION_COLLECTIONS = {
-  clientes: { role: "cliente", loginPath: ROLE_LOGIN_PATH.cliente },
-  clients: { role: "cliente", loginPath: ROLE_LOGIN_PATH.cliente },
-  profissionais: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
-  professionals: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
-  manicures: { role: "profissional", loginPath: ROLE_LOGIN_PATH.profissional },
+  clientes: {
+    role: "cliente",
+    loginPath: ROLE_LOGIN_PATH.cliente,
+    portalPath: ROLE_PORTAL_PATH.cliente,
+  },
+  clients: {
+    role: "cliente",
+    loginPath: ROLE_LOGIN_PATH.cliente,
+    portalPath: ROLE_PORTAL_PATH.cliente,
+  },
+  profissionais: {
+    role: "profissional",
+    loginPath: ROLE_LOGIN_PATH.profissional,
+    portalPath: ROLE_PORTAL_PATH.profissional,
+  },
+  professionals: {
+    role: "profissional",
+    loginPath: ROLE_LOGIN_PATH.profissional,
+    portalPath: ROLE_PORTAL_PATH.profissional,
+  },
+  manicures: {
+    role: "profissional",
+    loginPath: ROLE_LOGIN_PATH.profissional,
+    portalPath: ROLE_PORTAL_PATH.profissional,
+  },
 };
 
 function parseJsonBody(req) {
@@ -608,15 +709,62 @@ const corsHandler = cors({
 
 function applyCors(req, res) {
   const origin = req.headers?.origin;
-  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://www.nailnow.app";
+  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : APP_URL;
   res.set("Access-Control-Allow-Origin", allowedOrigin);
   res.set("Vary", "Origin");
   res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.set(
     "Access-Control-Allow-Headers",
-    "Origin, Content-Type, Accept, X-Requested-With, X-Client-Data, X-Firebase-AppCheck",
+    "Origin, Content-Type, Accept, X-Requested-With, X-Client-Data, X-Firebase-AppCheck, Authorization",
   );
   res.set("Access-Control-Max-Age", "3600");
+}
+
+async function buildAutoLoginAuth(profileData, mapping, documentId, profilePath) {
+  if (!profileData || !mapping) {
+    return null;
+  }
+
+  const candidateUids = [
+    profileData.uid,
+    profileData.userId,
+    profileData.authUid,
+    profileData.userUid,
+    profileData.accountUid,
+    profileData.accountId,
+    profileData.firebaseUid,
+    documentId,
+  ]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter((value, index, array) => value && array.indexOf(value) === index);
+
+  for (const candidate of candidateUids) {
+    try {
+      const userRecord = await admin.auth().getUser(candidate);
+      const customToken = await admin.auth().createCustomToken(userRecord.uid, {
+        signupRole: mapping.role,
+        signupConfirmed: true,
+      });
+
+      return {
+        customToken,
+        uid: userRecord.uid,
+        email: userRecord.email || null,
+      };
+    } catch (error) {
+      if (error?.code === "auth/user-not-found") {
+        continue;
+      }
+
+      functions.logger.warn("Falha ao gerar token de login automático", {
+        profilePath,
+        candidateUid: candidate,
+        error: error?.message,
+      });
+    }
+  }
+
+  return null;
 }
 
 exports.verifySignupConfirmation = functions
@@ -700,11 +848,22 @@ exports.verifySignupConfirmation = functions
           confirmationStatusCode === "confirmada" ||
           confirmationStatusCode === "confirmed";
 
+        const portalUrl = `${APP_URL}${mapping.portalPath || mapping.loginPath}`;
+
         if (alreadyConfirmed) {
+          const authPayload = await buildAutoLoginAuth(
+            profileData,
+            mapping,
+            documentId,
+            profilePath,
+          );
+
           res.status(200).json({
             status: "already-confirmed",
             role: mapping.role,
             loginUrl: `${APP_URL}${mapping.loginPath}`,
+            portalUrl,
+            auth: authPayload,
           });
           return;
         }
@@ -730,14 +889,186 @@ exports.verifySignupConfirmation = functions
           role: mapping.role,
         });
 
+        const authPayload = await buildAutoLoginAuth(
+          profileData,
+          mapping,
+          documentId,
+          profilePath,
+        );
+
         res.status(200).json({
           status: "confirmed",
           role: mapping.role,
           loginUrl: `${APP_URL}${mapping.loginPath}`,
+          portalUrl,
+          auth: authPayload,
         });
       } catch (error) {
         functions.logger.error("Falha ao confirmar cadastro", {
           profilePath,
+          error: error?.message,
+        });
+        res.status(500).json({ error: "internal-error" });
+      }
+    });
+  });
+
+const REGISTER_CLIENT_SOURCE = "registerClientAccount";
+
+exports.registerClientAccount = functions
+  .region("southamerica-east1")
+  .https.onRequest((req, res) => {
+    corsHandler(req, res, async () => {
+      applyCors(req, res);
+
+      if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+      }
+
+      if (req.method !== "POST") {
+        res.status(405).json({ error: "method-not-allowed" });
+        return;
+      }
+
+      const payload = readHttpPayload(req) || {};
+
+      const nome = sanitizeString(payload.nome || payload.name);
+      const email = sanitizeEmail(payload.email);
+      const senha = sanitizeString(payload.senha || payload.password);
+      const telefone = sanitizeString(payload.telefone || payload.phone);
+      const endereco = sanitizeString(payload.endereco || payload.endereco_text || payload.address);
+      const complemento = sanitizeString(payload.complemento || payload.address_extra || "");
+      const enderecoFormatado = sanitizeString(payload.endereco_formatado || payload.enderecoFormatado || "");
+      const placeId = sanitizeString(payload.place_id || payload.placeId || "");
+      const lat = sanitizeString(payload.lat || "");
+      const lng = sanitizeString(payload.lng || "");
+      const aceiteTermos = Boolean(payload.aceiteTermos ?? payload.termos ?? payload.aceitouTermos);
+
+      if (!nome || !email || !senha || senha.length < 6 || !telefone || !endereco || !aceiteTermos) {
+        res.status(400).json({ error: "invalid-payload" });
+        return;
+      }
+
+      try {
+        const existingQuery = await firestore
+          .collection("clientes")
+          .where("email", "==", email)
+          .limit(1)
+          .get();
+
+        if (!existingQuery.empty) {
+          const existingDoc = existingQuery.docs[0];
+          const existingData = existingDoc.data() || {};
+          res.status(409).json({
+            error: "email-already-in-use",
+            status: existingData.status || "pendente",
+          });
+          return;
+        }
+
+        let userRecord;
+        let isNewUser = false;
+
+        try {
+          userRecord = await admin.auth().getUserByEmail(email);
+        } catch (error) {
+          if (error?.code === "auth/user-not-found") {
+            userRecord = await admin.auth().createUser({
+              email,
+              password: senha,
+              displayName: nome,
+              emailVerified: false,
+              disabled: false,
+            });
+            isNewUser = true;
+          } else {
+            throw error;
+          }
+        }
+
+        if (!isNewUser) {
+          await admin.auth().updateUser(userRecord.uid, {
+            password: senha,
+            displayName: nome,
+            emailVerified: false,
+            disabled: false,
+          });
+        }
+
+        const docRef = firestore.collection("clientes").doc(userRecord.uid);
+        const baseData = {
+          uid: userRecord.uid,
+          nome,
+          email,
+          telefone,
+          endereco,
+          complemento,
+          endereco_formatado: enderecoFormatado,
+          place_id: placeId,
+          lat,
+          lng,
+          aceiteTermos,
+          newsletter: Boolean(payload.newsletter),
+          preferencias: Array.isArray(payload.preferencias) ? payload.preferencias : [],
+          status: "pendente",
+          criadoEm: FieldValue.serverTimestamp(),
+          atualizadoEm: FieldValue.serverTimestamp(),
+          signupSource: REGISTER_CLIENT_SOURCE,
+          signupConfirmation: {
+            status: "pendente",
+            statusCode: "pending",
+            role: "cliente",
+            autoQueueOptOut: true,
+            preparedBy: REGISTER_CLIENT_SOURCE,
+            preparedAt: FieldValue.serverTimestamp(),
+          },
+        };
+
+        if (enderecoFormatado) {
+          baseData.endereco_formatado = enderecoFormatado;
+        }
+
+        await docRef.set(baseData, { merge: true });
+
+        let confirmationResult = null;
+
+        try {
+          confirmationResult = await queueConfirmationByRef(
+            docRef,
+            "cliente",
+            `registerClientAccount:${docRef.path}`,
+            REGISTER_CLIENT_SOURCE,
+            { queueMail: true, force: false },
+          );
+        } catch (queueError) {
+          functions.logger.error("Falha ao enfileirar confirmação do cliente", {
+            profilePath: docRef.path,
+            error: queueError?.message,
+          });
+        }
+
+        res.status(200).json({
+          status: "pending",
+          profilePath: docRef.path,
+          uid: userRecord.uid,
+          confirmation: confirmationResult
+            ? {
+                status: confirmationResult.status,
+                mailStatus: confirmationResult.mailStatus,
+                confirmationUrl: confirmationResult.confirmationUrl,
+                mailId: confirmationResult.mailId || null,
+              }
+            : {
+                status: "error",
+                mailStatus: "error",
+                confirmationUrl: null,
+                mailId: null,
+              },
+        });
+      } catch (error) {
+        functions.logger.error("Falha ao registrar cliente", {
+          email,
           error: error?.message,
         });
         res.status(500).json({ error: "internal-error" });
@@ -762,6 +1093,15 @@ exports.requestSignupConfirmation = functions
 
     const payload = readHttpPayload(req);
     const rawProfile = typeof payload.profile === "string" ? payload.profile.trim() : "";
+    const rawForce = payload.force;
+    const forceRequest = (() => {
+      if (typeof rawForce === "string") {
+        const normalized = rawForce.trim().toLowerCase();
+        return ["1", "true", "yes"].includes(normalized);
+      }
+
+      return Boolean(rawForce);
+    })();
 
     if (!rawProfile) {
       res.status(400).json({ error: "missing-profile" });
@@ -793,7 +1133,7 @@ exports.requestSignupConfirmation = functions
         "requestSignupConfirmation",
         {
           queueMail: true,
-          force: req.method === "POST",
+          force: forceRequest,
         },
       );
 
