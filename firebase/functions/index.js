@@ -709,13 +709,13 @@ const corsHandler = cors({
 
 function applyCors(req, res) {
   const origin = req.headers?.origin;
-  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://www.nailnow.app";
+  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : APP_URL;
   res.set("Access-Control-Allow-Origin", allowedOrigin);
   res.set("Vary", "Origin");
   res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.set(
     "Access-Control-Allow-Headers",
-    "Origin, Content-Type, Accept, X-Requested-With, X-Client-Data, X-Firebase-AppCheck",
+    "Origin, Content-Type, Accept, X-Requested-With, X-Client-Data, X-Firebase-AppCheck, Authorization",
   );
   res.set("Access-Control-Max-Age", "3600");
 }
@@ -917,161 +917,163 @@ const REGISTER_CLIENT_SOURCE = "registerClientAccount";
 
 exports.registerClientAccount = functions
   .region("southamerica-east1")
-  .https.onRequest(async (req, res) => {
-    applyCors(req, res);
+  .https.onRequest((req, res) => {
+    corsHandler(req, res, async () => {
+      applyCors(req, res);
 
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
-    }
-
-    if (req.method !== "POST") {
-      res.status(405).json({ error: "method-not-allowed" });
-      return;
-    }
-
-    const payload = readHttpPayload(req) || {};
-
-    const nome = sanitizeString(payload.nome || payload.name);
-    const email = sanitizeEmail(payload.email);
-    const senha = sanitizeString(payload.senha || payload.password);
-    const telefone = sanitizeString(payload.telefone || payload.phone);
-    const endereco = sanitizeString(payload.endereco || payload.endereco_text || payload.address);
-    const complemento = sanitizeString(payload.complemento || payload.address_extra || "");
-    const enderecoFormatado = sanitizeString(payload.endereco_formatado || payload.enderecoFormatado || "");
-    const placeId = sanitizeString(payload.place_id || payload.placeId || "");
-    const lat = sanitizeString(payload.lat || "");
-    const lng = sanitizeString(payload.lng || "");
-    const aceiteTermos = Boolean(payload.aceiteTermos ?? payload.termos ?? payload.aceitouTermos);
-
-    if (!nome || !email || !senha || senha.length < 6 || !telefone || !endereco || !aceiteTermos) {
-      res.status(400).json({ error: "invalid-payload" });
-      return;
-    }
-
-    try {
-      const existingQuery = await firestore
-        .collection("clientes")
-        .where("email", "==", email)
-        .limit(1)
-        .get();
-
-      if (!existingQuery.empty) {
-        const existingDoc = existingQuery.docs[0];
-        const existingData = existingDoc.data() || {};
-        res.status(409).json({
-          error: "email-already-in-use",
-          status: existingData.status || "pendente",
-        });
+      if (req.method === "OPTIONS") {
+        res.status(204).send("");
         return;
       }
 
-      let userRecord;
-      let isNewUser = false;
+      if (req.method !== "POST") {
+        res.status(405).json({ error: "method-not-allowed" });
+        return;
+      }
+
+      const payload = readHttpPayload(req) || {};
+
+      const nome = sanitizeString(payload.nome || payload.name);
+      const email = sanitizeEmail(payload.email);
+      const senha = sanitizeString(payload.senha || payload.password);
+      const telefone = sanitizeString(payload.telefone || payload.phone);
+      const endereco = sanitizeString(payload.endereco || payload.endereco_text || payload.address);
+      const complemento = sanitizeString(payload.complemento || payload.address_extra || "");
+      const enderecoFormatado = sanitizeString(payload.endereco_formatado || payload.enderecoFormatado || "");
+      const placeId = sanitizeString(payload.place_id || payload.placeId || "");
+      const lat = sanitizeString(payload.lat || "");
+      const lng = sanitizeString(payload.lng || "");
+      const aceiteTermos = Boolean(payload.aceiteTermos ?? payload.termos ?? payload.aceitouTermos);
+
+      if (!nome || !email || !senha || senha.length < 6 || !telefone || !endereco || !aceiteTermos) {
+        res.status(400).json({ error: "invalid-payload" });
+        return;
+      }
 
       try {
-        userRecord = await admin.auth().getUserByEmail(email);
-      } catch (error) {
-        if (error?.code === "auth/user-not-found") {
-          userRecord = await admin.auth().createUser({
-            email,
+        const existingQuery = await firestore
+          .collection("clientes")
+          .where("email", "==", email)
+          .limit(1)
+          .get();
+
+        if (!existingQuery.empty) {
+          const existingDoc = existingQuery.docs[0];
+          const existingData = existingDoc.data() || {};
+          res.status(409).json({
+            error: "email-already-in-use",
+            status: existingData.status || "pendente",
+          });
+          return;
+        }
+
+        let userRecord;
+        let isNewUser = false;
+
+        try {
+          userRecord = await admin.auth().getUserByEmail(email);
+        } catch (error) {
+          if (error?.code === "auth/user-not-found") {
+            userRecord = await admin.auth().createUser({
+              email,
+              password: senha,
+              displayName: nome,
+              emailVerified: false,
+              disabled: false,
+            });
+            isNewUser = true;
+          } else {
+            throw error;
+          }
+        }
+
+        if (!isNewUser) {
+          await admin.auth().updateUser(userRecord.uid, {
             password: senha,
             displayName: nome,
             emailVerified: false,
             disabled: false,
           });
-          isNewUser = true;
-        } else {
-          throw error;
         }
-      }
 
-      if (!isNewUser) {
-        await admin.auth().updateUser(userRecord.uid, {
-          password: senha,
-          displayName: nome,
-          emailVerified: false,
-          disabled: false,
-        });
-      }
-
-      const docRef = firestore.collection("clientes").doc(userRecord.uid);
-      const baseData = {
-        uid: userRecord.uid,
-        nome,
-        email,
-        telefone,
-        endereco,
-        complemento,
-        endereco_formatado: enderecoFormatado,
-        place_id: placeId,
-        lat,
-        lng,
-        aceiteTermos,
-        newsletter: Boolean(payload.newsletter),
-        preferencias: Array.isArray(payload.preferencias) ? payload.preferencias : [],
-        status: "pendente",
-        criadoEm: FieldValue.serverTimestamp(),
-        atualizadoEm: FieldValue.serverTimestamp(),
-        signupSource: REGISTER_CLIENT_SOURCE,
-        signupConfirmation: {
+        const docRef = firestore.collection("clientes").doc(userRecord.uid);
+        const baseData = {
+          uid: userRecord.uid,
+          nome,
+          email,
+          telefone,
+          endereco,
+          complemento,
+          endereco_formatado: enderecoFormatado,
+          place_id: placeId,
+          lat,
+          lng,
+          aceiteTermos,
+          newsletter: Boolean(payload.newsletter),
+          preferencias: Array.isArray(payload.preferencias) ? payload.preferencias : [],
           status: "pendente",
-          statusCode: "pending",
-          role: "cliente",
-          autoQueueOptOut: true,
-          preparedBy: REGISTER_CLIENT_SOURCE,
-          preparedAt: FieldValue.serverTimestamp(),
-        },
-      };
+          criadoEm: FieldValue.serverTimestamp(),
+          atualizadoEm: FieldValue.serverTimestamp(),
+          signupSource: REGISTER_CLIENT_SOURCE,
+          signupConfirmation: {
+            status: "pendente",
+            statusCode: "pending",
+            role: "cliente",
+            autoQueueOptOut: true,
+            preparedBy: REGISTER_CLIENT_SOURCE,
+            preparedAt: FieldValue.serverTimestamp(),
+          },
+        };
 
-      if (enderecoFormatado) {
-        baseData.endereco_formatado = enderecoFormatado;
-      }
+        if (enderecoFormatado) {
+          baseData.endereco_formatado = enderecoFormatado;
+        }
 
-      await docRef.set(baseData, { merge: true });
+        await docRef.set(baseData, { merge: true });
 
-      let confirmationResult = null;
+        let confirmationResult = null;
 
-      try {
-        confirmationResult = await queueConfirmationByRef(
-          docRef,
-          "cliente",
-          `registerClientAccount:${docRef.path}`,
-          REGISTER_CLIENT_SOURCE,
-          { queueMail: true, force: false },
-        );
-      } catch (queueError) {
-        functions.logger.error("Falha ao enfileirar confirmação do cliente", {
+        try {
+          confirmationResult = await queueConfirmationByRef(
+            docRef,
+            "cliente",
+            `registerClientAccount:${docRef.path}`,
+            REGISTER_CLIENT_SOURCE,
+            { queueMail: true, force: false },
+          );
+        } catch (queueError) {
+          functions.logger.error("Falha ao enfileirar confirmação do cliente", {
+            profilePath: docRef.path,
+            error: queueError?.message,
+          });
+        }
+
+        res.status(200).json({
+          status: "pending",
           profilePath: docRef.path,
-          error: queueError?.message,
+          uid: userRecord.uid,
+          confirmation: confirmationResult
+            ? {
+                status: confirmationResult.status,
+                mailStatus: confirmationResult.mailStatus,
+                confirmationUrl: confirmationResult.confirmationUrl,
+                mailId: confirmationResult.mailId || null,
+              }
+            : {
+                status: "error",
+                mailStatus: "error",
+                confirmationUrl: null,
+                mailId: null,
+              },
         });
+      } catch (error) {
+        functions.logger.error("Falha ao registrar cliente", {
+          email,
+          error: error?.message,
+        });
+        res.status(500).json({ error: "internal-error" });
       }
-
-      res.status(200).json({
-        status: "pending",
-        profilePath: docRef.path,
-        uid: userRecord.uid,
-        confirmation: confirmationResult
-          ? {
-              status: confirmationResult.status,
-              mailStatus: confirmationResult.mailStatus,
-              confirmationUrl: confirmationResult.confirmationUrl,
-              mailId: confirmationResult.mailId || null,
-            }
-          : {
-              status: "error",
-              mailStatus: "error",
-              confirmationUrl: null,
-              mailId: null,
-            },
-      });
-    } catch (error) {
-      functions.logger.error("Falha ao registrar cliente", {
-        email,
-        error: error?.message,
-      });
-      res.status(500).json({ error: "internal-error" });
-    }
+    });
   });
 
 exports.requestSignupConfirmation = functions
