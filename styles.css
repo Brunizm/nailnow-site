@@ -41519,6 +41519,16 @@ main {
 }
 
 @media (max-width: 640px) {
+  body {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  main {
+    padding: 0 clamp(1rem, 6vw, 1.5rem)
+      calc(5.5rem + env(safe-area-inset-bottom));
+    gap: clamp(2rem, 8vw, 2.75rem);
+  }
+
   .promo-banner {
     font-size: 0.65rem;
     letter-spacing: 0.16em;
@@ -41547,20 +41557,54 @@ main {
   }
 
   .hero {
-    padding: clamp(2.5rem, 10vw, 3.5rem);
+    margin-top: clamp(1.75rem, 10vw, 2.5rem);
+    padding: clamp(2rem, 9vw, 2.8rem) clamp(1.25rem, 7vw, 2rem);
     border-radius: var(--radius-large);
+    gap: clamp(1.5rem, 8vw, 2.5rem);
+  }
+
+  .hero h1 {
+    font-size: clamp(1.9rem, 8vw, 2.35rem);
+  }
+
+  .hero p {
+    font-size: 0.98rem;
+  }
+
+  .hero-label {
+    font-size: 0.72rem;
   }
 
   .booking-card {
-    padding: clamp(1.25rem, 8vw, 2rem);
+    padding: clamp(1.1rem, 7vw, 1.65rem);
+    gap: clamp(0.85rem, 6vw, 1.2rem);
   }
 
   .booking-card__row {
     grid-template-columns: 1fr;
   }
 
+  .booking-card__field {
+    gap: 0.35rem;
+  }
+
+  .booking-card__label {
+    font-size: 0.72rem;
+  }
+
+  .booking-card__control {
+    padding: 0.75rem 0.9rem;
+    flex-wrap: wrap;
+  }
+
+  .booking-card__control--line {
+    padding: 0.5rem 0;
+  }
+
   .booking-card__submit {
     width: 100%;
+    padding: 0.9rem 1rem;
+    font-size: 1rem;
   }
 
   .match-results {
@@ -41568,20 +41612,29 @@ main {
   }
 
   .match-results__inner {
-    padding: clamp(2rem, 9vw, 2.75rem);
+    padding: clamp(1.75rem, 9vw, 2.3rem);
   }
 
   .match-results__card {
-    padding: clamp(1.25rem, 8vw, 1.65rem);
+    gap: clamp(0.9rem, 6vw, 1.2rem);
+    padding: clamp(1.1rem, 8vw, 1.5rem);
+  }
+
+  .match-results__meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
   }
 
   .match-results__cta {
     width: 100%;
     justify-content: center;
+    font-size: 0.95rem;
   }
 
   .hero-media__image {
     border-radius: 160px 160px 0 0;
+    width: min(100%, 320px);
   }
 
   .newsletter {
@@ -41597,7 +41650,19 @@ main {
   }
 
   .cta-profissional {
-    align-items: flex-start;
+    align-items: stretch;
+    flex-direction: column;
+    text-align: center;
+    padding: clamp(1.85rem, 9vw, 2.5rem) clamp(1.25rem, 8vw, 2rem);
+  }
+
+  .cta-content {
+    max-width: none;
+  }
+
+  .cta-profissional .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .feature-grid__items {
@@ -41639,6 +41704,36 @@ main {
 
   .signup-checkbox {
     flex-direction: column;
+  }
+
+  .site-footer {
+    padding: clamp(2.5rem, 9vw, 3.5rem)
+      clamp(1.25rem, 8vw, 2rem)
+      calc(3.5rem + env(safe-area-inset-bottom));
+  }
+
+  .footer-inner {
+    margin-bottom: clamp(1.5rem, 8vw, 2.25rem);
+    gap: clamp(1.5rem, 7vw, 2.5rem);
+  }
+
+  .footer-column {
+    align-items: center;
+    text-align: center;
+  }
+
+  .footer-links a {
+    align-self: center;
+  }
+
+  .bottom-nav {
+    padding: 0.65rem 0.85rem
+      calc(0.65rem + env(safe-area-inset-bottom));
+    gap: 0.35rem;
+  }
+
+  .bottom-nav__link {
+    font-size: 0.75rem;
   }
 }
 
