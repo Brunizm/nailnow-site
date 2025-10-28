@@ -1,6 +1,16 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NKTL1PLZ2J');
+</script>
+
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
@@ -9,8 +19,10 @@
     />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://www.nailnow.app/cliente/portal.html" />
+    <link rel="alternate" hreflang="pt-BR" href="https://www.nailnow.app/cliente/portal.html" />
     <meta property="og:site_name" content="NailNow" />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
     <meta property="og:title" content="Portal da Cliente | NailNow" />
     <meta
       property="og:description"
@@ -41,16 +53,49 @@
         "name": "NailNow",
         "url": "https://www.nailnow.app/",
         "logo": "https://www.nailnow.app/assets/nailnow-logo.svg",
-        "sameAs": ["https://www.instagram.com/nailnowbr/"]
+        "sameAs": ["https://www.instagram.com/nailnowbr/"],
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "suporte@nailnow.app",
+            "availableLanguage": ["pt-BR"],
+            "areaServed": "BR"
+          }
+        ],
+        "areaServed": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
       }
     </script>
-    <script src="/assets/js/menu-toggle.js" defer></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": "https://www.nailnow.app/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Cliente",
+            "item": "https://www.nailnow.app/cliente/portal.html"
+          }
+        ]
+      }
+    </script>
+<script src="/assets/js/menu-toggle.js" defer></script>
   </head>
   <body>
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
-          <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
+          <img src="/assets/nailnow-logo.svg" alt="Logotipo da NailNow" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
         <button
@@ -161,6 +206,48 @@
             </p>
           </div>
           <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
+            <div class="booking-card__field booking-card__field--wide booking-card__field--location">
+              <label class="booking-card__label" for="search-location">Onde você quer ser atendida?</label>
+              <div class="booking-card__control booking-card__control--line booking-card__control--with-action">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
+                  <path
+                    d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
+                  />
+                </svg>
+                <input
+                  type="search"
+                  id="search-location"
+                  class="booking-card__input"
+                  placeholder="Digite o endereço do atendimento"
+                  autocomplete="street-address"
+                />
+                <button type="button" id="detect-location" class="booking-card__action">Usar localização</button>
+              </div>
+              <p id="search-location-status" class="auth-status" role="status" aria-live="polite" hidden></p>
+            </div>
+            <div class="booking-card__row booking-card__row--filters">
+              <div class="booking-card__field">
+                <label class="booking-card__label" for="search-radius">Buscar manicures em até</label>
+                <div class="booking-card__control booking-card__control--compact">
+                  <select id="search-radius" class="booking-card__input booking-card__input--select">
+                    <option value="5">5 km</option>
+                    <option value="10" selected>10 km</option>
+                    <option value="15">15 km</option>
+                    <option value="20">20 km</option>
+                    <option value="30">30 km</option>
+                    <option value="50">50 km</option>
+                  </select>
+                </div>
+              </div>
+              <div class="booking-card__field">
+                <label class="booking-card__label" for="search-service">Serviço desejado</label>
+                <div class="booking-card__control booking-card__control--compact">
+                  <select id="search-service" class="booking-card__input booking-card__input--select">
+                    <option value="" selected>Todos os serviços</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             <div class="booking-card__field booking-card__field--wide">
               <label class="booking-card__label" for="professional-search">Buscar manicure</label>
               <div class="booking-card__control booking-card__control--line">
@@ -179,11 +266,11 @@
               </div>
               <div id="professional-results" class="request-results request-results--inline" role="list"></div>
               <p id="professional-results-empty" class="request-results__empty" hidden>
-                Não encontramos manicures com esse filtro agora. Ajuste os termos e tente novamente.
+                Informe seu endereço e ajuste os filtros acima para encontrar manicures próximas a você.
               </p>
             </div>
             <p id="request-form-empty" class="booking-card__hint">
-              Escolha uma manicure acima para liberar os detalhes da solicitação.
+              Defina sua localização, selecione uma manicure e complete os detalhes para enviar a solicitação.
             </p>
             <div class="booking-card__field" data-request-field="professional" hidden>
               <label class="booking-card__label" for="request-professional">Profissional selecionada</label>
