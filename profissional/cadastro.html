@@ -710,6 +710,40 @@
       </section>
     </main>
 
+    <form id="cadastroFormPro">
+      <input id="proName" type="text" placeholder="Seu nome" required />
+      <input id="proEmail" type="email" placeholder="Seu e-mail" required />
+      <button type="submit">Criar cadastro (Profissional)</button>
+    </form>
+
+    <script>
+      const PRO_URL =
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount";
+
+      document.getElementById("cadastroFormPro").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("proName").value.trim();
+        const email = document.getElementById("proEmail").value.trim();
+
+        try {
+          const resp = await fetch(PRO_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "professional", name, email }),
+          });
+
+          const data = await resp.json();
+          if (resp.ok && data.ok) {
+            alert("Cadastro Profissional enviado com sucesso!");
+          } else {
+            alert("Erro ao enviar cadastro profissional.");
+          }
+        } catch (err) {
+          alert("Falha de conexão. Tente novamente.");
+        }
+      });
+    </script>
+
     <footer class="site-footer">
       <div class="footer-inner">
         <div class="footer-column footer-column--brand">
