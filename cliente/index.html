@@ -1,6 +1,16 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NKTL1PLZ2J');
+</script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
@@ -9,8 +19,10 @@
     />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://www.nailnow.app/cliente/index.html" />
+    <link rel="alternate" hreflang="pt-BR" href="https://www.nailnow.app/cliente/index.html" />
     <meta property="og:site_name" content="NailNow" />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
     <meta property="og:title" content="Cliente | NailNow" />
     <meta
       property="og:description"
@@ -40,7 +52,40 @@
         "name": "NailNow",
         "url": "https://www.nailnow.app/",
         "logo": "https://www.nailnow.app/assets/nailnow-logo.svg",
-        "sameAs": ["https://www.instagram.com/nailnowbr/"]
+        "sameAs": ["https://www.instagram.com/nailnowbr/"],
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "suporte@nailnow.app",
+            "availableLanguage": ["pt-BR"],
+            "areaServed": "BR"
+          }
+        ],
+        "areaServed": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": "https://www.nailnow.app/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Cliente",
+            "item": "https://www.nailnow.app/cliente/index.html"
+          }
+        ]
       }
     </script>
     <script src="/assets/js/menu-toggle.js" defer></script>
@@ -49,7 +94,7 @@
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
-          <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
+          <img src="/assets/nailnow-logo.svg" alt="Logotipo da NailNow" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
         <button
