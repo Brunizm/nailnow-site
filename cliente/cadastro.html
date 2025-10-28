@@ -461,28 +461,64 @@
       const CLIENT_URL =
         "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount";
 
-      document.getElementById("cadastroFormCliente").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const name = document.getElementById("clientName").value.trim();
-        const email = document.getElementById("clientEmail").value.trim();
+      const cadastroClienteForm = document.getElementById("cadastroFormCliente");
 
-        try {
-          const resp = await fetch(CLIENT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: "client", name, email }),
-          });
+      if (cadastroClienteForm) {
+        cadastroClienteForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
 
-          const data = await resp.json();
-          if (resp.ok && data.ok) {
-            alert("Cadastro Cliente enviado com sucesso!");
-          } else {
-            alert("Erro ao enviar cadastro de cliente.");
+          const nameInput = document.getElementById("clientName");
+          const emailInput = document.getElementById("clientEmail");
+          const submitButton = cadastroClienteForm.querySelector("button[type='submit']");
+
+          const name = (nameInput?.value || "").trim();
+          const email = (emailInput?.value || "").trim();
+
+          if (!name || !email) {
+            alert("Preencha nome e e-mail para continuar.");
+            return;
           }
-        } catch (err) {
-          alert("Falha de conexão. Tente novamente.");
-        }
-      });
+
+          if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.setAttribute("aria-busy", "true");
+          }
+
+          try {
+            const resp = await fetch(CLIENT_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: "client",
+                name,
+                email,
+                referrer: window.location.href,
+              }),
+            });
+
+            const data = await resp.json().catch(() => ({}));
+
+            if (resp.ok && data.ok) {
+              const mailStatus = (data.mail?.status || "").toLowerCase();
+              const successMessage = ["queued", "already-queued"].includes(mailStatus)
+                ? "Recebemos seu cadastro! Enviamos um e-mail com os próximos passos."
+                : "Recebemos seu cadastro! Em breve nossa equipe entrará em contato.";
+
+              alert(successMessage);
+              cadastroClienteForm.reset();
+            } else {
+              alert("Não foi possível registrar seu interesse agora. Tente novamente mais tarde.");
+            }
+          } catch (err) {
+            alert("Falha de conexão. Tente novamente.");
+          } finally {
+            if (submitButton) {
+              submitButton.disabled = false;
+              submitButton.removeAttribute("aria-busy");
+            }
+          }
+        });
+      }
     </script>
 
     <footer class="site-footer">
