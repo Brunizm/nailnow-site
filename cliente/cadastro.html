@@ -92,48 +92,15 @@
     </script>
 
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import {
-        getAuth,
-        createUserWithEmailAndPassword,
-        signInWithEmailAndPassword,
-        signOut,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import {
-        getFirestore,
-        doc,
-        setDoc,
-        updateDoc,
-        serverTimestamp,
-        collection,
-        addDoc,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
-        authDomain: "nailnow-site.firebaseapp.com",
-        projectId: "nailnow-site",
-        storageBucket: "nailnow-site.appspot.com",
-        messagingSenderId: "726392294571",
-        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
-      };
+      const FORM_ID = "cadastroClienteForm";
+      const REGISTER_ENDPOINT =
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount";
 
       const FEEDBACK_COLORS = {
         info: "#4527a0",
         success: "#2e7d32",
         error: "#c62828",
       };
-
-      const MAIL_COLLECTION = "mail";
-      const MAIL_SOURCE = "web-client-signup";
-      const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
-      const CONFIRMATION_ENDPOINT =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
-      const FORM_ID = "cadastroClienteForm";
-
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
 
       function sanitize(value) {
         if (typeof value === "string") {
@@ -155,165 +122,6 @@
         if (!element) return;
         element.textContent = "";
         element.removeAttribute("style");
-      }
-
-      async function ensureAuthAccount(email, senha) {
-        try {
-          const cred = await createUserWithEmailAndPassword(auth, email, senha);
-          return { user: cred.user, isNew: true };
-        } catch (error) {
-          if (error.code === "auth/email-already-in-use") {
-            const duplicateError = new Error("signup/email-already-in-use");
-            duplicateError.code = "signup/email-already-in-use";
-            throw duplicateError;
-          }
-          throw error;
-        }
-      }
-
-      async function safeSignOut() {
-        try {
-          if (auth.currentUser) {
-            await signOut(auth);
-          }
-        } catch (error) {
-          console.warn("Não foi possível encerrar a sessão após o cadastro", error);
-        }
-      }
-
-      function normalizarDestinatarios(valor) {
-        if (!valor) return [];
-        if (Array.isArray(valor)) {
-          return valor.map((item) => sanitize(item)).filter(Boolean);
-        }
-        return [sanitize(valor)].filter(Boolean);
-      }
-
-      function sanitizeMailPayload(mailPayload = {}, context = {}) {
-        const to = normalizarDestinatarios(mailPayload.to);
-        if (!to.length) {
-          return null;
-        }
-
-        const message = mailPayload.message || {};
-        const subject = sanitize(message.subject || "Confirme seu cadastro no NailNow 💅");
-        const confirmationUrl = sanitize(
-          context.confirmationUrl || mailPayload.metadata?.confirmationUrl || "",
-        );
-
-        const text = message.text
-          ? message.text
-          : confirmationUrl
-              ? `Olá! Confirme seu cadastro acessando: ${confirmationUrl}`
-              : "Olá! Confirme seu cadastro no NailNow.";
-        const html = message.html
-          ? message.html
-          : confirmationUrl
-              ? `<p>Olá! 💖 Confirme seu cadastro clicando no botão abaixo:</p><p style="margin:24px 0;"><a href="${confirmationUrl}" style="background-color:#f55ba2;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p><p>Se o botão não funcionar, copie e cole este link:<br /><span style="word-break:break-all;">${confirmationUrl}</span></p>`
-              : "<p>Olá! 💖 Confirme seu cadastro no NailNow.</p>";
-
-        return {
-          to,
-          from: mailPayload.from ? sanitize(mailPayload.from) : SUPPORT_SENDER,
-          message: {
-            subject,
-            text,
-            html,
-          },
-          metadata: {
-            role: context.role || mailPayload.metadata?.role || "cliente",
-            queuedBy: context.queuedBy || mailPayload.metadata?.queuedBy || MAIL_SOURCE,
-            profilePath: context.profilePath || mailPayload.metadata?.profilePath || null,
-            confirmationKey:
-              context.confirmationKey ||
-              mailPayload.metadata?.confirmationKey ||
-              context.profilePath ||
-              mailPayload.metadata?.profilePath ||
-              null,
-            confirmationUrl: confirmationUrl || null,
-            emailType: mailPayload.metadata?.emailType || "confirmation",
-            confirmationToken:
-              context.confirmationToken || mailPayload.metadata?.confirmationToken || null,
-            name: mailPayload.metadata?.name || context.name || null,
-          },
-        };
-      }
-
-      async function requestConfirmation(profilePath, { force = false } = {}) {
-        if (!profilePath) {
-          throw new Error("missing-profile-path");
-        }
-
-        const payload = force ? { profile: profilePath, force: true } : { profile: profilePath };
-
-        const response = await fetch(CONFIRMATION_ENDPOINT, {
-          method: "POST",
-          mode: "cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          let errorCode = `http-${response.status}`;
-          try {
-            const data = await response.json();
-            if (data?.error) {
-              errorCode = data.error;
-            }
-          } catch (parseError) {
-            /* ignore parse error */
-          }
-
-          const httpError = new Error(errorCode);
-          httpError.code = errorCode;
-          throw httpError;
-        }
-
-        return response.json();
-      }
-
-      async function enqueueMailFallback(mailPayload = {}, context = {}) {
-        const sanitized = sanitizeMailPayload(mailPayload, context);
-        if (!sanitized) {
-          return { mailId: null, mailStatus: "missing-email" };
-        }
-
-        try {
-          const mailRef = await addDoc(collection(db, MAIL_COLLECTION), sanitized);
-          return { mailId: mailRef.id, mailStatus: "queued" };
-        } catch (error) {
-          console.error("Falha ao enfileirar e-mail de confirmação", error);
-          return { mailId: null, mailStatus: "error" };
-        }
-      }
-
-      async function persistConfirmationStatus(docRef, updates = {}) {
-        if (!docRef) return;
-
-        const payload = {};
-        const queuedBy = updates.queuedBy || MAIL_SOURCE;
-
-        payload["signupConfirmation.preparedBy"] = queuedBy;
-        payload["signupConfirmation.preparedAt"] = serverTimestamp();
-
-        if (updates.mailStatus) {
-          payload["signupConfirmation.mailStatus"] = updates.mailStatus;
-        }
-
-        if (updates.confirmationUrl) {
-          payload["signupConfirmation.confirmationUrl"] = updates.confirmationUrl;
-        }
-
-        if (updates.mailId) {
-          payload["signupConfirmation.mailId"] = updates.mailId;
-          payload["signupConfirmation.mailDocumentId"] = updates.mailId;
-          payload["signupConfirmation.mailQueuedBy"] = queuedBy;
-          payload["signupConfirmation.mailQueuedAt"] = serverTimestamp();
-        }
-
-        if (Object.keys(payload).length) {
-          await updateDoc(docRef, payload);
-        }
       }
 
       async function cadastrarCliente(event) {
@@ -344,6 +152,12 @@
             return;
           }
 
+          if (senha.length < 6) {
+            setFeedbackMessage(feedback, "❌ Use uma senha com pelo menos 6 caracteres.", "error");
+            form.senha.focus();
+            return;
+          }
+
           if (senha !== confirmarSenha) {
             setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
             form.confirmarSenha.focus();
@@ -362,18 +176,10 @@
           }
           setFeedbackMessage(feedback, "Validando seus dados…", "info");
 
-          const { user, isNew } = await ensureAuthAccount(email, senha);
-          const uid = user.uid;
-
-          if (btn) {
-            btn.textContent = "Salvando cadastro…";
-          }
-
-          const profilePath = `clientes/${uid}`;
           const payload = {
-            uid,
             nome,
             email,
+            senha,
             telefone,
             endereco,
             complemento,
@@ -381,91 +187,51 @@
             place_id: placeId,
             lat,
             lng,
-            preferencias: [],
-            newsletter: false,
-            aceiteTermos: aceiteTermos,
-            atualizadoEm: serverTimestamp(),
+            aceiteTermos,
           };
 
-          if (isNew) {
-            payload.status = "pendente";
-            payload.criadoEm = serverTimestamp();
-            payload.signupConfirmation = {
-              status: "pendente",
-              statusCode: "pending",
-              role: "cliente",
-              issuedAt: serverTimestamp(),
-              preparedBy: MAIL_SOURCE,
-              preparedAt: serverTimestamp(),
-              autoQueueOptOut: true,
+          const response = await fetch(REGISTER_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const result = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            const errorCode = result?.error || `http-${response.status}`;
+            const mensagens = {
+              "invalid-payload": "❌ Verifique os dados informados e tente novamente.",
             };
-          }
 
-          const docRef = doc(db, "clientes", uid);
-          await setDoc(docRef, payload, { merge: true });
+            let friendly = mensagens[errorCode] || null;
 
-          let confirmationQueued = false;
-          let confirmationError = null;
-          let confirmationMailStatus = "not-requested";
-          let confirmationMailId = null;
-
-          if (isNew) {
-            setFeedbackMessage(feedback, "Solicitando e-mail de confirmação…", "info");
-            try {
-              const result = await requestConfirmation(profilePath);
-              const normalizedStatus = (result?.mailStatus || "").toLowerCase();
-
-              confirmationMailStatus = normalizedStatus || confirmationMailStatus;
-
-              if (["queued", "already-queued"].includes(normalizedStatus)) {
-                confirmationQueued = true;
-                confirmationMailId = result?.mailId || null;
-              } else if (result?.mailPayload) {
-                const fallback = await enqueueMailFallback(result.mailPayload, {
-                  role: "cliente",
-                  queuedBy: MAIL_SOURCE,
-                  profilePath,
-                  confirmationUrl:
-                    result?.confirmationUrl || result?.mailPayload?.metadata?.confirmationUrl || "",
-                  confirmationToken: result?.mailPayload?.metadata?.confirmationToken || null,
-                  name: nome,
-                });
-                confirmationMailStatus = fallback.mailStatus || confirmationMailStatus;
-                if (fallback.mailId) {
-                  confirmationQueued = true;
-                  confirmationMailId = fallback.mailId;
-                }
-              }
-
-              await persistConfirmationStatus(docRef, {
-                queuedBy: MAIL_SOURCE,
-                mailStatus: confirmationQueued
-                  ? confirmationMailStatus || "queued"
-                  : confirmationMailStatus || "requires-client-enqueue",
-                mailId: confirmationMailId || result?.mailId || null,
-                confirmationUrl:
-                  result?.confirmationUrl || result?.mailPayload?.metadata?.confirmationUrl || null,
-              });
-            } catch (error) {
-              confirmationError = error;
-              confirmationMailStatus = "error";
-              try {
-                await persistConfirmationStatus(docRef, {
-                  queuedBy: MAIL_SOURCE,
-                  mailStatus: "error",
-                });
-              } catch (persistError) {
-                console.warn("Não foi possível registrar o status da confirmação (cliente)", persistError);
-              }
+            if (errorCode === "email-already-in-use") {
+              const existingStatus = (result?.status || "").toLowerCase();
+              friendly =
+                existingStatus === "pendente"
+                  ? "⚠️ Já encontramos um cadastro pendente para este e-mail. Verifique seu e-mail de confirmação ou solicite um novo envio ao suporte."
+                  : "❌ Este e-mail já está cadastrado. Use outra conta ou acesse o portal para continuar.";
             }
+
+            if (!friendly) {
+              friendly = "❌ Não foi possível concluir o cadastro agora.";
+            }
+
+            setFeedbackMessage(feedback, friendly, "error");
+            return;
           }
+
+          const confirmation = result.confirmation || {};
+          const mailStatus = (confirmation.mailStatus || "").toLowerCase();
+          const confirmationQueued = ["queued", "already-queued"].includes(mailStatus);
 
           const successMessage = confirmationQueued
             ? "✅ Conta criada! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
-            : confirmationError
-              ? "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação."
-              : confirmationMailStatus === "missing-email"
-                ? "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app."
+            : mailStatus === "missing-email"
+              ? "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app."
+              : mailStatus === "error"
+                ? "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação."
                 : "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
 
           setFeedbackMessage(feedback, successMessage, "success");
@@ -476,20 +242,12 @@
           }
         } catch (error) {
           console.error("Falha ao cadastrar cliente", error);
-          const code = error?.code || "erro-desconhecido";
-          const mensagemPorCodigo = {
-            "auth/email-already-in-use": "❌ Erro: Já existe uma conta com este e-mail. Utilize a mesma senha cadastrada anteriormente.",
-            "auth/invalid-email": "❌ Erro: Informe um e-mail válido para continuar.",
-            "auth/weak-password": "❌ Erro: Use uma senha com pelo menos 6 caracteres.",
-            "auth/wrong-password": "❌ Erro: A senha informada não confere com a conta existente.",
-            "auth/invalid-login-credentials": "❌ Erro: Não foi possível confirmar seus dados de acesso.",
-            "signup/email-already-in-use": "❌ Este e-mail já está cadastrado. Use outra conta ou acesse o portal para continuar.",
-          };
-
-          const friendly = mensagemPorCodigo[code] ?? "❌ Erro: Não foi possível concluir o cadastro. Tente novamente.";
-          setFeedbackMessage(feedback, friendly, "error");
+          setFeedbackMessage(
+            feedback,
+            "❌ Erro: Não foi possível concluir o cadastro. Tente novamente em instantes.",
+            "error",
+          );
         } finally {
-          await safeSignOut();
           if (btn) {
             btn.disabled = false;
             btn.removeAttribute("aria-busy");
@@ -508,7 +266,7 @@
         form.addEventListener("submit", cadastrarCliente);
         form.setAttribute("novalidate", "novalidate");
         form.setAttribute("action", "javascript:void(0);");
-        console.info("📄 Formulário de cadastro de cliente pronto para enviar dados ao Firebase.");
+        console.info("📄 Formulário de cadastro de cliente pronto para enviar dados ao NailNow.");
       });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
