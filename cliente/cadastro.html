@@ -451,6 +451,40 @@
       </section>
     </main>
 
+    <form id="cadastroFormCliente">
+      <input id="clientName" type="text" placeholder="Seu nome" required />
+      <input id="clientEmail" type="email" placeholder="Seu e-mail" required />
+      <button type="submit">Criar cadastro (Cliente)</button>
+    </form>
+
+    <script>
+      const CLIENT_URL =
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount";
+
+      document.getElementById("cadastroFormCliente").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("clientName").value.trim();
+        const email = document.getElementById("clientEmail").value.trim();
+
+        try {
+          const resp = await fetch(CLIENT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "client", name, email }),
+          });
+
+          const data = await resp.json();
+          if (resp.ok && data.ok) {
+            alert("Cadastro Cliente enviado com sucesso!");
+          } else {
+            alert("Erro ao enviar cadastro de cliente.");
+          }
+        } catch (err) {
+          alert("Falha de conexão. Tente novamente.");
+        }
+      });
+    </script>
+
     <footer class="site-footer">
       <div class="footer-inner">
         <div class="footer-column footer-column--brand">
