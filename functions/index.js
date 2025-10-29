@@ -21,6 +21,21 @@ const ROLE_PORTAL_PATH = {
   profissional: "/profissional/portal.html",
 };
 
+const QUICK_SIGNUP_COLLECTION = "signupLeads";
+
+const QUICK_SIGNUP_ROLE_MAP = {
+  cliente: "cliente",
+  clientes: "cliente",
+  client: "cliente",
+  clients: "cliente",
+  profissional: "profissional",
+  profissionais: "profissional",
+  professional: "profissional",
+  professionals: "profissional",
+  manicure: "profissional",
+  manicures: "profissional",
+};
+
 function sanitizeString(value) {
   if (value === null || value === undefined) {
     return "";
@@ -109,6 +124,199 @@ function buildConfirmationMailPayload({
       confirmationKey: confirmationKey || profilePath || null,
     },
   };
+}
+
+function resolveQuickSignupRole(rawType) {
+  if (!rawType) {
+    return null;
+  }
+
+  const normalized = sanitizeString(rawType).toLowerCase();
+  return QUICK_SIGNUP_ROLE_MAP[normalized] || null;
+}
+
+function buildQuickSignupMailMessage({ name, role }) {
+  const safeName = sanitizeString(name) || (role === "profissional" ? "Profissional" : "Cliente");
+  const isProfessional = role === "profissional";
+  const subject = isProfessional
+    ? "Recebemos seu interesse em ser profissional NailNow"
+    : "Recebemos sua solicitação de conta NailNow";
+  const intro = isProfessional
+    ? "Recebemos seu interesse em fazer parte do time de profissionais NailNow."
+    : "Recebemos sua solicitação para criar uma conta cliente na NailNow.";
+  const followup = isProfessional
+    ? "Nossa equipe vai analisar os dados e entrar em contato com próximos passos e materiais de onboarding."
+    : "Nossa equipe entrará em contato em breve com os próximos passos para ativar sua conta.";
+
+  const text = [
+    `Olá, ${safeName}!`,
+    intro,
+    followup,
+    "Se precisar falar conosco, escreva para suporte@nailnow.app.",
+    "Equipe NailNow",
+  ].join("\n\n");
+
+  const html = [
+    `<p>Olá, <strong>${safeName}</strong>! 💖</p>`,
+    `<p>${intro}</p>`,
+    `<p>${followup}</p>`,
+    '<p>Se precisar falar conosco, envie um e-mail para <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>.</p>',
+    "<p>Com carinho, equipe NailNow 💅</p>",
+  ].join("");
+
+  return { subject, text, html };
+}
+
+const QUICK_SIGNUP_PRIMARY_COLLECTION = {
+  cliente: "clientes",
+  profissional: "profissionais",
+};
+
+function computeQuickLeadDocumentId(role, email) {
+  const normalizedRole = role === "profissional" ? "profissional" : "cliente";
+  const normalizedEmail = sanitizeEmail(email);
+
+  if (!normalizedEmail) {
+    throw new Error("invalid-email");
+  }
+
+  const hash = crypto.createHash("sha1").update(`${normalizedRole}:${normalizedEmail}`).digest("hex");
+  return `lead_${hash}`;
+}
+
+async function upsertQuickLeadProfile({ role, nome, email, origem, referrer }) {
+  const primaryCollection = QUICK_SIGNUP_PRIMARY_COLLECTION[role] || QUICK_SIGNUP_PRIMARY_COLLECTION.cliente;
+  const profileId = computeQuickLeadDocumentId(role, email);
+  const profileRef = firestore.collection(primaryCollection).doc(profileId);
+  const timestamp = FieldValue.serverTimestamp();
+  const normalizedEmail = sanitizeEmail(email);
+  const safeName = sanitizeString(nome || "");
+  const leadMetadata = {
+    quickLead: true,
+    leadOrigin: origem || REGISTER_CLIENT_SOURCE,
+    referrer: sanitizeString(referrer || ""),
+    leadCapturedAt: timestamp,
+    updatedAt: timestamp,
+    role,
+  };
+
+  await firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(profileRef);
+    const snapshotData = snapshot.exists ? snapshot.data() || {} : {};
+    const updates = {
+      email: normalizedEmail,
+      nome: safeName || snapshotData.nome || "",
+      status: snapshot.exists ? snapshotData.status || "lead" : "lead",
+      ...leadMetadata,
+    };
+
+    if (!snapshot.exists) {
+      updates.createdAt = timestamp;
+    } else if (!snapshotData.createdAt) {
+      updates.createdAt = timestamp;
+    }
+
+    transaction.set(profileRef, updates, { merge: true });
+  });
+
+  return profileRef;
+}
+
+async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
+  const leadRef = firestore.collection(QUICK_SIGNUP_COLLECTION).doc();
+  const now = FieldValue.serverTimestamp();
+  const normalizedEmail = sanitizeEmail(email);
+
+  const profileRef = await upsertQuickLeadProfile({ role, nome, email: normalizedEmail, origem, referrer });
+
+  const leadData = {
+    role,
+    nome,
+    email: normalizedEmail,
+    origem,
+    referrer: sanitizeString(referrer || ""),
+    status: "novo",
+    createdAt: now,
+    updatedAt: now,
+    profilePath: profileRef.path,
+    mailStatus: "not-requested",
+  };
+
+  await leadRef.set(leadData);
+
+  let mailStatus = "not-requested";
+  let mailId = null;
+
+  try {
+    const message = buildQuickSignupMailMessage({ name: nome, role });
+    const mailDoc = await firestore.collection("mail").add({
+      to: [normalizedEmail],
+      from: SUPPORT_SENDER,
+      message,
+      metadata: {
+        role,
+        emailType: "quick-signup-lead",
+        source: origem || REGISTER_CLIENT_SOURCE,
+        leadId: leadRef.id,
+        profilePath: profileRef.path,
+      },
+    });
+
+    mailId = mailDoc.id;
+    mailStatus = "queued";
+
+    const mailUpdateTime = FieldValue.serverTimestamp();
+
+    await leadRef.set(
+      {
+        mailStatus,
+        mailId,
+        mailQueuedAt: mailUpdateTime,
+        updatedAt: mailUpdateTime,
+      },
+      { merge: true },
+    );
+
+    await profileRef.set(
+      {
+        lastLeadMailStatus: mailStatus,
+        lastLeadMailId: mailId,
+        lastLeadMailQueuedAt: mailUpdateTime,
+      },
+      { merge: true },
+    );
+  } catch (error) {
+    functions.logger.error("Falha ao enfileirar e-mail de lead", {
+      email: normalizedEmail,
+      role,
+      error: error?.message,
+    });
+
+    mailStatus = "error";
+
+    const mailUpdateTime = FieldValue.serverTimestamp();
+
+    await leadRef.set(
+      {
+        mailStatus,
+        mailError: error?.message || "unknown-error",
+        mailUpdatedAt: mailUpdateTime,
+        updatedAt: mailUpdateTime,
+      },
+      { merge: true },
+    );
+
+    await profileRef.set(
+      {
+        lastLeadMailStatus: mailStatus,
+        lastLeadMailError: error?.message || "unknown-error",
+        lastLeadMailUpdatedAt: mailUpdateTime,
+      },
+      { merge: true },
+    );
+  }
+
+  return { id: leadRef.id, mailStatus, mailId, profilePath: profileRef.path };
 }
 
 function ensureSignupConfirmation(data, role) {
@@ -944,6 +1152,53 @@ exports.registerClientAccount = functions
       const lat = sanitizeString(payload.lat || "");
       const lng = sanitizeString(payload.lng || "");
       const aceiteTermos = Boolean(payload.aceiteTermos ?? payload.termos ?? payload.aceitouTermos);
+
+      const leadRole = resolveQuickSignupRole(payload.type || payload.role);
+      const hasFullPayload =
+        nome &&
+        email &&
+        senha &&
+        senha.length >= 6 &&
+        telefone &&
+        endereco &&
+        aceiteTermos;
+
+      if (leadRole && !hasFullPayload) {
+        if (!nome || !email) {
+          res.status(400).json({ error: "invalid-lead" });
+          return;
+        }
+
+        try {
+          const lead = await createQuickSignupLead({
+            role: leadRole,
+            nome,
+            email,
+            origem: REGISTER_CLIENT_SOURCE,
+            referrer: payload.referrer || payload.origin || payload.pageUrl || payload.page,
+          });
+
+          res.status(200).json({
+            ok: true,
+            status: "lead",
+            type: leadRole,
+            leadId: lead.id,
+            profilePath: lead.profilePath || null,
+            mail: {
+              status: lead.mailStatus,
+              mailId: lead.mailId || null,
+            },
+          });
+        } catch (error) {
+          functions.logger.error("Falha ao registrar lead rápido", {
+            email,
+            role: leadRole,
+            error: error?.message,
+          });
+          res.status(500).json({ error: "internal-error" });
+        }
+        return;
+      }
 
       if (!nome || !email || !senha || senha.length < 6 || !telefone || !endereco || !aceiteTermos) {
         res.status(400).json({ error: "invalid-payload" });
