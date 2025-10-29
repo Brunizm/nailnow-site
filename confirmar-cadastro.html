@@ -239,26 +239,41 @@
         statusEl.classList.add(`auth-status--${type}`);
       };
 
-      const showActions = (loginUrl, role) => {
+      const showActions = (portalUrl, role, loginUrl) => {
         actionsEl.innerHTML = "";
-        const button = document.createElement("a");
-        button.className = "auth-link-button auth-link-button--primary";
-        button.href = loginUrl;
-        button.textContent =
+        const primaryButton = document.createElement("a");
+        primaryButton.className = "auth-link-button auth-link-button--primary";
+        primaryButton.href = portalUrl;
+        primaryButton.textContent =
           role === "profissional"
-            ? "Acessar portal profissional"
-            : "Acessar portal da cliente";
-        actionsEl.appendChild(button);
-        actionsEl.hidden = false;
+            ? "Abrir portal profissional"
+            : "Abrir portal da cliente";
+        actionsEl.appendChild(primaryButton);
 
         const redirectDelay = 1500;
         const redirectTimer = window.setTimeout(() => {
-          window.location.assign(loginUrl);
+          window.location.assign(portalUrl);
         }, redirectDelay);
 
-        button.addEventListener("click", () => {
+        const clearRedirect = () => {
           window.clearTimeout(redirectTimer);
-        });
+        };
+
+        primaryButton.addEventListener("click", clearRedirect);
+
+        if (loginUrl && loginUrl !== portalUrl) {
+          const fallbackLink = document.createElement("a");
+          fallbackLink.className = "auth-link-button";
+          fallbackLink.href = loginUrl;
+          fallbackLink.textContent =
+            role === "profissional"
+              ? "Ir para a tela de acesso profissional"
+              : "Ir para a tela de acesso da cliente";
+          fallbackLink.addEventListener("click", clearRedirect);
+          actionsEl.appendChild(fallbackLink);
+        }
+
+        actionsEl.hidden = false;
       };
 
       const attemptAutoLogin = async (authData, redirectUrl, role) => {
@@ -329,7 +344,7 @@
               setStatus("success", "Cadastro confirmado com sucesso!");
               detailsEl.textContent =
                 "Estamos abrindo seu portal automaticamente. Caso não aconteça, use o link abaixo.";
-              showActions(loginUrl, role);
+              showActions(portalUrl, role, loginUrl);
               return;
             }
 
@@ -341,7 +356,7 @@
               setStatus("success", "Cadastro já estava confirmado.");
               detailsEl.textContent =
                 "Vamos redirecionar você para o portal em instantes. Se não funcionar, utilize o link abaixo.";
-              showActions(loginUrl, role);
+              showActions(portalUrl, role, loginUrl);
               return;
             }
 
@@ -353,7 +368,7 @@
             setStatus("success", "Confirmação concluída.");
             detailsEl.textContent =
               "Vamos abrir o portal automaticamente. Caso algo impeça, utilize o link abaixo ou fale com o suporte NailNow.";
-            showActions(loginUrl, role);
+            showActions(portalUrl, role, loginUrl);
             return;
           }
 
