@@ -222,30 +222,61 @@ async function upsertQuickLeadProfile({ role, nome, email, origem, referrer }) {
   return profileRef;
 }
 
+const MAIL_SUCCESS_STATUSES = new Set([
+  "queued",
+  "sending",
+  "processing",
+  "sent",
+  "delivered",
+  "success",
+  "queued-via-extension",
+]);
+
 async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
-  const leadRef = firestore.collection(QUICK_SIGNUP_COLLECTION).doc();
-  const now = FieldValue.serverTimestamp();
   const normalizedEmail = sanitizeEmail(email);
+  const leadId = computeQuickLeadDocumentId(role, normalizedEmail);
+  const leadRef = firestore.collection(QUICK_SIGNUP_COLLECTION).doc(leadId);
+  const now = FieldValue.serverTimestamp();
 
   const profileRef = await upsertQuickLeadProfile({ role, nome, email: normalizedEmail, origem, referrer });
 
-  const leadData = {
+  const leadSnapshot = await leadRef.get();
+  const existingLead = leadSnapshot.exists ? leadSnapshot.data() || {} : {};
+
+  const baseLeadData = {
     role,
     nome,
     email: normalizedEmail,
     origem,
     referrer: sanitizeString(referrer || ""),
-    status: "novo",
-    createdAt: now,
-    updatedAt: now,
+    status: existingLead.status || "novo",
     profilePath: profileRef.path,
-    mailStatus: "not-requested",
+    updatedAt: now,
   };
 
-  await leadRef.set(leadData);
+  if (!leadSnapshot.exists) {
+    baseLeadData.createdAt = now;
+    baseLeadData.mailStatus = "not-requested";
+  }
 
-  let mailStatus = "not-requested";
-  let mailId = null;
+  await leadRef.set(baseLeadData, { merge: true });
+
+  let mailStatus = existingLead.mailStatus || "not-requested";
+  let mailId = existingLead.mailId || null;
+  const alreadyQueued = MAIL_SUCCESS_STATUSES.has((mailStatus || "").toLowerCase());
+
+  if (alreadyQueued) {
+    await profileRef.set(
+      {
+        lastLeadMailStatus: mailStatus,
+        lastLeadMailId: mailId || null,
+        lastLeadMailSyncedAt: now,
+      },
+      { merge: true },
+    );
+
+    return { id: leadRef.id, mailStatus, mailId, profilePath: profileRef.path, alreadyQueued: true };
+  }
 
   try {
     const message = buildQuickSignupMailMessage({ name: nome, role });
@@ -316,7 +347,7 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
     );
   }
 
-  return { id: leadRef.id, mailStatus, mailId, profilePath: profileRef.path };
+  return { id: leadRef.id, mailStatus, mailId, profilePath: profileRef.path, alreadyQueued: false };
 }
 
 function ensureSignupConfirmation(data, role) {
@@ -1178,6 +1209,8 @@ exports.registerClientAccount = functions
             referrer: payload.referrer || payload.origin || payload.pageUrl || payload.page,
           });
 
+          const responseMailStatus = lead.alreadyQueued ? "already-queued" : lead.mailStatus;
+
           res.status(200).json({
             ok: true,
             status: "lead",
@@ -1185,7 +1218,7 @@ exports.registerClientAccount = functions
             leadId: lead.id,
             profilePath: lead.profilePath || null,
             mail: {
-              status: lead.mailStatus,
+              status: responseMailStatus,
               mailId: lead.mailId || null,
             },
           });
