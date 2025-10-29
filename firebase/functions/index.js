@@ -192,6 +192,8 @@ function computeQuickLeadDocumentId(role, email) {
   return `lead_${hash}`;
 }
 
+const QUICK_LEAD_CONFIRMATION_SOURCE = "quick-lead-profile";
+
 async function upsertQuickLeadProfile({ role, nome, email, origem, referrer }) {
   const primaryCollection = QUICK_SIGNUP_PRIMARY_COLLECTION[role] || QUICK_SIGNUP_PRIMARY_COLLECTION.cliente;
   const profileId = computeQuickLeadDocumentId(role, email);
@@ -217,6 +219,19 @@ async function upsertQuickLeadProfile({ role, nome, email, origem, referrer }) {
       status: snapshot.exists ? snapshotData.status || "lead" : "lead",
       ...leadMetadata,
     };
+
+    const existingConfirmation = snapshotData.signupConfirmation || {};
+    if (existingConfirmation.autoQueueOptOut !== false) {
+      updates.signupConfirmation = {
+        ...existingConfirmation,
+        status: existingConfirmation.status || "lead",
+        statusCode: existingConfirmation.statusCode || "quick-lead",
+        role: existingConfirmation.role || role,
+        autoQueueOptOut: true,
+        preparedBy: existingConfirmation.preparedBy || QUICK_LEAD_CONFIRMATION_SOURCE,
+        preparedAt: existingConfirmation.preparedAt || timestamp,
+      };
+    }
 
     if (!snapshot.exists) {
       updates.createdAt = timestamp;
@@ -271,7 +286,29 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
 
   let mailStatus = existingLead.mailStatus || "not-requested";
   let mailId = existingLead.mailId || null;
-  const alreadyQueued = MAIL_SUCCESS_STATUSES.has((mailStatus || "").toLowerCase());
+  const normalizedMailStatus = (mailStatus || "").toLowerCase();
+  const alreadyQueued = MAIL_SUCCESS_STATUSES.has(normalizedMailStatus);
+  const shouldQueueLeadMail = role === "profissional";
+
+  if (!shouldQueueLeadMail) {
+    const snapshotStatus = mailStatus || "not-requested";
+    await profileRef.set(
+      {
+        lastLeadMailStatus: snapshotStatus,
+        lastLeadMailId: mailId || null,
+        lastLeadMailSyncedAt: now,
+      },
+      { merge: true },
+    );
+
+    return {
+      id: leadRef.id,
+      mailStatus: snapshotStatus,
+      mailId,
+      profilePath: profileRef.path,
+      alreadyQueued,
+    };
+  }
 
   if (alreadyQueued) {
     await profileRef.set(
@@ -1073,6 +1110,42 @@ async function buildAutoLoginAuth(profileData, mapping, documentId, profilePath)
       functions.logger.warn("Falha ao gerar token de login automático", {
         profilePath,
         candidateUid: candidate,
+        error: error?.message,
+      });
+    }
+  }
+
+  const candidateEmails = [
+    profileData.email,
+    profileData.contatoEmail,
+    profileData.loginEmail,
+    profileData.contactEmail,
+    profileData.ownerEmail,
+  ]
+    .map((value) => (typeof value === "string" ? value.trim().toLowerCase() : ""))
+    .filter((value, index, array) => value && array.indexOf(value) === index);
+
+  for (const email of candidateEmails) {
+    try {
+      const userRecord = await admin.auth().getUserByEmail(email);
+      const customToken = await admin.auth().createCustomToken(userRecord.uid, {
+        signupRole: mapping.role,
+        signupConfirmed: true,
+      });
+
+      return {
+        customToken,
+        uid: userRecord.uid,
+        email: userRecord.email || email,
+      };
+    } catch (error) {
+      if (error?.code === "auth/user-not-found") {
+        continue;
+      }
+
+      functions.logger.warn("Falha ao gerar token automático por e-mail", {
+        profilePath,
+        candidateEmail: email,
         error: error?.message,
       });
     }
