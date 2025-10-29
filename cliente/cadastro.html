@@ -460,6 +460,7 @@
     <script>
       const CLIENT_URL =
         "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount";
+      const QUICK_CLIENT_ORIGIN = "cliente-landing-quick-form";
 
       const cadastroClienteForm = document.getElementById("cadastroFormCliente");
 
@@ -484,16 +485,22 @@
             submitButton.setAttribute("aria-busy", "true");
           }
 
+          const payload = {
+            type: "client",
+            role: "cliente",
+            nome: name,
+            name,
+            email,
+            origem: QUICK_CLIENT_ORIGIN,
+            referrer: window.location.href,
+            pageUrl: window.location.href,
+          };
+
           try {
             const resp = await fetch(CLIENT_URL, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                type: "client",
-                name,
-                email,
-                referrer: window.location.href,
-              }),
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify(payload),
             });
 
             const data = await resp.json().catch(() => ({}));
@@ -505,11 +512,22 @@
                 : "Recebemos seu cadastro! Em breve nossa equipe entrará em contato.";
 
               alert(successMessage);
+              console.info("Lead cliente registrado:", {
+                leadId: data.leadId || data.lead?.id || null,
+                mailStatus: data.mail?.status || null,
+                profilePath: data.profilePath || data.lead?.profilePath || null,
+              });
               cadastroClienteForm.reset();
             } else {
-              alert("Não foi possível registrar seu interesse agora. Tente novamente mais tarde.");
+              console.warn("Falha ao registrar lead cliente", { response: data, status: resp.status });
+              const errorMessage =
+                data?.error === "invalid-lead"
+                  ? "Dados incompletos. Confira nome e e-mail."
+                  : "Não foi possível registrar seu interesse agora. Tente novamente mais tarde.";
+              alert(errorMessage);
             }
           } catch (err) {
+            console.error("Erro de rede ao enviar lead cliente", err);
             alert("Falha de conexão. Tente novamente.");
           } finally {
             if (submitButton) {
