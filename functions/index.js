@@ -172,6 +172,14 @@ const QUICK_SIGNUP_PRIMARY_COLLECTION = {
   profissional: "profissionais",
 };
 
+class QuickLeadError extends Error {
+  constructor(code, message) {
+    super(message || code);
+    this.name = "QuickLeadError";
+    this.code = code;
+  }
+}
+
 function computeQuickLeadDocumentId(role, email) {
   const normalizedRole = role === "profissional" ? "profissional" : "cliente";
   const normalizedEmail = sanitizeEmail(email);
@@ -348,6 +356,73 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
   }
 
   return { id: leadRef.id, mailStatus, mailId, profilePath: profileRef.path, alreadyQueued: false };
+}
+
+function normalizeLeadSource(payloadSource, fallback) {
+  const source = sanitizeString(payloadSource || "");
+  if (source) {
+    return source;
+  }
+  return sanitizeString(fallback || "");
+}
+
+function extractLeadReferrer(payload) {
+  const referrer =
+    payload?.referrer ||
+    payload?.pageUrl ||
+    payload?.page ||
+    payload?.origin ||
+    payload?.sourceUrl ||
+    payload?.landingUrl;
+  return sanitizeString(referrer || "");
+}
+
+async function registerQuickLeadFromPayload(payload, { sourceFallback, requireRole = true } = {}) {
+  const nome = sanitizeString(payload?.nome || payload?.name);
+  const email = sanitizeEmail(payload?.email);
+  const leadRole = resolveQuickSignupRole(payload?.type || payload?.role);
+
+  if (!leadRole) {
+    if (requireRole) {
+      throw new QuickLeadError("invalid-role", "Tipo de cadastro inválido.");
+    }
+    throw new QuickLeadError("missing-role", "Tipo de cadastro ausente.");
+  }
+
+  if (!nome || !email) {
+    throw new QuickLeadError("invalid-lead", "Nome e e-mail são obrigatórios.");
+  }
+
+  try {
+    const lead = await createQuickSignupLead({
+      role: leadRole,
+      nome,
+      email,
+      origem: normalizeLeadSource(payload?.origem || payload?.origin, sourceFallback),
+      referrer: extractLeadReferrer(payload),
+    });
+
+    const responseMailStatus = lead.alreadyQueued ? "already-queued" : lead.mailStatus;
+
+    return {
+      ok: true,
+      status: "lead",
+      type: leadRole,
+      leadId: lead.id,
+      profilePath: lead.profilePath || null,
+      alreadyQueued: Boolean(lead.alreadyQueued),
+      mail: {
+        status: responseMailStatus || "not-requested",
+        mailId: lead.mailId || null,
+      },
+    };
+  } catch (error) {
+    if (error instanceof QuickLeadError) {
+      throw error;
+    }
+
+    throw new QuickLeadError(error?.code || "internal-error", error?.message);
+  }
 }
 
 function ensureSignupConfirmation(data, role) {
@@ -1195,34 +1270,19 @@ exports.registerClientAccount = functions
         aceiteTermos;
 
       if (leadRole && !hasFullPayload) {
-        if (!nome || !email) {
-          res.status(400).json({ error: "invalid-lead" });
-          return;
-        }
-
         try {
-          const lead = await createQuickSignupLead({
-            role: leadRole,
-            nome,
-            email,
-            origem: REGISTER_CLIENT_SOURCE,
-            referrer: payload.referrer || payload.origin || payload.pageUrl || payload.page,
+          const leadResponse = await registerQuickLeadFromPayload(payload, {
+            sourceFallback: REGISTER_CLIENT_SOURCE,
           });
 
-          const responseMailStatus = lead.alreadyQueued ? "already-queued" : lead.mailStatus;
-
-          res.status(200).json({
-            ok: true,
-            status: "lead",
-            type: leadRole,
-            leadId: lead.id,
-            profilePath: lead.profilePath || null,
-            mail: {
-              status: responseMailStatus,
-              mailId: lead.mailId || null,
-            },
-          });
+          res.status(200).json(leadResponse);
         } catch (error) {
+          if (error instanceof QuickLeadError) {
+            const statusCode = error.code === "invalid-lead" ? 400 : 422;
+            res.status(statusCode).json({ error: error.code || "invalid-lead" });
+            return;
+          }
+
           functions.logger.error("Falha ao registrar lead rápido", {
             email,
             role: leadRole,
@@ -1357,6 +1417,49 @@ exports.registerClientAccount = functions
       } catch (error) {
         functions.logger.error("Falha ao registrar cliente", {
           email,
+          error: error?.message,
+        });
+        res.status(500).json({ error: "internal-error" });
+      }
+    });
+  });
+
+exports.registerQuickLead = functions
+  .region("southamerica-east1")
+  .https.onRequest((req, res) => {
+    corsHandler(req, res, async () => {
+      applyCors(req, res);
+
+      if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+      }
+
+      if (req.method !== "POST") {
+        res.status(405).json({ error: "method-not-allowed" });
+        return;
+      }
+
+      const payload = readHttpPayload(req) || {};
+
+      try {
+        const result = await registerQuickLeadFromPayload(payload, {
+          sourceFallback: sanitizeString(payload?.source) || "quick-lead-form",
+        });
+        res.status(200).json(result);
+      } catch (error) {
+        if (error instanceof QuickLeadError) {
+          const statusCode =
+            error.code === "invalid-lead"
+              ? 400
+              : error.code === "invalid-role" || error.code === "missing-role"
+                ? 422
+                : 400;
+          res.status(statusCode).json({ error: error.code || "invalid-lead" });
+          return;
+        }
+
+        functions.logger.error("Falha inesperada ao registrar lead", {
           error: error?.message,
         });
         res.status(500).json({ error: "internal-error" });
