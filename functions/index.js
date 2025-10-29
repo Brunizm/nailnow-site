@@ -167,24 +167,78 @@ function buildQuickSignupMailMessage({ name, role }) {
   return { subject, text, html };
 }
 
-async function createQuickSignupLead({
-  role,
-  nome,
-  email,
-  origem,
-  referrer,
-}) {
+const QUICK_SIGNUP_PRIMARY_COLLECTION = {
+  cliente: "clientes",
+  profissional: "profissionais",
+};
+
+function computeQuickLeadDocumentId(role, email) {
+  const normalizedRole = role === "profissional" ? "profissional" : "cliente";
+  const normalizedEmail = sanitizeEmail(email);
+
+  if (!normalizedEmail) {
+    throw new Error("invalid-email");
+  }
+
+  const hash = crypto.createHash("sha1").update(`${normalizedRole}:${normalizedEmail}`).digest("hex");
+  return `lead_${hash}`;
+}
+
+async function upsertQuickLeadProfile({ role, nome, email, origem, referrer }) {
+  const primaryCollection = QUICK_SIGNUP_PRIMARY_COLLECTION[role] || QUICK_SIGNUP_PRIMARY_COLLECTION.cliente;
+  const profileId = computeQuickLeadDocumentId(role, email);
+  const profileRef = firestore.collection(primaryCollection).doc(profileId);
+  const timestamp = FieldValue.serverTimestamp();
+  const normalizedEmail = sanitizeEmail(email);
+  const safeName = sanitizeString(nome || "");
+  const leadMetadata = {
+    quickLead: true,
+    leadOrigin: origem || REGISTER_CLIENT_SOURCE,
+    referrer: sanitizeString(referrer || ""),
+    leadCapturedAt: timestamp,
+    updatedAt: timestamp,
+    role,
+  };
+
+  await firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(profileRef);
+    const snapshotData = snapshot.exists ? snapshot.data() || {} : {};
+    const updates = {
+      email: normalizedEmail,
+      nome: safeName || snapshotData.nome || "",
+      status: snapshot.exists ? snapshotData.status || "lead" : "lead",
+      ...leadMetadata,
+    };
+
+    if (!snapshot.exists) {
+      updates.createdAt = timestamp;
+    } else if (!snapshotData.createdAt) {
+      updates.createdAt = timestamp;
+    }
+
+    transaction.set(profileRef, updates, { merge: true });
+  });
+
+  return profileRef;
+}
+
+async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
   const leadRef = firestore.collection(QUICK_SIGNUP_COLLECTION).doc();
   const now = FieldValue.serverTimestamp();
+  const normalizedEmail = sanitizeEmail(email);
+
+  const profileRef = await upsertQuickLeadProfile({ role, nome, email: normalizedEmail, origem, referrer });
+
   const leadData = {
     role,
     nome,
-    email,
+    email: normalizedEmail,
     origem,
     referrer: sanitizeString(referrer || ""),
     status: "novo",
     createdAt: now,
     updatedAt: now,
+    profilePath: profileRef.path,
     mailStatus: "not-requested",
   };
 
@@ -196,7 +250,7 @@ async function createQuickSignupLead({
   try {
     const message = buildQuickSignupMailMessage({ name: nome, role });
     const mailDoc = await firestore.collection("mail").add({
-      to: [email],
+      to: [normalizedEmail],
       from: SUPPORT_SENDER,
       message,
       metadata: {
@@ -204,42 +258,65 @@ async function createQuickSignupLead({
         emailType: "quick-signup-lead",
         source: origem || REGISTER_CLIENT_SOURCE,
         leadId: leadRef.id,
+        profilePath: profileRef.path,
       },
     });
 
     mailId = mailDoc.id;
     mailStatus = "queued";
 
+    const mailUpdateTime = FieldValue.serverTimestamp();
+
     await leadRef.set(
       {
         mailStatus,
         mailId,
-        mailQueuedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        mailQueuedAt: mailUpdateTime,
+        updatedAt: mailUpdateTime,
+      },
+      { merge: true },
+    );
+
+    await profileRef.set(
+      {
+        lastLeadMailStatus: mailStatus,
+        lastLeadMailId: mailId,
+        lastLeadMailQueuedAt: mailUpdateTime,
       },
       { merge: true },
     );
   } catch (error) {
     functions.logger.error("Falha ao enfileirar e-mail de lead", {
-      email,
+      email: normalizedEmail,
       role,
       error: error?.message,
     });
 
     mailStatus = "error";
 
+    const mailUpdateTime = FieldValue.serverTimestamp();
+
     await leadRef.set(
       {
         mailStatus,
         mailError: error?.message || "unknown-error",
-        mailUpdatedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        mailUpdatedAt: mailUpdateTime,
+        updatedAt: mailUpdateTime,
+      },
+      { merge: true },
+    );
+
+    await profileRef.set(
+      {
+        lastLeadMailStatus: mailStatus,
+        lastLeadMailError: error?.message || "unknown-error",
+        lastLeadMailUpdatedAt: mailUpdateTime,
       },
       { merge: true },
     );
   }
 
-  return { id: leadRef.id, mailStatus, mailId };
+  return { id: leadRef.id, mailStatus, mailId, profilePath: profileRef.path };
 }
 
 function ensureSignupConfirmation(data, role) {
@@ -1106,6 +1183,7 @@ exports.registerClientAccount = functions
             status: "lead",
             type: leadRole,
             leadId: lead.id,
+            profilePath: lead.profilePath || null,
             mail: {
               status: lead.mailStatus,
               mailId: lead.mailId || null,
