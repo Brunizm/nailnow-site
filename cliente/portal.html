@@ -205,6 +205,29 @@
               Envie uma solicitação rápida para manicures NailNow e acompanhe o retorno diretamente pelo portal.
             </p>
           </div>
+          <div class="request-toolbar" aria-live="polite">
+            <div class="request-toolbar__pills">
+              <span id="search-chip-location" class="request-toolbar__chip request-toolbar__chip--muted"
+                >Defina o endereço</span
+              >
+              <span id="search-chip-service" class="request-toolbar__chip request-toolbar__chip--muted"
+                >Todos os serviços</span
+              >
+              <span id="search-chip-date" class="request-toolbar__chip request-toolbar__chip--muted"
+                >Data flexível</span
+              >
+            </div>
+            <div
+              id="search-progress"
+              class="request-toolbar__status"
+              role="status"
+              aria-live="polite"
+              hidden
+            >
+              <span class="request-toolbar__spinner" aria-hidden="true"></span>
+              <span>Procurando manicures próximas...</span>
+            </div>
+          </div>
           <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
             <div class="booking-card__field booking-card__field--wide booking-card__field--location">
               <label class="booking-card__label" for="search-location">Onde você quer ser atendida?</label>
@@ -278,7 +301,16 @@
             </div>
             <div class="booking-card__field" data-request-field="service" hidden>
               <label class="booking-card__label" for="request-service">Serviço</label>
+              <div
+                id="request-service-options"
+                class="service-options"
+                role="radiogroup"
+                aria-label="Serviço desejado"
+              ></div>
               <select id="request-service" class="booking-card__input booking-card__input--select"></select>
+              <p id="request-service-empty" class="service-options__empty" hidden>
+                Essa manicure confirma os serviços diretamente após receber sua solicitação.
+              </p>
             </div>
             <div class="booking-card__field" data-request-field="price" hidden>
               <label class="booking-card__label" for="request-price">Valor</label>
