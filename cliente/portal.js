@@ -63,6 +63,7 @@ const requestServiceSelect = document.getElementById("request-service");
 const requestPriceInput = document.getElementById("request-price");
 const requestDateInput = document.getElementById("request-date");
 const requestTimeInput = document.getElementById("request-time");
+const requestDatePickerButton = document.getElementById("request-date-picker");
 const requestLocationInput = document.getElementById("request-location");
 const requestNotesInput = document.getElementById("request-notes");
 const requestSubmitButton = document.getElementById("submit-request");
@@ -88,6 +89,80 @@ let geocodeAbortController = null;
 const MAX_SERVICE_OPTIONS = 5;
 const dateChipFormatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
 const timeChipFormatter = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+const TIME_SLOT_START_HOUR = 7;
+const TIME_SLOT_END_HOUR = 22;
+const TIME_SLOT_INTERVAL_MINUTES = 30;
+
+const formatTimeSlot = (hour, minute) => {
+  return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+};
+
+const ensureRequestTimeOptions = () => {
+  if (!requestTimeInput || requestTimeInput.tagName !== "SELECT") {
+    return;
+  }
+
+  const hasSlots = requestTimeInput.querySelector("option[data-slot='time']");
+  if (hasSlots) {
+    return;
+  }
+
+  let placeholderOption = requestTimeInput.querySelector("option[value='']");
+  if (!placeholderOption) {
+    placeholderOption = document.createElement("option");
+    placeholderOption.value = "";
+    requestTimeInput.prepend(placeholderOption);
+  }
+  placeholderOption.textContent = "Selecione um horário";
+  placeholderOption.dataset.placeholder = "true";
+  placeholderOption.disabled = true;
+
+  const fragment = document.createDocumentFragment();
+  for (let hour = TIME_SLOT_START_HOUR; hour <= TIME_SLOT_END_HOUR; hour += 1) {
+    for (let minute = 0; minute < 60; minute += TIME_SLOT_INTERVAL_MINUTES) {
+      if (hour === TIME_SLOT_END_HOUR && minute > 0) {
+        break;
+      }
+      const option = document.createElement("option");
+      const value = formatTimeSlot(hour, minute);
+      option.value = value;
+      option.textContent = value;
+      option.dataset.slot = "time";
+      fragment.appendChild(option);
+    }
+  }
+
+  requestTimeInput.appendChild(fragment);
+};
+
+const resetRequestTimeSelect = () => {
+  if (!requestTimeInput || requestTimeInput.tagName !== "SELECT") {
+    return;
+  }
+  const placeholderOption = requestTimeInput.querySelector("option[data-placeholder='true']");
+  if (placeholderOption) {
+    placeholderOption.selected = true;
+    requestTimeInput.value = "";
+  } else {
+    requestTimeInput.selectedIndex = 0;
+  }
+};
+
+ensureRequestTimeOptions();
+resetRequestTimeSelect();
+
+const openRequestDatePicker = () => {
+  if (!requestDateInput) {
+    return;
+  }
+  if (typeof requestDateInput.showPicker === "function") {
+    requestDateInput.showPicker();
+  } else {
+    requestDateInput.focus();
+    requestDateInput.click();
+  }
+};
 
 if (searchRadiusSelect) {
   const initialRadius = Number.parseFloat(searchRadiusSelect.value || "10");
@@ -1116,6 +1191,10 @@ const populateRequestForm = (professional) => {
     if (requestPriceInput) {
       requestPriceInput.value = "";
     }
+    if (requestDateInput) {
+      requestDateInput.value = "";
+    }
+    resetRequestTimeSelect();
     selectedService = null;
     setRequestFeedback("");
     updateSelectedServiceDetails();
@@ -1744,6 +1823,7 @@ const handleRequestSubmission = async (event) => {
     }
     if (requestTimeInput) {
       requestTimeInput.value = "";
+      resetRequestTimeSelect();
     }
     if (requestNotesInput) {
       requestNotesInput.value = "";
@@ -1817,6 +1897,10 @@ searchServiceSelect?.addEventListener("change", (event) => {
 requestServiceSelect?.addEventListener("change", handleServiceSelectionChange);
 requestDateInput?.addEventListener("change", updateRequestSubmitState);
 requestTimeInput?.addEventListener("change", updateRequestSubmitState);
+requestDatePickerButton?.addEventListener("click", (event) => {
+  event.preventDefault();
+  openRequestDatePicker();
+});
 requestLocationInput?.addEventListener("input", () => setRequestFeedback(""));
 requestNotesInput?.addEventListener("input", () => setRequestFeedback(""));
 requestForm?.addEventListener("submit", handleRequestSubmission);
