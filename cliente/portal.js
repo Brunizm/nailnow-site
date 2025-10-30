@@ -51,6 +51,8 @@ const professionalSearchInput = document.getElementById("professional-search");
 const professionalResults = document.getElementById("professional-results");
 const professionalResultsEmpty = document.getElementById("professional-results-empty");
 const searchLocationInput = document.getElementById("search-location");
+const searchLocationNumberInput = document.getElementById("search-location-number");
+const searchLocationComplementInput = document.getElementById("search-location-complement");
 const detectLocationButton = document.getElementById("detect-location");
 const searchLocationStatus = document.getElementById("search-location-status");
 const searchRadiusSelect = document.getElementById("search-radius");
@@ -65,6 +67,8 @@ const requestDateInput = document.getElementById("request-date");
 const requestTimeInput = document.getElementById("request-time");
 const requestDatePickerButton = document.getElementById("request-date-picker");
 const requestLocationInput = document.getElementById("request-location");
+const requestLocationNumberInput = document.getElementById("request-location-number");
+const requestLocationComplementInput = document.getElementById("request-location-complement");
 const requestNotesInput = document.getElementById("request-notes");
 const requestSubmitButton = document.getElementById("submit-request");
 const requestFeedback = document.getElementById("request-feedback");
@@ -474,6 +478,55 @@ const setSearchLoading = (loading) => {
     return;
   }
   searchProgress.hidden = !loading;
+};
+
+const markRequestFieldModified = (field) => {
+  if (!field) {
+    return;
+  }
+  if ((field.value || "").trim()) {
+    field.dataset.userModified = "true";
+  } else {
+    delete field.dataset.userModified;
+  }
+};
+
+const syncRequestLocationFromSearch = () => {
+  if (requestLocationInput && !requestLocationInput.dataset.userModified) {
+    const existing = requestLocationInput.value || "";
+    const sourceValue =
+      (searchLocationInput?.value && searchLocationInput.value) ||
+      customerLocation.label ||
+      existing;
+    requestLocationInput.value = sourceValue;
+  }
+  if (requestLocationNumberInput && !requestLocationNumberInput.dataset.userModified) {
+    const existing = requestLocationNumberInput.value || "";
+    const numberValue = searchLocationNumberInput?.value || existing;
+    requestLocationNumberInput.value = numberValue;
+  }
+  if (requestLocationComplementInput && !requestLocationComplementInput.dataset.userModified) {
+    const existing = requestLocationComplementInput.value || "";
+    const complementValue = searchLocationComplementInput?.value || existing;
+    requestLocationComplementInput.value = complementValue;
+  }
+};
+
+const buildFullLocationLabel = (street, number, complement) => {
+  const parts = [];
+  const base = (street || "").trim();
+  const numberPart = (number || "").trim();
+  const complementPart = (complement || "").trim();
+  if (base) {
+    parts.push(base);
+  }
+  if (numberPart) {
+    parts.push(`nº ${numberPart}`);
+  }
+  if (complementPart) {
+    parts.push(complementPart);
+  }
+  return parts.join(", ");
 };
 
 const formatDateChipValue = () => {
@@ -1194,6 +1247,18 @@ const populateRequestForm = (professional) => {
     if (requestDateInput) {
       requestDateInput.value = "";
     }
+    if (requestLocationInput) {
+      requestLocationInput.value = "";
+      delete requestLocationInput.dataset.userModified;
+    }
+    if (requestLocationNumberInput) {
+      requestLocationNumberInput.value = "";
+      delete requestLocationNumberInput.dataset.userModified;
+    }
+    if (requestLocationComplementInput) {
+      requestLocationComplementInput.value = "";
+      delete requestLocationComplementInput.dataset.userModified;
+    }
     resetRequestTimeSelect();
     selectedService = null;
     setRequestFeedback("");
@@ -1265,6 +1330,19 @@ const populateRequestForm = (professional) => {
       requestLocationInput.value = customerLocation.label;
     }
   }
+
+  if (requestLocationNumberInput && !requestLocationNumberInput.value && searchLocationNumberInput?.value) {
+    requestLocationNumberInput.value = searchLocationNumberInput.value;
+  }
+  if (
+    requestLocationComplementInput &&
+    !requestLocationComplementInput.value &&
+    searchLocationComplementInput?.value
+  ) {
+    requestLocationComplementInput.value = searchLocationComplementInput.value;
+  }
+
+  syncRequestLocationFromSearch();
 
   setRequestFeedback("");
   updateRequestSubmitState();
@@ -1377,6 +1455,7 @@ const setCustomerLocation = (coords, label = "", options = {}) => {
     updateProfessionalDistances();
     applyProfessionalFilters();
     updateSearchChips();
+    syncRequestLocationFromSearch();
     return;
   }
 
@@ -1397,6 +1476,7 @@ const setCustomerLocation = (coords, label = "", options = {}) => {
   updateProfessionalDistances();
   applyProfessionalFilters();
   updateSearchChips();
+  syncRequestLocationFromSearch();
 };
 
 const populateServiceFilterOptions = (catalog = []) => {
@@ -1745,7 +1825,14 @@ const handleServiceSelectionChange = () => {
   applySelectedService(index, selectedProfessional);
 };
 
-const buildRequestPayload = (requestId, location, notes) => {
+const buildRequestPayload = (
+  requestId,
+  location,
+  notes,
+  locationStreet,
+  locationNumber,
+  locationComplement,
+) => {
   const professionalCollection = selectedProfessional.collection || "profissionais";
   const clientCollection = currentProfile.collection || PROFILE_COLLECTIONS[0];
   const priceLabel =
@@ -1770,6 +1857,9 @@ const buildRequestPayload = (requestId, location, notes) => {
     date: requestDateInput.value,
     time: requestTimeInput.value,
     location,
+    locationStreet: locationStreet || location,
+    locationNumber: locationNumber || "",
+    locationComplement: locationComplement || "",
     note: notes,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -1791,7 +1881,10 @@ const handleRequestSubmission = async (event) => {
     return;
   }
 
-  const location = (requestLocationInput?.value || currentProfile?.endereco || "").trim();
+  const locationStreet = (requestLocationInput?.value || currentProfile?.endereco || "").trim();
+  const locationNumber = (requestLocationNumberInput?.value || "").trim();
+  const locationComplement = (requestLocationComplementInput?.value || "").trim();
+  const location = buildFullLocationLabel(locationStreet, locationNumber, locationComplement) || locationStreet;
   const notes = (requestNotesInput?.value || "").trim();
 
   if (requestSubmitButton) {
@@ -1809,7 +1902,14 @@ const handleRequestSubmission = async (event) => {
     const clientRef = doc(db, clientCollection, currentProfile.id);
     const clientPendingRef = doc(collection(clientRef, appointmentCollections.pending), requestId);
 
-    const payload = buildRequestPayload(requestId, location, notes);
+    const payload = buildRequestPayload(
+      requestId,
+      location,
+      notes,
+      locationStreet,
+      locationNumber,
+      locationComplement,
+    );
 
     await Promise.all([
       setDoc(professionalPendingRef, payload),
@@ -1852,6 +1952,9 @@ professionalSearchInput?.addEventListener("input", (event) => {
   filterProfessionals(event.target.value);
 });
 
+searchLocationInput?.addEventListener("input", () => {
+  syncRequestLocationFromSearch();
+});
 searchLocationInput?.addEventListener("change", handleManualLocationLookup);
 searchLocationInput?.addEventListener("search", handleManualLocationLookup);
 searchLocationInput?.addEventListener("keydown", (event) => {
@@ -1860,6 +1963,13 @@ searchLocationInput?.addEventListener("keydown", (event) => {
     handleManualLocationLookup();
   }
 });
+
+const handleSearchExtrasInput = () => {
+  syncRequestLocationFromSearch();
+};
+
+searchLocationNumberInput?.addEventListener("input", handleSearchExtrasInput);
+searchLocationComplementInput?.addEventListener("input", handleSearchExtrasInput);
 
 detectLocationButton?.addEventListener("click", handleDetectLocation);
 
@@ -1901,10 +2011,22 @@ requestDatePickerButton?.addEventListener("click", (event) => {
   event.preventDefault();
   openRequestDatePicker();
 });
-requestLocationInput?.addEventListener("input", () => setRequestFeedback(""));
+requestLocationInput?.addEventListener("input", (event) => {
+  markRequestFieldModified(event.target);
+  setRequestFeedback("");
+});
+requestLocationNumberInput?.addEventListener("input", (event) => {
+  markRequestFieldModified(event.target);
+  setRequestFeedback("");
+});
+requestLocationComplementInput?.addEventListener("input", (event) => {
+  markRequestFieldModified(event.target);
+  setRequestFeedback("");
+});
 requestNotesInput?.addEventListener("input", () => setRequestFeedback(""));
 requestForm?.addEventListener("submit", handleRequestSubmission);
 
+syncRequestLocationFromSearch();
 updateSearchChips();
 
 const updateMetrics = (pending, confirmed, cancelled) => {

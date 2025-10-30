@@ -809,6 +809,10 @@ main {
   color: var(--text-muted);
 }
 
+.booking-card__status {
+  margin-top: 0.75rem;
+}
+
 .request-toolbar__spinner {
   width: 18px;
   height: 18px;
@@ -40378,6 +40382,26 @@ main {
 @media (min-width: 720px) {
   .booking-card__row--filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.booking-card__row--address-extras {
+  gap: clamp(0.65rem, 2.5vw, 1.1rem);
+}
+
+@media (min-width: 640px) {
+  .booking-card__row--address-extras {
+    grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
+  }
+}
+
+.booking-card__field--number .booking-card__input {
+  max-width: 9rem;
+}
+
+@media (max-width: 639px) {
+  .booking-card__field--number .booking-card__input {
+    max-width: none;
   }
 }
 

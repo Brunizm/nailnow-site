@@ -180,36 +180,13 @@
                 Envie uma solicitação rápida para manicures NailNow e acompanhe o retorno diretamente pelo portal.
               </p>
             </div>
-            <div class="request-toolbar" aria-live="polite">
-              <div class="request-toolbar__pills">
-                <span id="search-chip-location" class="request-toolbar__chip request-toolbar__chip--muted"
-                  >Defina o endereço</span
-                >
-                <span id="search-chip-service" class="request-toolbar__chip request-toolbar__chip--muted"
-                  >Todos os serviços</span
-                >
-                <span id="search-chip-date" class="request-toolbar__chip request-toolbar__chip--muted"
-                  >Data flexível</span
-                >
-              </div>
-              <div
-                id="search-progress"
-                class="request-toolbar__status"
-                role="status"
-                aria-live="polite"
-                hidden
-              >
-                <span class="request-toolbar__spinner" aria-hidden="true"></span>
-                <span>Procurando manicures próximas...</span>
-              </div>
-            </div>
           </div>
           <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
             <div class="booking-card__layout">
               <div class="booking-card__column booking-card__column--search">
                 <div class="booking-card__field booking-card__field--wide booking-card__field--location">
                   <label class="booking-card__label" for="search-location">Onde você quer ser atendida?</label>
-                  <div class="booking-card__control booking-card__control--line booking-card__control--with-action">
+                  <div class="booking-card__control booking-card__control--with-action">
                     <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
                       <path
                         d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
@@ -224,7 +201,40 @@
                     />
                     <button type="button" id="detect-location" class="booking-card__action">Usar localização</button>
                   </div>
+                  <div class="booking-card__row booking-card__row--address-extras">
+                    <div class="booking-card__field booking-card__field--number">
+                      <label class="booking-card__label" for="search-location-number">Número</label>
+                      <input
+                        type="text"
+                        id="search-location-number"
+                        class="booking-card__input"
+                        inputmode="numeric"
+                        autocomplete="address-line2"
+                        placeholder="Ex: 123"
+                      />
+                    </div>
+                    <div class="booking-card__field booking-card__field--complement">
+                      <label class="booking-card__label" for="search-location-complement">Complemento</label>
+                      <input
+                        type="text"
+                        id="search-location-complement"
+                        class="booking-card__input"
+                        autocomplete="address-line3"
+                        placeholder="Apartamento, bloco, referência"
+                      />
+                    </div>
+                  </div>
                   <p id="search-location-status" class="auth-status" role="status" aria-live="polite" hidden></p>
+                  <div
+                    id="search-progress"
+                    class="request-toolbar__status booking-card__status"
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                  >
+                    <span class="request-toolbar__spinner" aria-hidden="true"></span>
+                    <span>Procurando manicures próximas...</span>
+                  </div>
                 </div>
                 <div class="booking-card__row booking-card__row--filters">
                   <div class="booking-card__field">
@@ -331,7 +341,7 @@
                 </div>
                 <div class="booking-card__field booking-card__field--location" data-request-field="location" hidden>
                   <label class="booking-card__label" for="request-location">Endereço do atendimento</label>
-                  <div class="booking-card__control booking-card__control--line">
+                  <div class="booking-card__control">
                     <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
                       <path
                         d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
@@ -342,6 +352,29 @@
                       type="text"
                       class="booking-card__input"
                       placeholder="Digite o endereço do atendimento"
+                    />
+                  </div>
+                </div>
+                <div class="booking-card__row booking-card__row--address-extras" data-request-field="location-details" hidden>
+                  <div class="booking-card__field booking-card__field--number">
+                    <label class="booking-card__label" for="request-location-number">Número</label>
+                    <input
+                      id="request-location-number"
+                      type="text"
+                      class="booking-card__input"
+                      inputmode="numeric"
+                      autocomplete="address-line2"
+                      placeholder="Ex: 123"
+                    />
+                  </div>
+                  <div class="booking-card__field booking-card__field--complement">
+                    <label class="booking-card__label" for="request-location-complement">Complemento</label>
+                    <input
+                      id="request-location-complement"
+                      type="text"
+                      class="booking-card__input"
+                      autocomplete="address-line3"
+                      placeholder="Apartamento, bloco, referência"
                     />
                   </div>
                 </div>
