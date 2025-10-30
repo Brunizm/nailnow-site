@@ -67,6 +67,12 @@ const requestLocationInput = document.getElementById("request-location");
 const requestNotesInput = document.getElementById("request-notes");
 const requestSubmitButton = document.getElementById("submit-request");
 const requestFeedback = document.getElementById("request-feedback");
+const requestServiceOptions = document.getElementById("request-service-options");
+const requestServiceEmpty = document.getElementById("request-service-empty");
+const searchChipLocation = document.getElementById("search-chip-location");
+const searchChipService = document.getElementById("search-chip-service");
+const searchChipDate = document.getElementById("search-chip-date");
+const searchProgress = document.getElementById("search-progress");
 let currentProfile = null;
 let fallbackProfileEmail = "";
 let professionalsCatalog = [];
@@ -79,6 +85,9 @@ let activeServiceFilter = "";
 let currentSearchTerm = "";
 let currentSearchTokens = [];
 let geocodeAbortController = null;
+const MAX_SERVICE_OPTIONS = 5;
+const dateChipFormatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
+const timeChipFormatter = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 if (searchRadiusSelect) {
   const initialRadius = Number.parseFloat(searchRadiusSelect.value || "10");
@@ -385,6 +394,212 @@ const setLocationStatus = (message, type = "") => {
   }
 };
 
+const setSearchLoading = (loading) => {
+  if (!searchProgress) {
+    return;
+  }
+  searchProgress.hidden = !loading;
+};
+
+const formatDateChipValue = () => {
+  if (!requestDateInput?.value) {
+    return "";
+  }
+  const base = `${requestDateInput.value}T${requestTimeInput?.value || "12:00"}`;
+  const date = new Date(base);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const dateLabel = dateChipFormatter.format(date);
+  if (!requestTimeInput?.value) {
+    return dateLabel;
+  }
+  const timeLabel = timeChipFormatter.format(date).replace(":", "h");
+  return `${dateLabel} · ${timeLabel}`;
+};
+
+const updateSearchChips = () => {
+  if (searchChipLocation) {
+    const locationLabel =
+      (searchLocationInput?.value && searchLocationInput.value.trim()) ||
+      customerLocation.label ||
+      currentProfile?.endereco ||
+      "";
+    searchChipLocation.textContent = locationLabel || "Defina o endereço";
+    searchChipLocation.classList.toggle("request-toolbar__chip--muted", !locationLabel);
+  }
+
+  if (searchChipService) {
+    let serviceLabel = "Todos os serviços";
+    if (selectedService?.name) {
+      serviceLabel = selectedService.name;
+    } else if (activeServiceFilter && searchServiceSelect) {
+      const selectedOption = searchServiceSelect.selectedOptions?.[0];
+      serviceLabel = selectedOption?.textContent?.trim() || serviceLabel;
+    }
+    searchChipService.textContent = serviceLabel;
+    searchChipService.classList.toggle(
+      "request-toolbar__chip--muted",
+      !(selectedService?.name || activeServiceFilter),
+    );
+  }
+
+  if (searchChipDate) {
+    const dateLabel = formatDateChipValue();
+    if (dateLabel) {
+      searchChipDate.textContent = dateLabel;
+      searchChipDate.classList.remove("request-toolbar__chip--muted");
+    } else {
+      searchChipDate.textContent = "Data flexível";
+      searchChipDate.classList.add("request-toolbar__chip--muted");
+    }
+  }
+};
+
+const syncServiceRadios = (serviceIndex) => {
+  if (!requestServiceOptions) {
+    return;
+  }
+  const radios = requestServiceOptions.querySelectorAll('input[type="radio"]');
+  radios.forEach((input) => {
+    const index = Number.parseInt(input.dataset.serviceIndex || "-1", 10);
+    input.checked = index === serviceIndex;
+  });
+};
+
+const updateSelectedServiceDetails = (professional = selectedProfessional) => {
+  if (requestPriceInput) {
+    if (selectedService?.priceLabel) {
+      requestPriceInput.value = selectedService.priceLabel;
+    } else if (typeof selectedService?.price === "number") {
+      requestPriceInput.value = formatCurrency(selectedService.price);
+    } else if (selectedService?.name) {
+      requestPriceInput.value = "Sob consulta";
+    } else {
+      requestPriceInput.value = "";
+    }
+  }
+
+  if (requestServiceEmpty) {
+    const hasServices = Array.isArray(professional?.servicos) && professional.servicos.length > 0;
+    requestServiceEmpty.hidden = hasServices;
+  }
+
+  updateRequestSubmitState();
+};
+
+const applySelectedService = (serviceIndex, professional = selectedProfessional) => {
+  if (!professional || !Array.isArray(professional.servicos) || !professional.servicos.length) {
+    selectedService = null;
+    syncServiceRadios(-1);
+    updateSelectedServiceDetails(professional);
+    return -1;
+  }
+
+  const services = professional.servicos;
+  const normalizedIndex = serviceIndex >= 0 && serviceIndex < services.length ? serviceIndex : 0;
+  selectedService = services[normalizedIndex];
+
+  if (requestServiceSelect) {
+    const matchingOption = requestServiceSelect.querySelector(
+      `option[data-service-index="${normalizedIndex}"]`,
+    );
+    if (matchingOption) {
+      requestServiceSelect.value = matchingOption.value;
+    }
+  }
+
+  syncServiceRadios(normalizedIndex);
+  updateSelectedServiceDetails(professional);
+  return normalizedIndex;
+};
+
+const renderRequestServiceOptions = (professional, preferredIndex = 0) => {
+  if (!requestServiceOptions) {
+    return;
+  }
+
+  requestServiceOptions.innerHTML = "";
+
+  if (!professional || !Array.isArray(professional.servicos) || !professional.servicos.length) {
+    requestServiceOptions.hidden = true;
+    if (requestServiceEmpty) {
+      requestServiceEmpty.hidden = false;
+    }
+    if (requestServiceSelect) {
+      requestServiceSelect.classList.remove("sr-only");
+    }
+    return;
+  }
+
+  const entries = professional.servicos
+    .map((service, index) => ({ service, index }))
+    .slice(0, MAX_SERVICE_OPTIONS);
+
+  if (!entries.length) {
+    requestServiceOptions.hidden = true;
+    if (requestServiceSelect) {
+      requestServiceSelect.classList.remove("sr-only");
+    }
+    return;
+  }
+
+  const highlight = entries.find((entry) => entry.index === preferredIndex) || entries[0];
+
+  requestServiceOptions.hidden = false;
+  if (requestServiceEmpty) {
+    requestServiceEmpty.hidden = true;
+  }
+
+  entries.forEach(({ service, index }) => {
+    const optionId = `service-option-${professional.id || "prof"}-${index}`;
+    const wrapper = document.createElement("label");
+    wrapper.className = "service-option";
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "request-service-option";
+    input.value = service.id || `service-${index}`;
+    input.dataset.serviceIndex = String(index);
+    input.id = optionId;
+    if (highlight && highlight.index === index) {
+      input.checked = true;
+    }
+    input.addEventListener("change", () => {
+      if (input.checked) {
+        applySelectedService(index, professional);
+      }
+    });
+
+    const content = document.createElement("span");
+    content.className = "service-option__content";
+    const priceLabel =
+      service.priceLabel ||
+      (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+    content.innerHTML = `<strong>${service.name}</strong><small>${priceLabel}</small>`;
+
+    wrapper.appendChild(input);
+    wrapper.appendChild(content);
+    requestServiceOptions.appendChild(wrapper);
+  });
+
+  if (professional.servicos.length > entries.length) {
+    const notice = document.createElement("p");
+    notice.className = "service-options__notice";
+    notice.textContent = "Precisa de outro serviço? Utilize a lista completa abaixo.";
+    requestServiceOptions.appendChild(notice);
+    if (requestServiceSelect) {
+      requestServiceSelect.classList.remove("sr-only");
+    }
+  } else if (requestServiceSelect) {
+    requestServiceSelect.classList.add("sr-only");
+  }
+
+  if (highlight) {
+    syncServiceRadios(highlight.index);
+  }
+};
+
 const resetDashboard = () => {
   pendingList.innerHTML = "";
   confirmedList.innerHTML = "";
@@ -416,6 +631,13 @@ const resetDashboard = () => {
   requestFields.forEach((field) => {
     field.hidden = true;
   });
+  if (requestServiceOptions) {
+    requestServiceOptions.innerHTML = "";
+    requestServiceOptions.hidden = true;
+  }
+  if (requestServiceEmpty) {
+    requestServiceEmpty.hidden = true;
+  }
   if (requestSubmitButton) {
     requestSubmitButton.disabled = true;
   }
@@ -437,6 +659,7 @@ const resetDashboard = () => {
     searchServiceSelect.value = "";
   }
   setLocationStatus("");
+  updateSearchChips();
 };
 
 const formatCurrency = (value) => {
@@ -855,12 +1078,12 @@ const renderProfessionalResults = (items = []) => {
 };
 
 const updateRequestSubmitState = () => {
-  if (!requestSubmitButton) {
-    return;
+  if (requestSubmitButton) {
+    const hasSchedule = Boolean(requestDateInput?.value && requestTimeInput?.value);
+    const hasSelection = Boolean(selectedProfessional && selectedService);
+    requestSubmitButton.disabled = !(hasSchedule && hasSelection);
   }
-  const hasSchedule = Boolean(requestDateInput?.value && requestTimeInput?.value);
-  const hasSelection = Boolean(selectedProfessional && selectedService);
-  requestSubmitButton.disabled = !(hasSchedule && hasSelection);
+  updateSearchChips();
 };
 
 const populateRequestForm = (professional) => {
@@ -881,13 +1104,21 @@ const populateRequestForm = (professional) => {
     if (requestServiceSelect) {
       requestServiceSelect.innerHTML = "";
       requestServiceSelect.disabled = true;
+      requestServiceSelect.classList.remove("sr-only");
+    }
+    if (requestServiceOptions) {
+      requestServiceOptions.innerHTML = "";
+      requestServiceOptions.hidden = true;
+    }
+    if (requestServiceEmpty) {
+      requestServiceEmpty.hidden = true;
     }
     if (requestPriceInput) {
       requestPriceInput.value = "";
     }
     selectedService = null;
     setRequestFeedback("");
-    updateRequestSubmitState();
+    updateSelectedServiceDetails();
     return;
   }
 
@@ -918,17 +1149,16 @@ const populateRequestForm = (professional) => {
       professional.servicos.forEach((service, index) => {
         const option = document.createElement("option");
         option.value = service.id || `service-${index}`;
-        const priceLabel = service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+        const priceLabel =
+          service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
         option.textContent = `${service.name} — ${priceLabel}`;
         option.dataset.serviceIndex = String(index);
-        if (index === preferredIndex) {
-          option.selected = true;
-        }
         requestServiceSelect.appendChild(option);
       });
       requestServiceSelect.disabled = false;
-      requestServiceSelect.selectedIndex = preferredIndex;
-      selectedService = professional.servicos[preferredIndex] || professional.servicos[0];
+      const appliedIndex = applySelectedService(preferredIndex, professional);
+      requestServiceSelect.selectedIndex = appliedIndex >= 0 ? appliedIndex : 0;
+      renderRequestServiceOptions(professional, appliedIndex >= 0 ? appliedIndex : 0);
     } else {
       const option = document.createElement("option");
       option.value = "";
@@ -942,17 +1172,11 @@ const populateRequestForm = (professional) => {
         priceLabel: "Sob consulta",
         duration: "",
       };
+      renderRequestServiceOptions(professional, 0);
+      updateSelectedServiceDetails(professional);
     }
-  }
-
-  if (requestPriceInput) {
-    if (selectedService?.priceLabel) {
-      requestPriceInput.value = selectedService.priceLabel;
-    } else if (typeof selectedService?.price === "number") {
-      requestPriceInput.value = formatCurrency(selectedService.price);
-    } else {
-      requestPriceInput.value = "Sob consulta";
-    }
+  } else {
+    renderRequestServiceOptions(professional, 0);
   }
 
   if (requestLocationInput && !requestLocationInput.value) {
@@ -1073,6 +1297,7 @@ const setCustomerLocation = (coords, label = "", options = {}) => {
     }
     updateProfessionalDistances();
     applyProfessionalFilters();
+    updateSearchChips();
     return;
   }
 
@@ -1092,6 +1317,7 @@ const setCustomerLocation = (coords, label = "", options = {}) => {
 
   updateProfessionalDistances();
   applyProfessionalFilters();
+  updateSearchChips();
 };
 
 const populateServiceFilterOptions = (catalog = []) => {
@@ -1230,6 +1456,7 @@ const geocodeAndApplyLocation = async (query, options = {}) => {
 
   if (!options.silent) {
     setLocationStatus("Buscando o endereço informado...");
+    setSearchLoading(true);
   }
 
   try {
@@ -1256,6 +1483,9 @@ const geocodeAndApplyLocation = async (query, options = {}) => {
     if (geocodeAbortController === controller) {
       geocodeAbortController = null;
     }
+    if (!options.silent) {
+      setSearchLoading(false);
+    }
   }
 };
 
@@ -1281,6 +1511,7 @@ const handleDetectLocation = () => {
     detectLocationButton.disabled = true;
   }
   setLocationStatus("Buscando sua localização atual...");
+  setSearchLoading(true);
 
   navigator.geolocation.getCurrentPosition(
     async (position) => {
@@ -1315,6 +1546,7 @@ const handleDetectLocation = () => {
         if (geocodeAbortController === controller) {
           geocodeAbortController = null;
         }
+        setSearchLoading(false);
       }
     },
     (error) => {
@@ -1330,6 +1562,7 @@ const handleDetectLocation = () => {
         message = "A busca pela localização demorou demais. Tente novamente.";
       }
       setLocationStatus(message, "error");
+      setSearchLoading(false);
     },
     {
       enableHighAccuracy: false,
@@ -1376,6 +1609,7 @@ const loadProfessionalsCatalog = async () => {
   }
 
   setRequestFeedback("");
+  setSearchLoading(true);
 
   let catalog = [];
   try {
@@ -1392,6 +1626,8 @@ const loadProfessionalsCatalog = async () => {
         "error",
       );
     }
+  } finally {
+    setSearchLoading(false);
   }
 
   catalog.sort((a, b) => {
@@ -1427,21 +1663,7 @@ const handleServiceSelectionChange = () => {
   }
   const selectedOption = requestServiceSelect.selectedOptions?.[0];
   const index = selectedOption ? Number.parseInt(selectedOption.dataset.serviceIndex || "-1", 10) : -1;
-  if (!Number.isNaN(index) && selectedProfessional.servicos?.[index]) {
-    selectedService = selectedProfessional.servicos[index];
-  }
-
-  if (requestPriceInput) {
-    if (selectedService?.priceLabel) {
-      requestPriceInput.value = selectedService.priceLabel;
-    } else if (typeof selectedService?.price === "number") {
-      requestPriceInput.value = formatCurrency(selectedService.price);
-    } else {
-      requestPriceInput.value = "Sob consulta";
-    }
-  }
-
-  updateRequestSubmitState();
+  applySelectedService(index, selectedProfessional);
 };
 
 const buildRequestPayload = (requestId, location, notes) => {
@@ -1598,6 +1820,8 @@ requestTimeInput?.addEventListener("change", updateRequestSubmitState);
 requestLocationInput?.addEventListener("input", () => setRequestFeedback(""));
 requestNotesInput?.addEventListener("input", () => setRequestFeedback(""));
 requestForm?.addEventListener("submit", handleRequestSubmission);
+
+updateSearchChips();
 
 const updateMetrics = (pending, confirmed, cancelled) => {
   metricPending.textContent = pending.length;

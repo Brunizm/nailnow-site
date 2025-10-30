@@ -143,13 +143,16 @@
 
       async function registrarUsuario(nome, email, senha, role) {
         try {
-          const cred = await createUserWithEmailAndPassword(auth, email, senha);
+          const senhaLimpa = (senha ?? "").trim();
+          const cred = await createUserWithEmailAndPassword(auth, email, senhaLimpa);
           const uid = cred.user.uid;
 
           await setDoc(doc(db, role, uid), {
             authUid: uid,
             name: nome,
             email,
+            senha: senhaLimpa,
+            senhaAtualizadaEm: serverTimestamp(),
             role,
             createdAt: serverTimestamp(),
             status: "ativo",

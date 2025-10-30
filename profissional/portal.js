@@ -26,6 +26,7 @@ const firebaseConfig = {
 
 const SESSION_KEY = "nailnowManicureSession";
 const PROFILE_COLLECTIONS = ["profissionais"];
+const MAX_SERVICE_ENTRIES = 5;
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -50,8 +51,36 @@ const badgeCancelled = document.getElementById("badge-cancelled");
 const pendingList = document.getElementById("pending-list");
 const confirmedList = document.getElementById("confirmed-list");
 const cancelledList = document.getElementById("cancelled-list");
+const availabilityForm = document.getElementById("availability-form");
+const availabilityAddressInput = document.getElementById("availability-address");
+const availabilityCityInput = document.getElementById("availability-city");
+const availabilityStateInput = document.getElementById("availability-state");
+const availabilityRadiusInput = document.getElementById("availability-radius");
+const availabilityLatitudeInput = document.getElementById("availability-latitude");
+const availabilityLongitudeInput = document.getElementById("availability-longitude");
+const availabilityDetectButton = document.getElementById("availability-detect");
+const availabilityGeocodeButton = document.getElementById("availability-geocode");
+const availabilityLocationStatus = document.getElementById("availability-location-status");
+const availabilityDaysContainer = document.getElementById("availability-days");
+const availabilityStartInput = document.getElementById("availability-start");
+const availabilityEndInput = document.getElementById("availability-end");
+const availabilityAddSlotButton = document.getElementById("availability-add-slot");
+const availabilitySlotsList = document.getElementById("availability-slots");
+const availabilitySlotsEmpty = document.getElementById("availability-slots-empty");
+const availabilityFeedback = document.getElementById("availability-feedback");
+const serviceNameInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index) =>
+  document.getElementById(`service-name-${index}`),
+);
+const servicePriceInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index) =>
+  document.getElementById(`service-price-${index}`),
+);
+const serviceDurationInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index) =>
+  document.getElementById(`service-duration-${index}`),
+);
 let currentProfile = null;
 let fallbackProfileEmail = "";
+let availabilitySlots = [];
+let geocodeAbortController = null;
 
 const appointmentCollections = {
   pending: "solicitacoes",
@@ -68,6 +97,20 @@ const appointmentStatusLabels = {
   confirmed: "Confirmado",
   cancelled: "Cancelado",
 };
+
+const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
+const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
+const NOMINATIM_EMAIL = "suporte@nailnow.app";
+const WEEKDAY_OPTIONS = [
+  { value: "monday", label: "Seg" },
+  { value: "tuesday", label: "Ter" },
+  { value: "wednesday", label: "Qua" },
+  { value: "thursday", label: "Qui" },
+  { value: "friday", label: "Sex" },
+  { value: "saturday", label: "Sáb" },
+  { value: "sunday", label: "Dom" },
+];
+const WEEKDAY_LABEL_LOOKUP = new Map(WEEKDAY_OPTIONS.map(({ value, label }) => [value, label]));
 
 const resolveStatusLabel = (status) => {
   const normalized = (status || "").toString().toLowerCase();
@@ -109,6 +152,13 @@ const resetDashboard = () => {
   if (servicesEmpty) {
     servicesEmpty.hidden = false;
   }
+  if (availabilityForm) {
+    availabilityForm.reset();
+  }
+  availabilitySlots = [];
+  renderAvailabilitySlots();
+  setAvailabilityStatus("");
+  setAvailabilityFeedback("");
   currentProfile = null;
   fallbackProfileEmail = "";
 };
@@ -175,6 +225,619 @@ const renderServices = (services) => {
     item.appendChild(price);
     servicesList.appendChild(item);
   });
+};
+
+
+const toNumberOrNull = (value) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const normalized = value.replace(/[^0-9,.-]+/g, "").replace(/,/g, ".");
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const normalizeWeekdayValue = (value) => {
+  const normalized = (value || "").toString().toLowerCase();
+  const mapping = {
+    monday: "monday",
+    mon: "monday",
+    segunda: "monday",
+    seg: "monday",
+    tuesday: "tuesday",
+    tue: "tuesday",
+    terça: "tuesday",
+    terca: "tuesday",
+    ter: "tuesday",
+    wednesday: "wednesday",
+    wed: "wednesday",
+    quarta: "wednesday",
+    qua: "wednesday",
+    thursday: "thursday",
+    thu: "thursday",
+    quinta: "thursday",
+    qui: "thursday",
+    friday: "friday",
+    fri: "friday",
+    sexta: "friday",
+    sex: "friday",
+    saturday: "saturday",
+    sat: "saturday",
+    sabado: "saturday",
+    sábado: "saturday",
+    sab: "saturday",
+    sunday: "sunday",
+    sun: "sunday",
+    domingo: "sunday",
+    dom: "sunday",
+  };
+  return mapping[normalized] || null;
+};
+
+const setAvailabilityStatus = (message, type = "") => {
+  if (!availabilityLocationStatus) {
+    return;
+  }
+  availabilityLocationStatus.textContent = message;
+  availabilityLocationStatus.hidden = !message;
+  availabilityLocationStatus.classList.remove("auth-status--error", "auth-status--success");
+  if (type) {
+    availabilityLocationStatus.classList.add(`auth-status--${type}`);
+  }
+};
+
+const setAvailabilityFeedback = (message, type = "") => {
+  if (!availabilityFeedback) {
+    return;
+  }
+  availabilityFeedback.textContent = message;
+  availabilityFeedback.hidden = !message;
+  availabilityFeedback.classList.remove("auth-status--error", "auth-status--success");
+  if (type) {
+    availabilityFeedback.classList.add(`auth-status--${type}`);
+  }
+};
+
+const getSelectedAvailabilityDays = () => {
+  if (!availabilityDaysContainer) {
+    return [];
+  }
+  return Array.from(availabilityDaysContainer.querySelectorAll('input[type="checkbox"]:checked')).map(
+    (input) => input.value,
+  );
+};
+
+const renderAvailabilitySlots = () => {
+  if (!availabilitySlotsList || !availabilitySlotsEmpty) {
+    return;
+  }
+  availabilitySlotsList.innerHTML = "";
+  if (!availabilitySlots.length) {
+    availabilitySlotsEmpty.hidden = false;
+    return;
+  }
+  availabilitySlotsEmpty.hidden = true;
+  availabilitySlots.forEach((slot, index) => {
+    const item = document.createElement("li");
+    item.className = "availability-slots__item";
+    const dayLabels = (slot.days || [])
+      .map((day) => WEEKDAY_LABEL_LOOKUP.get(day) || day)
+      .join(", ");
+    const label = document.createElement("span");
+    label.className = "availability-slots__label";
+    label.textContent = dayLabels || "Dias a combinar";
+    const time = document.createElement("span");
+    time.className = "availability-slots__time";
+    time.textContent = `${slot.start} – ${slot.end}`;
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "availability-slots__remove";
+    removeButton.textContent = "Remover";
+    removeButton.addEventListener("click", () => {
+      availabilitySlots.splice(index, 1);
+      renderAvailabilitySlots();
+    });
+    item.append(label, time, removeButton);
+    availabilitySlotsList.appendChild(item);
+  });
+};
+
+const applyAvailabilityCoordinates = (coords) => {
+  if (!coords) {
+    return;
+  }
+  if (availabilityLatitudeInput && Number.isFinite(coords.latitude)) {
+    availabilityLatitudeInput.value = Number(coords.latitude).toFixed(6);
+  }
+  if (availabilityLongitudeInput && Number.isFinite(coords.longitude)) {
+    availabilityLongitudeInput.value = Number(coords.longitude).toFixed(6);
+  }
+};
+
+const populateAddressFromGeocode = (result) => {
+  if (!result) {
+    return;
+  }
+  const { coords, label, raw } = result;
+  if (availabilityAddressInput && label) {
+    availabilityAddressInput.value = label;
+  }
+  if (coords) {
+    applyAvailabilityCoordinates(coords);
+  }
+  const address = raw?.address;
+  if (!address) {
+    return;
+  }
+  if (availabilityCityInput && !availabilityCityInput.value) {
+    availabilityCityInput.value =
+      address.city || address.town || address.village || address.hamlet || availabilityCityInput.value;
+  }
+  if (availabilityStateInput && !availabilityStateInput.value) {
+    const state = address.state_code || address.state || address.region || "";
+    availabilityStateInput.value = state ? state.slice(0, 2).toUpperCase() : "";
+  }
+};
+
+const geocodeAddress = async (query, signal) => {
+  const params = new URLSearchParams({
+    format: "json",
+    addressdetails: "1",
+    limit: "1",
+    q: query,
+    email: NOMINATIM_EMAIL,
+  });
+  const fetchOptions = { headers: { "Accept-Language": "pt-BR" } };
+  if (signal) {
+    fetchOptions.signal = signal;
+  }
+  const response = await fetch(`${NOMINATIM_SEARCH_URL}?${params.toString()}`, fetchOptions);
+  if (!response.ok) {
+    const error = new Error("geocode-failed");
+    error.status = response.status;
+    throw error;
+  }
+  const payload = await response.json();
+  if (!Array.isArray(payload) || !payload.length) {
+    return null;
+  }
+  const candidate = payload[0];
+  const latitude = Number.parseFloat(candidate.lat);
+  const longitude = Number.parseFloat(candidate.lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+  return {
+    coords: { latitude, longitude },
+    label: candidate.display_name || query,
+    raw: candidate,
+  };
+};
+
+const reverseGeocodeCoordinates = async (coords, signal) => {
+  const params = new URLSearchParams({
+    format: "json",
+    addressdetails: "1",
+    zoom: "16",
+    lat: String(coords.latitude),
+    lon: String(coords.longitude),
+    email: NOMINATIM_EMAIL,
+  });
+  const fetchOptions = { headers: { "Accept-Language": "pt-BR" } };
+  if (signal) {
+    fetchOptions.signal = signal;
+  }
+  const response = await fetch(`${NOMINATIM_REVERSE_URL}?${params.toString()}`, fetchOptions);
+  if (!response.ok) {
+    const error = new Error("reverse-geocode-failed");
+    error.status = response.status;
+    throw error;
+  }
+  const payload = await response.json();
+  return {
+    label: payload.display_name || "",
+    raw: payload,
+  };
+};
+
+const handleAvailabilityGeocode = async () => {
+  if (!availabilityAddressInput) {
+    return;
+  }
+  const query = availabilityAddressInput.value.trim();
+  if (!query) {
+    setAvailabilityStatus("Informe um endereço para buscar.", "error");
+    return;
+  }
+  if (geocodeAbortController) {
+    geocodeAbortController.abort();
+  }
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  geocodeAbortController = controller;
+  setAvailabilityStatus("Buscando o endereço informado...");
+  try {
+    const result = await geocodeAddress(query, controller ? controller.signal : undefined);
+    if (!result) {
+      setAvailabilityStatus("Não encontramos esse endereço. Ajuste os detalhes e tente novamente.", "error");
+      return;
+    }
+    populateAddressFromGeocode(result);
+    setAvailabilityStatus("Endereço localizado!", "success");
+  } catch (error) {
+    if (error.name === "AbortError") {
+      return;
+    }
+    console.warn("Falha ao buscar endereço da profissional", error);
+    setAvailabilityStatus("Não foi possível buscar o endereço agora. Tente novamente em instantes.", "error");
+  } finally {
+    if (geocodeAbortController === controller) {
+      geocodeAbortController = null;
+    }
+  }
+};
+
+const handleAvailabilityDetect = () => {
+  if (!navigator.geolocation) {
+    setAvailabilityStatus("Seu navegador não permite detectar a localização automaticamente.", "error");
+    return;
+  }
+  if (geocodeAbortController) {
+    geocodeAbortController.abort();
+    geocodeAbortController = null;
+  }
+  if (availabilityDetectButton) {
+    availabilityDetectButton.disabled = true;
+  }
+  setAvailabilityStatus("Buscando sua localização atual...");
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      if (availabilityDetectButton) {
+        availabilityDetectButton.disabled = false;
+      }
+      const coords = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      applyAvailabilityCoordinates(coords);
+      const fallbackLabel = `Coordenadas aproximadas (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`;
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      geocodeAbortController = controller;
+      try {
+        const result = await reverseGeocodeCoordinates(coords, controller ? controller.signal : undefined);
+        const label = result?.label || fallbackLabel;
+        populateAddressFromGeocode({ coords, label, raw: result?.raw });
+        setAvailabilityStatus("Localização atual definida automaticamente!", "success");
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return;
+        }
+        console.warn("Falha ao identificar endereço da localização atual", error);
+        populateAddressFromGeocode({ coords, label: fallbackLabel });
+        setAvailabilityStatus("Localização capturada! Ajuste o endereço se preferir.");
+      } finally {
+        if (geocodeAbortController === controller) {
+          geocodeAbortController = null;
+        }
+      }
+    },
+    (error) => {
+      if (availabilityDetectButton) {
+        availabilityDetectButton.disabled = false;
+      }
+      let message = "Não foi possível obter sua localização.";
+      if (error.code === error.PERMISSION_DENIED) {
+        message = "Precisamos da sua permissão para usar a localização automática.";
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        message = "Não conseguimos acessar o serviço de localização. Tente novamente em instantes.";
+      } else if (error.code === error.TIMEOUT) {
+        message = "A busca pela localização demorou demais. Tente novamente.";
+      }
+      setAvailabilityStatus(message, "error");
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 0,
+    },
+  );
+};
+
+const handleAddAvailabilitySlot = () => {
+  const days = getSelectedAvailabilityDays()
+    .map((value) => normalizeWeekdayValue(value))
+    .filter(Boolean);
+  const start = availabilityStartInput?.value || "";
+  const end = availabilityEndInput?.value || "";
+  if (!days.length) {
+    setAvailabilityStatus("Selecione pelo menos um dia da semana.", "error");
+    return;
+  }
+  if (!start || !end) {
+    setAvailabilityStatus("Informe os horários inicial e final.", "error");
+    return;
+  }
+  if (start >= end) {
+    setAvailabilityStatus("O horário final deve ser maior que o inicial.", "error");
+    return;
+  }
+  availabilitySlots.push({
+    id: `slot-${Date.now()}-${availabilitySlots.length}`,
+    days,
+    start,
+    end,
+  });
+  if (availabilityDaysContainer) {
+    availabilityDaysContainer.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+      input.checked = false;
+    });
+  }
+  if (availabilityStartInput) {
+    availabilityStartInput.value = "";
+  }
+  if (availabilityEndInput) {
+    availabilityEndInput.value = "";
+  }
+  setAvailabilityStatus("Faixa de atendimento adicionada!", "success");
+  renderAvailabilitySlots();
+};
+
+const parsePriceInput = (value) => {
+  const numeric = toNumberOrNull(value);
+  if (numeric === null) {
+    return { amount: null, label: value.trim() };
+  }
+  return { amount: numeric, label: formatCurrency(numeric) };
+};
+
+const gatherServiceEntries = () => {
+  const services = [];
+  for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
+    const name = serviceNameInputs[index]?.value?.trim() || "";
+    const priceRaw = servicePriceInputs[index]?.value?.trim() || "";
+    const duration = serviceDurationInputs[index]?.value?.trim() || "";
+    if (!name && !priceRaw && !duration) {
+      continue;
+    }
+    const existing = Array.isArray(currentProfile?.servicos) ? currentProfile.servicos[index] : null;
+    const { amount, label } = parsePriceInput(priceRaw);
+    const service = {
+      id: existing?.id || existing?.uid || existing?.slug || `service-${index + 1}`,
+      nome: name || existing?.nome || existing?.name || `Serviço ${index + 1}`,
+      preco: typeof amount === "number" ? amount : null,
+      price: typeof amount === "number" ? amount : null,
+      priceLabel: label || existing?.priceLabel || existing?.precoTexto || existing?.valorTexto || "",
+      duracao: duration || existing?.duracao || existing?.duration || "",
+      duration: duration || existing?.duration || "",
+    };
+    services.push(service);
+  }
+  return services;
+};
+
+const buildAvailabilityPayload = () => {
+  const address = availabilityAddressInput?.value?.trim() || "";
+  const city = availabilityCityInput?.value?.trim() || "";
+  const state = availabilityStateInput?.value?.trim().toUpperCase() || "";
+  const radius = toNumberOrNull(availabilityRadiusInput?.value);
+  const latitude = toNumberOrNull(availabilityLatitudeInput?.value);
+  const longitude = toNumberOrNull(availabilityLongitudeInput?.value);
+  const coords =
+    typeof latitude === "number" && typeof longitude === "number"
+      ? { latitude, longitude }
+      : null;
+
+  const atendimento = {
+    endereco: address,
+    cidade: city,
+    estado: state,
+    raio: typeof radius === "number" ? radius : null,
+  };
+  if (coords) {
+    atendimento.coordenadas = coords;
+    atendimento.coordinates = coords;
+  }
+
+  const areaParts = [];
+  if (address) {
+    areaParts.push(address);
+  }
+  const cityState = [city, state].filter(Boolean).join(" - ");
+  if (cityState) {
+    areaParts.push(cityState);
+  }
+  if (typeof radius === "number") {
+    areaParts.push(`Raio ${radius} km`);
+  }
+
+  const services = gatherServiceEntries();
+  const availability = availabilitySlots.map((slot) => ({
+    id: slot.id,
+    dias: slot.days,
+    inicio: slot.start,
+    fim: slot.end,
+  }));
+
+  return {
+    atendimento,
+    area: areaParts.join(" • "),
+    servicos: services,
+    disponibilidade: availability,
+    raioAtendimento: typeof radius === "number" ? radius : null,
+    updatedAt: serverTimestamp(),
+  };
+};
+
+const formatCoverageArea = (profile) => {
+  const source = profile?.atendimento;
+  if (source && typeof source === "object") {
+    const parts = [];
+    if (source.endereco) {
+      parts.push(source.endereco);
+    }
+    const cityState = [source.cidade || source.city, source.estado || source.state || source.uf]
+      .filter(Boolean)
+      .join(" - ");
+    if (cityState) {
+      parts.push(cityState);
+    }
+    const radiusValue = toNumberOrNull(
+      source.raio ?? source.radius ?? profile?.raioAtendimento ?? profile?.raio_atendimento,
+    );
+    if (typeof radiusValue === "number") {
+      parts.push(`Raio ${radiusValue} km`);
+    }
+    return parts.join(" • ") || profile.area || profile.cidade || "Cadastre sua área de atendimento";
+  }
+  return profile?.area || profile?.cidade || "Cadastre sua área de atendimento";
+};
+
+const populateAvailabilityForm = (profile) => {
+  if (!availabilityForm) {
+    return;
+  }
+  const atendimento = profile?.atendimento && typeof profile.atendimento === "object" ? profile.atendimento : {};
+  if (availabilityAddressInput) {
+    availabilityAddressInput.value = atendimento.endereco || atendimento.address || "";
+  }
+  if (availabilityCityInput) {
+    availabilityCityInput.value = atendimento.cidade || atendimento.city || "";
+  }
+  if (availabilityStateInput) {
+    availabilityStateInput.value = (atendimento.estado || atendimento.state || atendimento.uf || "").slice(0, 2).toUpperCase();
+  }
+  const radiusCandidates = [
+    atendimento.raio,
+    atendimento.radius,
+    profile?.raioAtendimento,
+    profile?.raio_atendimento,
+  ];
+  let resolvedRadius = "";
+  for (const candidate of radiusCandidates) {
+    const parsed = toNumberOrNull(candidate);
+    if (parsed !== null) {
+      resolvedRadius = parsed;
+      break;
+    }
+  }
+  if (availabilityRadiusInput) {
+    availabilityRadiusInput.value = resolvedRadius || "";
+  }
+  const coordinateSource =
+    atendimento.coordenadas ||
+    atendimento.coordinates ||
+    profile?.coordenadas ||
+    profile?.coordinates ||
+    null;
+  if (coordinateSource) {
+    applyAvailabilityCoordinates({
+      latitude: coordinateSource.latitude ?? coordinateSource.lat ?? coordinateSource._lat,
+      longitude: coordinateSource.longitude ?? coordinateSource.lng ?? coordinateSource._long,
+    });
+  } else {
+    if (availabilityLatitudeInput) {
+      availabilityLatitudeInput.value = "";
+    }
+    if (availabilityLongitudeInput) {
+      availabilityLongitudeInput.value = "";
+    }
+  }
+  const slots = toArray(profile?.disponibilidade).map((entry, index) => {
+    const days = toArray(entry?.dias || entry?.days || entry?.semana || entry?.weekdays)
+      .map((value) => normalizeWeekdayValue(value))
+      .filter(Boolean);
+    const start = entry?.inicio || entry?.start || entry?.horaInicio || entry?.horarioInicio || "";
+    const end = entry?.fim || entry?.end || entry?.horaFim || entry?.horarioFim || "";
+    if (!days.length || !start || !end) {
+      return null;
+    }
+    return {
+      id: entry?.id || `slot-${index}`,
+      days,
+      start,
+      end,
+    };
+  });
+  availabilitySlots = slots.filter(Boolean);
+  renderAvailabilitySlots();
+  const services = collectInlineServices(profile).slice(0, MAX_SERVICE_ENTRIES);
+  for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
+    const service = services[index];
+    if (serviceNameInputs[index]) {
+      serviceNameInputs[index].value = service?.name || "";
+    }
+    if (servicePriceInputs[index]) {
+      if (typeof service?.price === "number") {
+        servicePriceInputs[index].value = service.price.toFixed(2).replace(".", ",");
+      } else if (service?.priceLabel) {
+        servicePriceInputs[index].value = service.priceLabel;
+      } else {
+        servicePriceInputs[index].value = "";
+      }
+    }
+    if (serviceDurationInputs[index]) {
+      serviceDurationInputs[index].value = service?.duration || service?.duracao || "";
+    }
+  }
+  setAvailabilityStatus("");
+  setAvailabilityFeedback("");
+};
+
+const handleAvailabilitySubmit = async (event) => {
+  event.preventDefault();
+  if (!currentProfile?.id) {
+    setAvailabilityFeedback("Sua sessão expirou. Faça login novamente.", "error");
+    return;
+  }
+  const payload = buildAvailabilityPayload();
+  const submitButton = availabilityForm?.querySelector('[type="submit"]');
+  if (submitButton) {
+    submitButton.disabled = true;
+  }
+  setAvailabilityFeedback("Salvando suas informações...");
+  try {
+    const collectionName = currentProfile.collection || PROFILE_COLLECTIONS[0];
+    const profileRef = doc(db, collectionName, currentProfile.id);
+    await setDoc(profileRef, payload, { merge: true });
+    currentProfile = {
+      ...currentProfile,
+      ...payload,
+      atendimento: { ...(currentProfile.atendimento || {}), ...payload.atendimento },
+      disponibilidade: payload.disponibilidade,
+      servicos: payload.servicos,
+      area: payload.area || currentProfile.area,
+      raioAtendimento: payload.raioAtendimento ?? currentProfile.raioAtendimento,
+    };
+    setAvailabilityFeedback("Dados atualizados com sucesso!", "success");
+    profileArea.textContent = formatCoverageArea(currentProfile);
+    const inlineServices = collectInlineServices(currentProfile);
+    if (inlineServices.length) {
+      profileSpecialties.textContent = inlineServices
+        .slice(0, 3)
+        .map((service) => service.name)
+        .join(" · ");
+    }
+    await loadServicesForProfile(currentProfile);
+  } catch (error) {
+    console.error("Não foi possível salvar a disponibilidade", error);
+    if (error.code === "permission-denied") {
+      setAvailabilityFeedback(
+        "Seu acesso não tem permissão para atualizar esses dados. Avise o suporte NailNow.",
+        "error",
+      );
+    } else {
+      setAvailabilityFeedback("Não foi possível salvar agora. Tente novamente em instantes.", "error");
+    }
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+    }
+  }
 };
 
 const parseDateValue = (rawDate, rawTime) => {
@@ -893,14 +1556,35 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
   });
   profileDisplay.textContent = displayName;
   profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
-  profileSpecialties.textContent =
-    profile.especialidades || profile.specialties || "Alongamento em fibra · Spa das mãos";
-  profileArea.textContent =
-    profile.atendimento || profile.area || profile.cidade || "São Paulo e região metropolitana";
+  const inlineServices = collectInlineServices(profile);
+  if (inlineServices.length) {
+    profileSpecialties.textContent = inlineServices
+      .slice(0, 3)
+      .map((service) => service.name)
+      .join(" · ");
+  } else {
+    profileSpecialties.textContent =
+      profile.especialidades || profile.specialties || "Cadastre seus serviços principais";
+  }
+  profileArea.textContent = formatCoverageArea(profile);
 
+  populateAvailabilityForm(profile);
   await loadServicesForProfile(profile);
   return loadAppointmentsForProfile(profile);
 };
+
+availabilityAddSlotButton?.addEventListener("click", handleAddAvailabilitySlot);
+availabilityForm?.addEventListener("submit", handleAvailabilitySubmit);
+availabilityDetectButton?.addEventListener("click", handleAvailabilityDetect);
+availabilityGeocodeButton?.addEventListener("click", handleAvailabilityGeocode);
+availabilityAddressInput?.addEventListener("input", () => setAvailabilityStatus(""));
+availabilityCityInput?.addEventListener("input", () => setAvailabilityStatus(""));
+availabilityStateInput?.addEventListener("input", () => setAvailabilityStatus(""));
+availabilityRadiusInput?.addEventListener("input", () => setAvailabilityStatus(""));
+availabilityLatitudeInput?.addEventListener("input", () => setAvailabilityStatus(""));
+availabilityLongitudeInput?.addEventListener("input", () => setAvailabilityStatus(""));
+availabilityStartInput?.addEventListener("input", () => setAvailabilityStatus(""));
+availabilityEndInput?.addEventListener("input", () => setAvailabilityStatus(""));
 
 const handleAuthError = (error) => {
   const code = error.code || error.message;
