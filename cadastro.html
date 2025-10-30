@@ -621,5 +621,40 @@
     </form>
   </div>
   <script src="assets/js/password-toggle.js"></script>
+<script>
+document.getElementById('cadastroForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const nome  = document.getElementById('nome').value.trim();
+  const email = document.getElementById('email').value.trim();
+
+  const FN_URL = 'https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount';
+
+  console.log(">>> ENVIANDO PARA CLOUD FUNCTION >>>", { nome, email });
+
+  try {
+    const response = await fetch(FN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: nome,
+        email: email
+      })
+    });
+
+    const result = await response.text();
+    console.log(">>> RESPOSTA DA CLOUD FUNCTION >>>", response.status, result);
+
+    if (response.ok) {
+      alert("Cadastro enviado com sucesso!");
+    } else {
+      alert("Falha no envio: " + result);
+    }
+  } catch (err) {
+    console.error(">>> ERRO AO ENVIAR >>>", err);
+    alert("Erro de rede ao enviar");
+  }
+});
+</script>
 </body>
 </html>

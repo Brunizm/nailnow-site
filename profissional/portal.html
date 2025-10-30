@@ -91,7 +91,7 @@
     </script>
 <script src="/assets/js/menu-toggle.js" defer></script>
   </head>
-  <body>
+  <body class="portal portal--profissional">
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
@@ -199,29 +199,217 @@
           </div>
         </section>
 
-        <section class="schedule-section" aria-labelledby="pending-heading">
-          <div class="schedule-section__head">
-            <h2 id="pending-heading">Solicitações pendentes</h2>
-            <span class="schedule-count" id="badge-pending">0</span>
+        <section class="availability-manager" aria-labelledby="availability-manager-heading">
+          <div class="availability-manager__intro">
+            <h2 id="availability-manager-heading">Minha disponibilidade</h2>
+            <p>
+              Atualize seus dados de atendimento, horários e serviços para que as clientes encontrem você com facilidade no
+              portal.
+            </p>
           </div>
-          <div id="pending-list" class="schedule-list" role="list"></div>
+          <form id="availability-form" class="availability-form" novalidate>
+            <div class="availability-form__layout">
+              <div class="availability-form__column availability-form__column--profile">
+                <fieldset class="availability-form__group">
+                  <legend class="availability-form__legend">Localização de atendimento</legend>
+                  <label class="availability-form__label" for="availability-address">Endereço principal</label>
+                  <div class="availability-form__row availability-form__row--with-action">
+                    <input
+                      id="availability-address"
+                      type="text"
+                      class="availability-form__input"
+                      placeholder="Rua, número e bairro"
+                      autocomplete="street-address"
+                    />
+                    <button type="button" id="availability-geocode" class="availability-form__action">Buscar no mapa</button>
+                  </div>
+                  <div class="availability-form__row availability-form__row--compact">
+                    <div class="availability-form__field">
+                      <label for="availability-city">Cidade</label>
+                      <input id="availability-city" type="text" class="availability-form__input" autocomplete="address-level2" />
+                    </div>
+                    <div class="availability-form__field">
+                      <label for="availability-state">Estado</label>
+                      <input id="availability-state" type="text" class="availability-form__input" maxlength="2" autocomplete="address-level1" />
+                    </div>
+                    <div class="availability-form__field">
+                      <label for="availability-radius">Raio (km)</label>
+                      <input id="availability-radius" type="number" min="1" step="1" class="availability-form__input" />
+                    </div>
+                  </div>
+                  <div class="availability-form__row availability-form__row--compact">
+                    <div class="availability-form__field">
+                      <label for="availability-latitude">Latitude</label>
+                      <input id="availability-latitude" type="text" class="availability-form__input" inputmode="decimal" />
+                    </div>
+                    <div class="availability-form__field">
+                      <label for="availability-longitude">Longitude</label>
+                      <input id="availability-longitude" type="text" class="availability-form__input" inputmode="decimal" />
+                    </div>
+                    <button type="button" id="availability-detect" class="availability-form__action availability-form__action--secondary">
+                      Usar minha localização
+                    </button>
+                  </div>
+                  <p id="availability-location-status" class="availability-form__status auth-status" hidden></p>
+                </fieldset>
+
+                <fieldset class="availability-form__group">
+                  <legend class="availability-form__legend">Horários de atendimento</legend>
+                  <p class="availability-form__hint">
+                    Selecione os dias e horários em que você costuma atender e cadastre faixas para aparecer no mapa das clientes.
+                  </p>
+                  <div class="availability-days" id="availability-days">
+                    <label class="availability-day"><input type="checkbox" value="monday" /><span>Seg</span></label>
+                    <label class="availability-day"><input type="checkbox" value="tuesday" /><span>Ter</span></label>
+                    <label class="availability-day"><input type="checkbox" value="wednesday" /><span>Qua</span></label>
+                    <label class="availability-day"><input type="checkbox" value="thursday" /><span>Qui</span></label>
+                    <label class="availability-day"><input type="checkbox" value="friday" /><span>Sex</span></label>
+                    <label class="availability-day"><input type="checkbox" value="saturday" /><span>Sáb</span></label>
+                    <label class="availability-day"><input type="checkbox" value="sunday" /><span>Dom</span></label>
+                  </div>
+                  <div class="availability-form__row availability-form__row--compact">
+                    <div class="availability-form__field">
+                      <label for="availability-start">Horário inicial</label>
+                      <input id="availability-start" type="time" class="availability-form__input" />
+                    </div>
+                    <div class="availability-form__field">
+                      <label for="availability-end">Horário final</label>
+                      <input id="availability-end" type="time" class="availability-form__input" />
+                    </div>
+                    <button type="button" id="availability-add-slot" class="availability-form__action">Adicionar faixa</button>
+                  </div>
+                  <ul id="availability-slots" class="availability-slots" role="list"></ul>
+                  <p id="availability-slots-empty" class="availability-slots__empty">Nenhuma faixa cadastrada ainda.</p>
+                </fieldset>
+              </div>
+
+              <div class="availability-form__column availability-form__column--services">
+                <fieldset class="availability-form__group">
+                  <legend class="availability-form__legend">Serviços principais</legend>
+                  <p class="availability-form__hint">Cadastre até cinco serviços com valores e durações estimadas.</p>
+                  <div class="availability-services" id="availability-services">
+                    <div class="availability-service" data-service-index="0">
+                      <div class="availability-service__header">
+                        <span class="availability-service__index">1</span>
+                        <label for="service-name-0">Nome do serviço</label>
+                      </div>
+                      <input id="service-name-0" type="text" class="availability-form__input" placeholder="Manicure clássica" />
+                      <div class="availability-service__row">
+                        <div class="availability-form__field">
+                          <label for="service-price-0">Valor (R$)</label>
+                          <input id="service-price-0" type="text" class="availability-form__input" inputmode="decimal" placeholder="70,00" />
+                        </div>
+                        <div class="availability-form__field">
+                          <label for="service-duration-0">Duração</label>
+                          <input id="service-duration-0" type="text" class="availability-form__input" placeholder="1h30" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="availability-service" data-service-index="1">
+                      <div class="availability-service__header">
+                        <span class="availability-service__index">2</span>
+                        <label for="service-name-1">Nome do serviço</label>
+                      </div>
+                      <input id="service-name-1" type="text" class="availability-form__input" placeholder="Spa das mãos" />
+                      <div class="availability-service__row">
+                        <div class="availability-form__field">
+                          <label for="service-price-1">Valor (R$)</label>
+                          <input id="service-price-1" type="text" class="availability-form__input" inputmode="decimal" placeholder="120,00" />
+                        </div>
+                        <div class="availability-form__field">
+                          <label for="service-duration-1">Duração</label>
+                          <input id="service-duration-1" type="text" class="availability-form__input" placeholder="2h" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="availability-service" data-service-index="2">
+                      <div class="availability-service__header">
+                        <span class="availability-service__index">3</span>
+                        <label for="service-name-2">Nome do serviço</label>
+                      </div>
+                      <input id="service-name-2" type="text" class="availability-form__input" placeholder="Blindagem" />
+                      <div class="availability-service__row">
+                        <div class="availability-form__field">
+                          <label for="service-price-2">Valor (R$)</label>
+                          <input id="service-price-2" type="text" class="availability-form__input" inputmode="decimal" placeholder="150,00" />
+                        </div>
+                        <div class="availability-form__field">
+                          <label for="service-duration-2">Duração</label>
+                          <input id="service-duration-2" type="text" class="availability-form__input" placeholder="1h45" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="availability-service" data-service-index="3">
+                      <div class="availability-service__header">
+                        <span class="availability-service__index">4</span>
+                        <label for="service-name-3">Nome do serviço</label>
+                      </div>
+                      <input id="service-name-3" type="text" class="availability-form__input" placeholder="Alongamento em fibra" />
+                      <div class="availability-service__row">
+                        <div class="availability-form__field">
+                          <label for="service-price-3">Valor (R$)</label>
+                          <input id="service-price-3" type="text" class="availability-form__input" inputmode="decimal" placeholder="220,00" />
+                        </div>
+                        <div class="availability-form__field">
+                          <label for="service-duration-3">Duração</label>
+                          <input id="service-duration-3" type="text" class="availability-form__input" placeholder="2h30" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="availability-service" data-service-index="4">
+                      <div class="availability-service__header">
+                        <span class="availability-service__index">5</span>
+                        <label for="service-name-4">Nome do serviço</label>
+                      </div>
+                      <input id="service-name-4" type="text" class="availability-form__input" placeholder="Manutenção" />
+                      <div class="availability-service__row">
+                        <div class="availability-form__field">
+                          <label for="service-price-4">Valor (R$)</label>
+                          <input id="service-price-4" type="text" class="availability-form__input" inputmode="decimal" placeholder="110,00" />
+                        </div>
+                        <div class="availability-form__field">
+                          <label for="service-duration-4">Duração</label>
+                          <input id="service-duration-4" type="text" class="availability-form__input" placeholder="1h40" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <div class="availability-form__actions">
+                  <button type="submit" class="availability-form__submit">Salvar atualizações</button>
+                  <p id="availability-feedback" class="availability-form__status auth-status" hidden></p>
+                </div>
+              </div>
+            </div>
+          </form>
         </section>
 
-        <section class="schedule-section" aria-labelledby="confirmed-heading">
-          <div class="schedule-section__head">
-            <h2 id="confirmed-heading">Solicitações confirmadas</h2>
-            <span class="schedule-count" id="badge-confirmed">0</span>
-          </div>
-          <div id="confirmed-list" class="schedule-list" role="list"></div>
-        </section>
+        <div class="schedule-grid">
+          <section class="schedule-section" aria-labelledby="pending-heading">
+            <div class="schedule-section__head">
+              <h2 id="pending-heading">Solicitações pendentes</h2>
+              <span class="schedule-count" id="badge-pending">0</span>
+            </div>
+            <div id="pending-list" class="schedule-list" role="list"></div>
+          </section>
 
-        <section class="schedule-section" aria-labelledby="cancelled-heading">
-          <div class="schedule-section__head">
-            <h2 id="cancelled-heading">Solicitações canceladas</h2>
-            <span class="schedule-count" id="badge-cancelled">0</span>
-          </div>
-          <div id="cancelled-list" class="schedule-list" role="list"></div>
-        </section>
+          <section class="schedule-section" aria-labelledby="confirmed-heading">
+            <div class="schedule-section__head">
+              <h2 id="confirmed-heading">Solicitações confirmadas</h2>
+              <span class="schedule-count" id="badge-confirmed">0</span>
+            </div>
+            <div id="confirmed-list" class="schedule-list" role="list"></div>
+          </section>
+
+          <section class="schedule-section" aria-labelledby="cancelled-heading">
+            <div class="schedule-section__head">
+              <h2 id="cancelled-heading">Solicitações canceladas</h2>
+              <span class="schedule-count" id="badge-cancelled">0</span>
+            </div>
+            <div id="cancelled-list" class="schedule-list" role="list"></div>
+          </section>
+        </div>
       </div>
     </main>
 
