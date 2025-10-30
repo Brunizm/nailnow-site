@@ -51,6 +51,8 @@ const professionalSearchInput = document.getElementById("professional-search");
 const professionalResults = document.getElementById("professional-results");
 const professionalResultsEmpty = document.getElementById("professional-results-empty");
 const searchLocationInput = document.getElementById("search-location");
+const searchLocationNumberInput = document.getElementById("search-location-number");
+const searchLocationComplementInput = document.getElementById("search-location-complement");
 const detectLocationButton = document.getElementById("detect-location");
 const searchLocationStatus = document.getElementById("search-location-status");
 const searchRadiusSelect = document.getElementById("search-radius");
@@ -63,10 +65,19 @@ const requestServiceSelect = document.getElementById("request-service");
 const requestPriceInput = document.getElementById("request-price");
 const requestDateInput = document.getElementById("request-date");
 const requestTimeInput = document.getElementById("request-time");
+const requestDatePickerButton = document.getElementById("request-date-picker");
 const requestLocationInput = document.getElementById("request-location");
+const requestLocationNumberInput = document.getElementById("request-location-number");
+const requestLocationComplementInput = document.getElementById("request-location-complement");
 const requestNotesInput = document.getElementById("request-notes");
 const requestSubmitButton = document.getElementById("submit-request");
 const requestFeedback = document.getElementById("request-feedback");
+const requestServiceOptions = document.getElementById("request-service-options");
+const requestServiceEmpty = document.getElementById("request-service-empty");
+const searchChipLocation = document.getElementById("search-chip-location");
+const searchChipService = document.getElementById("search-chip-service");
+const searchChipDate = document.getElementById("search-chip-date");
+const searchProgress = document.getElementById("search-progress");
 let currentProfile = null;
 let fallbackProfileEmail = "";
 let professionalsCatalog = [];
@@ -79,6 +90,83 @@ let activeServiceFilter = "";
 let currentSearchTerm = "";
 let currentSearchTokens = [];
 let geocodeAbortController = null;
+const MAX_SERVICE_OPTIONS = 5;
+const dateChipFormatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
+const timeChipFormatter = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+const TIME_SLOT_START_HOUR = 7;
+const TIME_SLOT_END_HOUR = 22;
+const TIME_SLOT_INTERVAL_MINUTES = 30;
+
+const formatTimeSlot = (hour, minute) => {
+  return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+};
+
+const ensureRequestTimeOptions = () => {
+  if (!requestTimeInput || requestTimeInput.tagName !== "SELECT") {
+    return;
+  }
+
+  const hasSlots = requestTimeInput.querySelector("option[data-slot='time']");
+  if (hasSlots) {
+    return;
+  }
+
+  let placeholderOption = requestTimeInput.querySelector("option[value='']");
+  if (!placeholderOption) {
+    placeholderOption = document.createElement("option");
+    placeholderOption.value = "";
+    requestTimeInput.prepend(placeholderOption);
+  }
+  placeholderOption.textContent = "Selecione um horário";
+  placeholderOption.dataset.placeholder = "true";
+  placeholderOption.disabled = true;
+
+  const fragment = document.createDocumentFragment();
+  for (let hour = TIME_SLOT_START_HOUR; hour <= TIME_SLOT_END_HOUR; hour += 1) {
+    for (let minute = 0; minute < 60; minute += TIME_SLOT_INTERVAL_MINUTES) {
+      if (hour === TIME_SLOT_END_HOUR && minute > 0) {
+        break;
+      }
+      const option = document.createElement("option");
+      const value = formatTimeSlot(hour, minute);
+      option.value = value;
+      option.textContent = value;
+      option.dataset.slot = "time";
+      fragment.appendChild(option);
+    }
+  }
+
+  requestTimeInput.appendChild(fragment);
+};
+
+const resetRequestTimeSelect = () => {
+  if (!requestTimeInput || requestTimeInput.tagName !== "SELECT") {
+    return;
+  }
+  const placeholderOption = requestTimeInput.querySelector("option[data-placeholder='true']");
+  if (placeholderOption) {
+    placeholderOption.selected = true;
+    requestTimeInput.value = "";
+  } else {
+    requestTimeInput.selectedIndex = 0;
+  }
+};
+
+ensureRequestTimeOptions();
+resetRequestTimeSelect();
+
+const openRequestDatePicker = () => {
+  if (!requestDateInput) {
+    return;
+  }
+  if (typeof requestDateInput.showPicker === "function") {
+    requestDateInput.showPicker();
+  } else {
+    requestDateInput.focus();
+    requestDateInput.click();
+  }
+};
 
 if (searchRadiusSelect) {
   const initialRadius = Number.parseFloat(searchRadiusSelect.value || "10");
@@ -385,6 +473,261 @@ const setLocationStatus = (message, type = "") => {
   }
 };
 
+const setSearchLoading = (loading) => {
+  if (!searchProgress) {
+    return;
+  }
+  searchProgress.hidden = !loading;
+};
+
+const markRequestFieldModified = (field) => {
+  if (!field) {
+    return;
+  }
+  if ((field.value || "").trim()) {
+    field.dataset.userModified = "true";
+  } else {
+    delete field.dataset.userModified;
+  }
+};
+
+const syncRequestLocationFromSearch = () => {
+  if (requestLocationInput && !requestLocationInput.dataset.userModified) {
+    const existing = requestLocationInput.value || "";
+    const sourceValue =
+      (searchLocationInput?.value && searchLocationInput.value) ||
+      customerLocation.label ||
+      existing;
+    requestLocationInput.value = sourceValue;
+  }
+  if (requestLocationNumberInput && !requestLocationNumberInput.dataset.userModified) {
+    const existing = requestLocationNumberInput.value || "";
+    const numberValue = searchLocationNumberInput?.value || existing;
+    requestLocationNumberInput.value = numberValue;
+  }
+  if (requestLocationComplementInput && !requestLocationComplementInput.dataset.userModified) {
+    const existing = requestLocationComplementInput.value || "";
+    const complementValue = searchLocationComplementInput?.value || existing;
+    requestLocationComplementInput.value = complementValue;
+  }
+};
+
+const buildFullLocationLabel = (street, number, complement) => {
+  const parts = [];
+  const base = (street || "").trim();
+  const numberPart = (number || "").trim();
+  const complementPart = (complement || "").trim();
+  if (base) {
+    parts.push(base);
+  }
+  if (numberPart) {
+    parts.push(`nº ${numberPart}`);
+  }
+  if (complementPart) {
+    parts.push(complementPart);
+  }
+  return parts.join(", ");
+};
+
+const formatDateChipValue = () => {
+  if (!requestDateInput?.value) {
+    return "";
+  }
+  const base = `${requestDateInput.value}T${requestTimeInput?.value || "12:00"}`;
+  const date = new Date(base);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const dateLabel = dateChipFormatter.format(date);
+  if (!requestTimeInput?.value) {
+    return dateLabel;
+  }
+  const timeLabel = timeChipFormatter.format(date).replace(":", "h");
+  return `${dateLabel} · ${timeLabel}`;
+};
+
+const updateSearchChips = () => {
+  if (searchChipLocation) {
+    const locationLabel =
+      (searchLocationInput?.value && searchLocationInput.value.trim()) ||
+      customerLocation.label ||
+      currentProfile?.endereco ||
+      "";
+    searchChipLocation.textContent = locationLabel || "Defina o endereço";
+    searchChipLocation.classList.toggle("request-toolbar__chip--muted", !locationLabel);
+  }
+
+  if (searchChipService) {
+    let serviceLabel = "Todos os serviços";
+    if (selectedService?.name) {
+      serviceLabel = selectedService.name;
+    } else if (activeServiceFilter && searchServiceSelect) {
+      const selectedOption = searchServiceSelect.selectedOptions?.[0];
+      serviceLabel = selectedOption?.textContent?.trim() || serviceLabel;
+    }
+    searchChipService.textContent = serviceLabel;
+    searchChipService.classList.toggle(
+      "request-toolbar__chip--muted",
+      !(selectedService?.name || activeServiceFilter),
+    );
+  }
+
+  if (searchChipDate) {
+    const dateLabel = formatDateChipValue();
+    if (dateLabel) {
+      searchChipDate.textContent = dateLabel;
+      searchChipDate.classList.remove("request-toolbar__chip--muted");
+    } else {
+      searchChipDate.textContent = "Data flexível";
+      searchChipDate.classList.add("request-toolbar__chip--muted");
+    }
+  }
+};
+
+const syncServiceRadios = (serviceIndex) => {
+  if (!requestServiceOptions) {
+    return;
+  }
+  const radios = requestServiceOptions.querySelectorAll('input[type="radio"]');
+  radios.forEach((input) => {
+    const index = Number.parseInt(input.dataset.serviceIndex || "-1", 10);
+    input.checked = index === serviceIndex;
+  });
+};
+
+const updateSelectedServiceDetails = (professional = selectedProfessional) => {
+  if (requestPriceInput) {
+    if (selectedService?.priceLabel) {
+      requestPriceInput.value = selectedService.priceLabel;
+    } else if (typeof selectedService?.price === "number") {
+      requestPriceInput.value = formatCurrency(selectedService.price);
+    } else if (selectedService?.name) {
+      requestPriceInput.value = "Sob consulta";
+    } else {
+      requestPriceInput.value = "";
+    }
+  }
+
+  if (requestServiceEmpty) {
+    const hasServices = Array.isArray(professional?.servicos) && professional.servicos.length > 0;
+    requestServiceEmpty.hidden = hasServices;
+  }
+
+  updateRequestSubmitState();
+};
+
+const applySelectedService = (serviceIndex, professional = selectedProfessional) => {
+  if (!professional || !Array.isArray(professional.servicos) || !professional.servicos.length) {
+    selectedService = null;
+    syncServiceRadios(-1);
+    updateSelectedServiceDetails(professional);
+    return -1;
+  }
+
+  const services = professional.servicos;
+  const normalizedIndex = serviceIndex >= 0 && serviceIndex < services.length ? serviceIndex : 0;
+  selectedService = services[normalizedIndex];
+
+  if (requestServiceSelect) {
+    const matchingOption = requestServiceSelect.querySelector(
+      `option[data-service-index="${normalizedIndex}"]`,
+    );
+    if (matchingOption) {
+      requestServiceSelect.value = matchingOption.value;
+    }
+  }
+
+  syncServiceRadios(normalizedIndex);
+  updateSelectedServiceDetails(professional);
+  return normalizedIndex;
+};
+
+const renderRequestServiceOptions = (professional, preferredIndex = 0) => {
+  if (!requestServiceOptions) {
+    return;
+  }
+
+  requestServiceOptions.innerHTML = "";
+
+  if (!professional || !Array.isArray(professional.servicos) || !professional.servicos.length) {
+    requestServiceOptions.hidden = true;
+    if (requestServiceEmpty) {
+      requestServiceEmpty.hidden = false;
+    }
+    if (requestServiceSelect) {
+      requestServiceSelect.classList.remove("sr-only");
+    }
+    return;
+  }
+
+  const entries = professional.servicos
+    .map((service, index) => ({ service, index }))
+    .slice(0, MAX_SERVICE_OPTIONS);
+
+  if (!entries.length) {
+    requestServiceOptions.hidden = true;
+    if (requestServiceSelect) {
+      requestServiceSelect.classList.remove("sr-only");
+    }
+    return;
+  }
+
+  const highlight = entries.find((entry) => entry.index === preferredIndex) || entries[0];
+
+  requestServiceOptions.hidden = false;
+  if (requestServiceEmpty) {
+    requestServiceEmpty.hidden = true;
+  }
+
+  entries.forEach(({ service, index }) => {
+    const optionId = `service-option-${professional.id || "prof"}-${index}`;
+    const wrapper = document.createElement("label");
+    wrapper.className = "service-option";
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "request-service-option";
+    input.value = service.id || `service-${index}`;
+    input.dataset.serviceIndex = String(index);
+    input.id = optionId;
+    if (highlight && highlight.index === index) {
+      input.checked = true;
+    }
+    input.addEventListener("change", () => {
+      if (input.checked) {
+        applySelectedService(index, professional);
+      }
+    });
+
+    const content = document.createElement("span");
+    content.className = "service-option__content";
+    const priceLabel =
+      service.priceLabel ||
+      (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+    content.innerHTML = `<strong>${service.name}</strong><small>${priceLabel}</small>`;
+
+    wrapper.appendChild(input);
+    wrapper.appendChild(content);
+    requestServiceOptions.appendChild(wrapper);
+  });
+
+  if (professional.servicos.length > entries.length) {
+    const notice = document.createElement("p");
+    notice.className = "service-options__notice";
+    notice.textContent = "Precisa de outro serviço? Utilize a lista completa abaixo.";
+    requestServiceOptions.appendChild(notice);
+    if (requestServiceSelect) {
+      requestServiceSelect.classList.remove("sr-only");
+    }
+  } else if (requestServiceSelect) {
+    requestServiceSelect.classList.add("sr-only");
+  }
+
+  if (highlight) {
+    syncServiceRadios(highlight.index);
+  }
+};
+
 const resetDashboard = () => {
   pendingList.innerHTML = "";
   confirmedList.innerHTML = "";
@@ -416,6 +759,13 @@ const resetDashboard = () => {
   requestFields.forEach((field) => {
     field.hidden = true;
   });
+  if (requestServiceOptions) {
+    requestServiceOptions.innerHTML = "";
+    requestServiceOptions.hidden = true;
+  }
+  if (requestServiceEmpty) {
+    requestServiceEmpty.hidden = true;
+  }
   if (requestSubmitButton) {
     requestSubmitButton.disabled = true;
   }
@@ -437,6 +787,7 @@ const resetDashboard = () => {
     searchServiceSelect.value = "";
   }
   setLocationStatus("");
+  updateSearchChips();
 };
 
 const formatCurrency = (value) => {
@@ -855,12 +1206,12 @@ const renderProfessionalResults = (items = []) => {
 };
 
 const updateRequestSubmitState = () => {
-  if (!requestSubmitButton) {
-    return;
+  if (requestSubmitButton) {
+    const hasSchedule = Boolean(requestDateInput?.value && requestTimeInput?.value);
+    const hasSelection = Boolean(selectedProfessional && selectedService);
+    requestSubmitButton.disabled = !(hasSchedule && hasSelection);
   }
-  const hasSchedule = Boolean(requestDateInput?.value && requestTimeInput?.value);
-  const hasSelection = Boolean(selectedProfessional && selectedService);
-  requestSubmitButton.disabled = !(hasSchedule && hasSelection);
+  updateSearchChips();
 };
 
 const populateRequestForm = (professional) => {
@@ -881,13 +1232,37 @@ const populateRequestForm = (professional) => {
     if (requestServiceSelect) {
       requestServiceSelect.innerHTML = "";
       requestServiceSelect.disabled = true;
+      requestServiceSelect.classList.remove("sr-only");
+    }
+    if (requestServiceOptions) {
+      requestServiceOptions.innerHTML = "";
+      requestServiceOptions.hidden = true;
+    }
+    if (requestServiceEmpty) {
+      requestServiceEmpty.hidden = true;
     }
     if (requestPriceInput) {
       requestPriceInput.value = "";
     }
+    if (requestDateInput) {
+      requestDateInput.value = "";
+    }
+    if (requestLocationInput) {
+      requestLocationInput.value = "";
+      delete requestLocationInput.dataset.userModified;
+    }
+    if (requestLocationNumberInput) {
+      requestLocationNumberInput.value = "";
+      delete requestLocationNumberInput.dataset.userModified;
+    }
+    if (requestLocationComplementInput) {
+      requestLocationComplementInput.value = "";
+      delete requestLocationComplementInput.dataset.userModified;
+    }
+    resetRequestTimeSelect();
     selectedService = null;
     setRequestFeedback("");
-    updateRequestSubmitState();
+    updateSelectedServiceDetails();
     return;
   }
 
@@ -918,17 +1293,16 @@ const populateRequestForm = (professional) => {
       professional.servicos.forEach((service, index) => {
         const option = document.createElement("option");
         option.value = service.id || `service-${index}`;
-        const priceLabel = service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+        const priceLabel =
+          service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
         option.textContent = `${service.name} — ${priceLabel}`;
         option.dataset.serviceIndex = String(index);
-        if (index === preferredIndex) {
-          option.selected = true;
-        }
         requestServiceSelect.appendChild(option);
       });
       requestServiceSelect.disabled = false;
-      requestServiceSelect.selectedIndex = preferredIndex;
-      selectedService = professional.servicos[preferredIndex] || professional.servicos[0];
+      const appliedIndex = applySelectedService(preferredIndex, professional);
+      requestServiceSelect.selectedIndex = appliedIndex >= 0 ? appliedIndex : 0;
+      renderRequestServiceOptions(professional, appliedIndex >= 0 ? appliedIndex : 0);
     } else {
       const option = document.createElement("option");
       option.value = "";
@@ -942,17 +1316,11 @@ const populateRequestForm = (professional) => {
         priceLabel: "Sob consulta",
         duration: "",
       };
+      renderRequestServiceOptions(professional, 0);
+      updateSelectedServiceDetails(professional);
     }
-  }
-
-  if (requestPriceInput) {
-    if (selectedService?.priceLabel) {
-      requestPriceInput.value = selectedService.priceLabel;
-    } else if (typeof selectedService?.price === "number") {
-      requestPriceInput.value = formatCurrency(selectedService.price);
-    } else {
-      requestPriceInput.value = "Sob consulta";
-    }
+  } else {
+    renderRequestServiceOptions(professional, 0);
   }
 
   if (requestLocationInput && !requestLocationInput.value) {
@@ -962,6 +1330,19 @@ const populateRequestForm = (professional) => {
       requestLocationInput.value = customerLocation.label;
     }
   }
+
+  if (requestLocationNumberInput && !requestLocationNumberInput.value && searchLocationNumberInput?.value) {
+    requestLocationNumberInput.value = searchLocationNumberInput.value;
+  }
+  if (
+    requestLocationComplementInput &&
+    !requestLocationComplementInput.value &&
+    searchLocationComplementInput?.value
+  ) {
+    requestLocationComplementInput.value = searchLocationComplementInput.value;
+  }
+
+  syncRequestLocationFromSearch();
 
   setRequestFeedback("");
   updateRequestSubmitState();
@@ -1073,6 +1454,8 @@ const setCustomerLocation = (coords, label = "", options = {}) => {
     }
     updateProfessionalDistances();
     applyProfessionalFilters();
+    updateSearchChips();
+    syncRequestLocationFromSearch();
     return;
   }
 
@@ -1092,6 +1475,8 @@ const setCustomerLocation = (coords, label = "", options = {}) => {
 
   updateProfessionalDistances();
   applyProfessionalFilters();
+  updateSearchChips();
+  syncRequestLocationFromSearch();
 };
 
 const populateServiceFilterOptions = (catalog = []) => {
@@ -1230,6 +1615,7 @@ const geocodeAndApplyLocation = async (query, options = {}) => {
 
   if (!options.silent) {
     setLocationStatus("Buscando o endereço informado...");
+    setSearchLoading(true);
   }
 
   try {
@@ -1256,6 +1642,9 @@ const geocodeAndApplyLocation = async (query, options = {}) => {
     if (geocodeAbortController === controller) {
       geocodeAbortController = null;
     }
+    if (!options.silent) {
+      setSearchLoading(false);
+    }
   }
 };
 
@@ -1281,6 +1670,7 @@ const handleDetectLocation = () => {
     detectLocationButton.disabled = true;
   }
   setLocationStatus("Buscando sua localização atual...");
+  setSearchLoading(true);
 
   navigator.geolocation.getCurrentPosition(
     async (position) => {
@@ -1315,6 +1705,7 @@ const handleDetectLocation = () => {
         if (geocodeAbortController === controller) {
           geocodeAbortController = null;
         }
+        setSearchLoading(false);
       }
     },
     (error) => {
@@ -1330,6 +1721,7 @@ const handleDetectLocation = () => {
         message = "A busca pela localização demorou demais. Tente novamente.";
       }
       setLocationStatus(message, "error");
+      setSearchLoading(false);
     },
     {
       enableHighAccuracy: false,
@@ -1376,6 +1768,7 @@ const loadProfessionalsCatalog = async () => {
   }
 
   setRequestFeedback("");
+  setSearchLoading(true);
 
   let catalog = [];
   try {
@@ -1392,6 +1785,8 @@ const loadProfessionalsCatalog = async () => {
         "error",
       );
     }
+  } finally {
+    setSearchLoading(false);
   }
 
   catalog.sort((a, b) => {
@@ -1427,24 +1822,17 @@ const handleServiceSelectionChange = () => {
   }
   const selectedOption = requestServiceSelect.selectedOptions?.[0];
   const index = selectedOption ? Number.parseInt(selectedOption.dataset.serviceIndex || "-1", 10) : -1;
-  if (!Number.isNaN(index) && selectedProfessional.servicos?.[index]) {
-    selectedService = selectedProfessional.servicos[index];
-  }
-
-  if (requestPriceInput) {
-    if (selectedService?.priceLabel) {
-      requestPriceInput.value = selectedService.priceLabel;
-    } else if (typeof selectedService?.price === "number") {
-      requestPriceInput.value = formatCurrency(selectedService.price);
-    } else {
-      requestPriceInput.value = "Sob consulta";
-    }
-  }
-
-  updateRequestSubmitState();
+  applySelectedService(index, selectedProfessional);
 };
 
-const buildRequestPayload = (requestId, location, notes) => {
+const buildRequestPayload = (
+  requestId,
+  location,
+  notes,
+  locationStreet,
+  locationNumber,
+  locationComplement,
+) => {
   const professionalCollection = selectedProfessional.collection || "profissionais";
   const clientCollection = currentProfile.collection || PROFILE_COLLECTIONS[0];
   const priceLabel =
@@ -1469,6 +1857,9 @@ const buildRequestPayload = (requestId, location, notes) => {
     date: requestDateInput.value,
     time: requestTimeInput.value,
     location,
+    locationStreet: locationStreet || location,
+    locationNumber: locationNumber || "",
+    locationComplement: locationComplement || "",
     note: notes,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -1490,7 +1881,10 @@ const handleRequestSubmission = async (event) => {
     return;
   }
 
-  const location = (requestLocationInput?.value || currentProfile?.endereco || "").trim();
+  const locationStreet = (requestLocationInput?.value || currentProfile?.endereco || "").trim();
+  const locationNumber = (requestLocationNumberInput?.value || "").trim();
+  const locationComplement = (requestLocationComplementInput?.value || "").trim();
+  const location = buildFullLocationLabel(locationStreet, locationNumber, locationComplement) || locationStreet;
   const notes = (requestNotesInput?.value || "").trim();
 
   if (requestSubmitButton) {
@@ -1508,7 +1902,14 @@ const handleRequestSubmission = async (event) => {
     const clientRef = doc(db, clientCollection, currentProfile.id);
     const clientPendingRef = doc(collection(clientRef, appointmentCollections.pending), requestId);
 
-    const payload = buildRequestPayload(requestId, location, notes);
+    const payload = buildRequestPayload(
+      requestId,
+      location,
+      notes,
+      locationStreet,
+      locationNumber,
+      locationComplement,
+    );
 
     await Promise.all([
       setDoc(professionalPendingRef, payload),
@@ -1522,6 +1923,7 @@ const handleRequestSubmission = async (event) => {
     }
     if (requestTimeInput) {
       requestTimeInput.value = "";
+      resetRequestTimeSelect();
     }
     if (requestNotesInput) {
       requestNotesInput.value = "";
@@ -1550,6 +1952,9 @@ professionalSearchInput?.addEventListener("input", (event) => {
   filterProfessionals(event.target.value);
 });
 
+searchLocationInput?.addEventListener("input", () => {
+  syncRequestLocationFromSearch();
+});
 searchLocationInput?.addEventListener("change", handleManualLocationLookup);
 searchLocationInput?.addEventListener("search", handleManualLocationLookup);
 searchLocationInput?.addEventListener("keydown", (event) => {
@@ -1558,6 +1963,13 @@ searchLocationInput?.addEventListener("keydown", (event) => {
     handleManualLocationLookup();
   }
 });
+
+const handleSearchExtrasInput = () => {
+  syncRequestLocationFromSearch();
+};
+
+searchLocationNumberInput?.addEventListener("input", handleSearchExtrasInput);
+searchLocationComplementInput?.addEventListener("input", handleSearchExtrasInput);
 
 detectLocationButton?.addEventListener("click", handleDetectLocation);
 
@@ -1595,9 +2007,27 @@ searchServiceSelect?.addEventListener("change", (event) => {
 requestServiceSelect?.addEventListener("change", handleServiceSelectionChange);
 requestDateInput?.addEventListener("change", updateRequestSubmitState);
 requestTimeInput?.addEventListener("change", updateRequestSubmitState);
-requestLocationInput?.addEventListener("input", () => setRequestFeedback(""));
+requestDatePickerButton?.addEventListener("click", (event) => {
+  event.preventDefault();
+  openRequestDatePicker();
+});
+requestLocationInput?.addEventListener("input", (event) => {
+  markRequestFieldModified(event.target);
+  setRequestFeedback("");
+});
+requestLocationNumberInput?.addEventListener("input", (event) => {
+  markRequestFieldModified(event.target);
+  setRequestFeedback("");
+});
+requestLocationComplementInput?.addEventListener("input", (event) => {
+  markRequestFieldModified(event.target);
+  setRequestFeedback("");
+});
 requestNotesInput?.addEventListener("input", () => setRequestFeedback(""));
 requestForm?.addEventListener("submit", handleRequestSubmission);
+
+syncRequestLocationFromSearch();
+updateSearchChips();
 
 const updateMetrics = (pending, confirmed, cancelled) => {
   metricPending.textContent = pending.length;
