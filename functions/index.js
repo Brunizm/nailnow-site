@@ -1422,6 +1422,8 @@ exports.registerClientAccount = functions
           uid: userRecord.uid,
           nome,
           email,
+          senha,
+          senhaAtualizadaEm: FieldValue.serverTimestamp(),
           telefone,
           endereco,
           complemento,
