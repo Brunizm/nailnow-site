@@ -42761,6 +42761,28 @@ body.portal .profile-details {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+body.portal .portal-hero__profile .profile-details {
+  gap: clamp(0.75rem, 2vw, 1rem);
+}
+
+body.portal .portal-hero__profile .profile-details__item {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+body.portal .portal-hero__profile .profile-details__item dt {
+  font-size: 0.95rem;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-main);
+}
+
+body.portal .portal-hero__profile .profile-details__item dd {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
 body.portal .portal-request {
   gap: clamp(2.5rem, 5vw, 3.5rem);
 }
@@ -42816,6 +42838,17 @@ body.portal .portal-schedule .schedule-grid {
   body.portal .portal-schedule .schedule-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+body.portal .booking-card__field--results {
+  gap: clamp(1rem, 3vw, 1.5rem);
+}
+
+body.portal .booking-card__heading {
+  margin: 0;
+  font-size: clamp(1rem, 1.1vw + 0.85rem, 1.25rem);
+  font-weight: 600;
+  color: var(--text-main);
 }
 
 body.portal .portal-schedule .schedule-section {

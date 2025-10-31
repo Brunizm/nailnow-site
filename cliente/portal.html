@@ -156,19 +156,19 @@
                   <h2 id="cliente-profile-heading">Meus dados</h2>
                   <dl class="profile-details">
                     <div class="profile-details__item">
-                      <dt>Nome</dt>
+                      <dt>Nome:</dt>
                       <dd id="profile-display">—</dd>
                     </div>
                     <div class="profile-details__item">
-                      <dt>E-mail</dt>
-                      <dd id="profile-email">—</dd>
-                    </div>
-                    <div class="profile-details__item">
-                      <dt>Telefone</dt>
+                      <dt>Telefone:</dt>
                       <dd id="profile-phone">—</dd>
                     </div>
                     <div class="profile-details__item">
-                      <dt>Endereço</dt>
+                      <dt>E-mail:</dt>
+                      <dd id="profile-email">—</dd>
+                    </div>
+                    <div class="profile-details__item">
+                      <dt>Endereço:</dt>
                       <dd id="profile-address">—</dd>
                     </div>
                   </dl>
@@ -310,22 +310,8 @@
                     </div>
                   </div>
                 </div>
-                <div class="booking-card__field booking-card__field--wide">
-                  <label class="booking-card__label" for="professional-search">Buscar manicure</label>
-                  <div class="booking-card__control booking-card__control--line">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
-                      <path
-                        d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 14.5 15l.27.28v.79l4.25 4.25a1 1 0 0 0 1.5-1.32l-.1-.1L15.5 14Zm-5 0a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"
-                      />
-                    </svg>
-                    <input
-                      type="search"
-                      id="professional-search"
-                      class="booking-card__input"
-                      placeholder="Nome, bairro ou serviço"
-                      autocomplete="off"
-                    />
-                  </div>
+                <div class="booking-card__field booking-card__field--wide booking-card__field--results">
+                  <h3 class="booking-card__heading">Manicures próximas</h3>
                   <div id="professional-results" class="request-results request-results--inline" role="list"></div>
                   <p id="professional-results-empty" class="request-results__empty" hidden>
                     Informe seu endereço e ajuste os filtros acima para encontrar manicures próximas a você.
@@ -446,14 +432,11 @@
           </section>
         </div>
 
-        <section class="portal-section portal-schedule" aria-labelledby="cliente-schedule-heading">
+        <section class="portal-section portal-schedule" aria-label="Solicitações registradas">
           <div class="portal-section__header">
-            <div>
-              <h2 id="cliente-schedule-heading">Agenda NailNow</h2>
-              <p class="portal-section__description">
-                Confira o status das suas solicitações e acompanhe os próximos atendimentos.
-              </p>
-            </div>
+            <p class="portal-section__description">
+              Confira o status das suas solicitações e acompanhe os próximos atendimentos.
+            </p>
           </div>
           <div class="schedule-grid">
             <section class="schedule-section" aria-labelledby="cliente-pending-heading">
