@@ -221,16 +221,14 @@
                       placeholder="Rua, número e bairro"
                       autocomplete="street-address"
                     />
-                    <button type="button" id="availability-geocode" class="availability-form__action">Buscar no mapa</button>
+                    <button type="button" id="availability-geocode" class="availability-form__action">Buscar</button>
                   </div>
                   <div class="availability-form__row availability-form__row--compact">
                     <div class="availability-form__field">
                       <label for="availability-city">Cidade</label>
-                      <input id="availability-city" type="text" class="availability-form__input" autocomplete="address-level2" />
-                    </div>
-                    <div class="availability-form__field">
-                      <label for="availability-state">Estado</label>
-                      <input id="availability-state" type="text" class="availability-form__input" maxlength="2" autocomplete="address-level1" />
+                      <select id="availability-city" class="availability-form__input">
+                        <option value="Porto Alegre" selected>Porto Alegre</option>
+                      </select>
                     </div>
                     <div class="availability-form__field">
                       <label for="availability-radius">Raio (km)</label>
@@ -246,6 +244,7 @@
                       Usar minha localização
                     </button>
                   </div>
+                  <div id="availability-map" class="availability-form__map" aria-hidden="true"></div>
                   <p id="availability-location-status" class="availability-form__status auth-status" hidden></p>
                 </fieldset>
 
@@ -497,6 +496,7 @@
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script type="module" src="./portal.js"></script>
 
   </body>
