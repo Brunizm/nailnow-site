@@ -975,6 +975,15 @@ main {
   gap: 0.75rem;
 }
 
+.availability-form__map {
+  width: 100%;
+  height: clamp(200px, 30vw, 260px);
+  border-radius: var(--radius-small);
+  border: 1px solid rgba(244, 92, 162, 0.18);
+  overflow: hidden;
+  background: rgba(244, 92, 162, 0.08);
+}
+
 .availability-form__field {
   display: grid;
   gap: 0.35rem;
