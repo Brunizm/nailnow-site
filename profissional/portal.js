@@ -117,6 +117,41 @@ const getExistingServiceEntry = (index) => {
   return null;
 };
 
+const resolveServiceOrder = (service, fallback) => {
+  if (!service || typeof service !== "object") {
+    return fallback;
+  }
+  const candidates = [service.order, service.ordem, service.posicao, service.position, service.index];
+  for (const candidate of candidates) {
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+  return fallback;
+};
+
+const sortServicesByOrder = (items = []) => {
+  return items
+    .map((service, index) => ({ service, index, order: resolveServiceOrder(service, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry, index) => ({ ...entry.service, ordem: index, order: index }));
+};
+
+const getExistingServiceEntry = (index) => {
+  const sources = [
+    currentProfile?.servicos,
+    currentProfile?.services,
+    currentProfile?.pricing?.servicos,
+    currentProfile?.pricing?.services,
+  ];
+  for (const source of sources) {
+    if (Array.isArray(source) && source[index]) {
+      return source[index];
+    }
+  }
+  return null;
+};
+
 const appointmentCollections = {
   pending: "solicitacoes",
   confirmed: "confirmados",
