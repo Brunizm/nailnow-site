@@ -76,9 +76,6 @@ const availabilitySlotsEmpty = document.getElementById("availability-slots-empty
 const availabilityFeedback = document.getElementById("availability-feedback");
 const DEFAULT_AVAILABILITY_CITY = "Porto Alegre";
 const DEFAULT_AVAILABILITY_STATE = "RS";
-const DEFAULT_MAP_COORDINATES = { latitude: -30.0346, longitude: -51.2177 };
-const DEFAULT_MAP_ZOOM = 12;
-const FOCUSED_MAP_ZOOM = 16;
 const serviceNameInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index) =>
   document.getElementById(`service-name-${index}`),
 );
@@ -108,10 +105,8 @@ let fallbackProfileEmail = "";
 let availabilitySlots = [];
 let geocodeAbortController = null;
 let availabilityCoordinates = null;
-let availabilityMapInstance = null;
-let availabilityMapMarker = null;
 let availabilityGeocoder = null;
-let availabilityMapReady = false;
+let availabilityAutocomplete = null;
 
 const resolveServiceOrder = (service, fallback) => {
   if (!service || typeof service !== "object") {
@@ -177,10 +172,6 @@ const ensureAvailabilityGeocoder = () => {
   return availabilityGeocoder;
 };
 
-const getDefaultMapLatLng = () => ({
-  lat: DEFAULT_MAP_COORDINATES.latitude,
-  lng: DEFAULT_MAP_COORDINATES.longitude,
-});
 const WEEKDAY_OPTIONS = [
   { value: "monday", label: "Seg" },
   { value: "tuesday", label: "Ter" },
@@ -362,6 +353,122 @@ const normalizeWeekdayValue = (value) => {
     dom: "sunday",
   };
   return mapping[normalized] || null;
+};
+
+const pickAddressComponent = (components, preferredTypes, options = {}) => {
+  const types = Array.isArray(preferredTypes) ? preferredTypes : [preferredTypes];
+  if (!Array.isArray(components) || !components.length || !types.length) {
+    return "";
+  }
+
+  for (const type of types) {
+    const component = components.find((item) => Array.isArray(item?.types) && item.types.includes(type));
+    if (component) {
+      if (options.useShortName && component.short_name) {
+        return component.short_name;
+      }
+      return component.long_name || component.short_name || "";
+    }
+  }
+
+  return "";
+};
+
+const formatPostalCode = (value) => {
+  if (!value) return "";
+  const digits = String(value).replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.length === 8) {
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }
+  if (digits.length === 7) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+  return value;
+};
+
+const getPostalCodeFromComponents = (components) => {
+  if (!Array.isArray(components) || !components.length) {
+    return "";
+  }
+
+  const base = pickAddressComponent(components, ["postal_code"]);
+  const suffix = pickAddressComponent(components, ["postal_code_suffix"]);
+  const combined = `${base || ""}${suffix ? suffix : ""}`;
+  const formatted = formatPostalCode(combined || base);
+  if (formatted) {
+    return formatted;
+  }
+  if (base) {
+    return formatPostalCode(base);
+  }
+  return "";
+};
+
+const getPostalCodeFromFormattedAddress = (address) => {
+  if (typeof address !== "string" || !address) {
+    return "";
+  }
+
+  const match = address.match(/\b\d{5}-?\d{3}\b/);
+  if (!match) {
+    return "";
+  }
+
+  return formatPostalCode(match[0]);
+};
+
+const formatPlaceAddressLabel = (place) => {
+  if (!place) return "";
+
+  const components = place.address_components;
+  if (!Array.isArray(components) || !components.length) {
+    return place.formatted_address || "";
+  }
+
+  const route = pickAddressComponent(components, ["route"]);
+  const streetNumber = pickAddressComponent(components, ["street_number"]);
+  const streetPart = [route, streetNumber].filter(Boolean).join(", ");
+
+  const area = pickAddressComponent(components, [
+    "sublocality",
+    "sublocality_level_1",
+    "neighborhood",
+    "political",
+  ]);
+  const city = pickAddressComponent(components, ["locality", "administrative_area_level_2"]);
+  const state = pickAddressComponent(components, ["administrative_area_level_1"], { useShortName: true });
+  const postalCode =
+    getPostalCodeFromFormattedAddress(place.formatted_address) ||
+    getPostalCodeFromComponents(components);
+
+  const leadingParts = [];
+  if (streetPart) {
+    leadingParts.push(streetPart);
+  }
+  if (area) {
+    leadingParts.push(area);
+  }
+
+  const trailingParts = [];
+  const cityState = [city, state].filter(Boolean).join(" - ");
+  if (cityState) {
+    trailingParts.push(cityState);
+  }
+  if (postalCode) {
+    trailingParts.push(postalCode);
+  }
+
+  const formatted = [];
+  if (leadingParts.length) {
+    formatted.push(leadingParts.join(" - "));
+  }
+  if (trailingParts.length) {
+    formatted.push(trailingParts.join(", "));
+  }
+
+  const label = formatted.join(", ");
+  return label || place.formatted_address || "";
 };
 
 const setAvailabilityStatus = (message, type = "") => {
@@ -549,6 +656,140 @@ const runGeocoderRequest = (request, controller) => {
     });
   });
 };
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
 
 const populateAddressFromGeocode = (result) => {
   if (!result) {
@@ -631,7 +872,7 @@ const handleAvailabilityGeocode = async () => {
     geocodeAbortController.abort();
   }
   if (!ensureAvailabilityGeocoder()) {
-    setAvailabilityStatus("O mapa ainda está carregando. Tente novamente em instantes.", "error");
+    setAvailabilityStatus("O serviço de endereços ainda está carregando. Tente novamente em instantes.", "error");
     return;
   }
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -650,7 +891,7 @@ const handleAvailabilityGeocode = async () => {
       return;
     }
     if (error.code === "geocoder-unavailable") {
-      setAvailabilityStatus("O mapa ainda está carregando. Tente novamente em instantes.", "error");
+      setAvailabilityStatus("O serviço de endereços ainda está carregando. Tente novamente em instantes.", "error");
       return;
     }
     console.warn("Falha ao buscar endereço da profissional", error);
@@ -1977,6 +2218,14 @@ availabilityAddSlotButton?.addEventListener("click", handleAddAvailabilitySlot);
 availabilityForm?.addEventListener("submit", handleAvailabilitySubmit);
 availabilityDetectButton?.addEventListener("click", handleAvailabilityDetect);
 availabilityGeocodeButton?.addEventListener("click", handleAvailabilityGeocode);
+availabilityAddressInput?.addEventListener("focus", () => {
+  if (!availabilityAutocomplete) {
+    const instance = ensureAvailabilityAutocomplete();
+    if (!instance) {
+      scheduleAvailabilityAutocompleteInit();
+    }
+  }
+});
 availabilityAddressInput?.addEventListener("input", () => {
   setAvailabilityStatus("");
   applyAvailabilityCoordinates(null);
@@ -1990,9 +2239,9 @@ availabilityStartInput?.addEventListener("input", () => setAvailabilityStatus(""
 availabilityEndInput?.addEventListener("input", () => setAvailabilityStatus(""));
 
 if (typeof window !== "undefined") {
-  window.addEventListener("load", scheduleAvailabilityMapInit);
+  window.addEventListener("load", scheduleAvailabilityAutocompleteInit);
   if (document.readyState === "complete") {
-    scheduleAvailabilityMapInit();
+    scheduleAvailabilityAutocompleteInit();
   }
 }
 
