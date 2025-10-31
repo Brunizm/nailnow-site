@@ -42631,15 +42631,37 @@ body.portal .dashboard-hero {
 }
 
 body.portal .portal-hero__headline {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
   gap: clamp(2rem, 5vw, 3rem);
-  flex-wrap: wrap;
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  body.portal .portal-hero__headline {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  }
 }
 
 body.portal .portal-hero__intro {
+  display: grid;
+  gap: clamp(1rem, 3vw, 1.5rem);
+  align-content: start;
   max-width: 60ch;
+}
+
+body.portal .portal-hero__signout {
+  justify-self: start;
+}
+
+body.portal .portal-hero__profile {
+  width: 100%;
+}
+
+body.portal .portal-hero__profile-grid {
+  display: grid;
+  gap: clamp(2rem, 5vw, 3rem);
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 body.portal .portal-hero__metrics {
@@ -42693,12 +42715,12 @@ body.portal .portal-columns {
   gap: clamp(2.5rem, 5vw, 3.5rem);
   padding: clamp(3rem, 7vw, 4rem) 0;
   border-bottom: 1px solid var(--portal-divider);
+  justify-items: stretch;
 }
 
 @media (min-width: 1100px) {
   body.portal .portal-columns {
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -42721,14 +42743,8 @@ body.portal .portal-section__description {
   color: var(--text-muted);
 }
 
-body.portal .portal-profile__grid {
-  display: grid;
-  gap: clamp(2rem, 5vw, 3rem);
-  align-items: start;
-}
-
 @media (min-width: 960px) {
-  body.portal .portal-profile__grid {
+  body.portal .portal-hero__profile-grid {
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   }
 }
@@ -42745,14 +42761,26 @@ body.portal .profile-details {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
-body.portal .portal-profile__support {
-  max-width: 52ch;
+body.portal .portal-hero__profile .profile-details {
+  gap: clamp(0.75rem, 2vw, 1rem);
 }
 
-body.portal .portal-profile__support .profile-support-note {
-  margin: 0;
+body.portal .portal-hero__profile .profile-details__item {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+body.portal .portal-hero__profile .profile-details__item dt {
   font-size: 0.95rem;
-  line-height: 1.7;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-main);
+}
+
+body.portal .portal-hero__profile .profile-details__item dd {
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 body.portal .portal-request {
@@ -42810,6 +42838,17 @@ body.portal .portal-schedule .schedule-grid {
   body.portal .portal-schedule .schedule-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+body.portal .booking-card__field--results {
+  gap: clamp(1rem, 3vw, 1.5rem);
+}
+
+body.portal .booking-card__heading {
+  margin: 0;
+  font-size: clamp(1rem, 1.1vw + 0.85rem, 1.25rem);
+  font-weight: 600;
+  color: var(--text-main);
 }
 
 body.portal .portal-schedule .schedule-section {

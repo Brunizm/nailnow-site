@@ -11,6 +11,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  writeBatch,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -81,6 +82,41 @@ let currentProfile = null;
 let fallbackProfileEmail = "";
 let availabilitySlots = [];
 let geocodeAbortController = null;
+
+const resolveServiceOrder = (service, fallback) => {
+  if (!service || typeof service !== "object") {
+    return fallback;
+  }
+  const candidates = [service.order, service.ordem, service.posicao, service.position, service.index];
+  for (const candidate of candidates) {
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+  return fallback;
+};
+
+const sortServicesByOrder = (items = []) => {
+  return items
+    .map((service, index) => ({ service, index, order: resolveServiceOrder(service, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry, index) => ({ ...entry.service, ordem: index, order: index }));
+};
+
+const getExistingServiceEntry = (index) => {
+  const sources = [
+    currentProfile?.servicos,
+    currentProfile?.services,
+    currentProfile?.pricing?.servicos,
+    currentProfile?.pricing?.services,
+  ];
+  for (const source of sources) {
+    if (Array.isArray(source) && source[index]) {
+      return source[index];
+    }
+  }
+  return null;
+};
 
 const appointmentCollections = {
   pending: "solicitacoes",
@@ -215,6 +251,9 @@ const renderServices = (services) => {
     price.className = "profile-services__price";
     if (typeof service.price === "number") {
       price.textContent = formatCurrency(service.price);
+    } else if (typeof service.priceLabel === "string") {
+      const trimmedLabel = service.priceLabel.trim();
+      price.textContent = trimmedLabel || "Sob consulta";
     } else if (service.priceLabel) {
       price.textContent = service.priceLabel;
     } else {
@@ -598,26 +637,105 @@ const parsePriceInput = (value) => {
 const gatherServiceEntries = () => {
   const services = [];
   for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
-    const name = serviceNameInputs[index]?.value?.trim() || "";
-    const priceRaw = servicePriceInputs[index]?.value?.trim() || "";
-    const duration = serviceDurationInputs[index]?.value?.trim() || "";
+    const nameInput = serviceNameInputs[index];
+    const priceInput = servicePriceInputs[index];
+    const durationInput = serviceDurationInputs[index];
+    const name = nameInput?.value?.trim() || "";
+    const priceRaw = priceInput?.value?.trim() || "";
+    const duration = durationInput?.value?.trim() || "";
     if (!name && !priceRaw && !duration) {
       continue;
     }
-    const existing = Array.isArray(currentProfile?.servicos) ? currentProfile.servicos[index] : null;
+    const existing = getExistingServiceEntry(index);
     const { amount, label } = parsePriceInput(priceRaw);
+    const resolvedName =
+      name ||
+      existing?.nome ||
+      existing?.name ||
+      existing?.titulo ||
+      existing?.title ||
+      existing?.servico ||
+      existing?.service ||
+      `Serviço ${index + 1}`;
+    const resolvedDuration =
+      duration || existing?.duracao || existing?.duration || existing?.tempo || existing?.time || "";
+    const numericPrice = typeof amount === "number" ? amount : null;
+    const priceLabelSource =
+      label ||
+      existing?.priceLabel ||
+      existing?.precoTexto ||
+      existing?.valorTexto ||
+      (typeof numericPrice === "number" ? formatCurrency(numericPrice) : "");
+    const normalizedPriceLabel = priceLabelSource ? priceLabelSource.trim() : "";
+    const finalPriceLabel = normalizedPriceLabel || "Sob consulta";
+    const id =
+      existing?.id ||
+      existing?.uid ||
+      existing?.slug ||
+      existing?.codigo ||
+      (nameInput?.dataset?.serviceId ? nameInput.dataset.serviceId : `service-${index + 1}`);
+    const order = index;
+    const amountValue = numericPrice;
     const service = {
-      id: existing?.id || existing?.uid || existing?.slug || `service-${index + 1}`,
-      nome: name || existing?.nome || existing?.name || `Serviço ${index + 1}`,
-      preco: typeof amount === "number" ? amount : null,
-      price: typeof amount === "number" ? amount : null,
-      priceLabel: label || existing?.priceLabel || existing?.precoTexto || existing?.valorTexto || "",
-      duracao: duration || existing?.duracao || existing?.duration || "",
-      duration: duration || existing?.duration || "",
+      id,
+      ordem: order,
+      order,
+      nome: resolvedName,
+      name: resolvedName,
+      duracao: resolvedDuration,
+      duration: resolvedDuration,
+      price: typeof amountValue === "number" ? amountValue : null,
+      preco: typeof amountValue === "number" ? amountValue : null,
+      priceLabel: finalPriceLabel,
+      precoTexto: finalPriceLabel,
+      valorTexto: finalPriceLabel,
     };
     services.push(service);
   }
-  return services;
+  return sortServicesByOrder(services);
+};
+
+const createServiceStoragePayload = (service, index) => {
+  if (!service || typeof service !== "object") {
+    return null;
+  }
+  const order = resolveServiceOrder(service, index);
+  const name =
+    service.nome ||
+    service.name ||
+    service.titulo ||
+    service.title ||
+    service.servico ||
+    service.service ||
+    `Serviço ${index + 1}`;
+  const duration = service.duracao || service.duration || service.tempo || service.time || "";
+  const amount =
+    typeof service.price === "number"
+      ? service.price
+      : typeof service.preco === "number"
+      ? service.preco
+      : null;
+  const priceLabelSource =
+    service.priceLabel ||
+    service.precoTexto ||
+    service.valorTexto ||
+    (typeof amount === "number" ? formatCurrency(amount) : "");
+  const normalizedPriceLabel = priceLabelSource ? priceLabelSource.trim() : "";
+  const priceLabel = normalizedPriceLabel || "Sob consulta";
+  return {
+    id: service.id || `service-${index + 1}`,
+    ordem: order,
+    order,
+    nome: name,
+    name,
+    duracao: duration,
+    duration,
+    preco: typeof amount === "number" ? amount : null,
+    price: typeof amount === "number" ? amount : null,
+    priceLabel,
+    precoTexto: priceLabel,
+    valorTexto: priceLabel,
+  };
 };
 
 const buildAvailabilityPayload = () => {
@@ -655,7 +773,13 @@ const buildAvailabilityPayload = () => {
     areaParts.push(`Raio ${radius} km`);
   }
 
-  const services = gatherServiceEntries();
+  const services = sortServicesByOrder(gatherServiceEntries());
+  const pricingServices = services.map((service) => ({ ...service }));
+  const pricingPayload = {
+    ...(currentProfile?.pricing && typeof currentProfile.pricing === "object" ? currentProfile.pricing : {}),
+    services: pricingServices,
+    updatedAt: serverTimestamp(),
+  };
   const availability = availabilitySlots.map((slot) => ({
     id: slot.id,
     dias: slot.days,
@@ -667,6 +791,8 @@ const buildAvailabilityPayload = () => {
     atendimento,
     area: areaParts.join(" • "),
     servicos: services,
+    services,
+    pricing: pricingPayload,
     disponibilidade: availability,
     raioAtendimento: typeof radius === "number" ? radius : null,
     updatedAt: serverTimestamp(),
@@ -775,7 +901,8 @@ const populateAvailabilityForm = (profile) => {
       if (typeof service?.price === "number") {
         servicePriceInputs[index].value = service.price.toFixed(2).replace(".", ",");
       } else if (service?.priceLabel) {
-        servicePriceInputs[index].value = service.priceLabel;
+        const label = typeof service.priceLabel === "string" ? service.priceLabel.trim() : service.priceLabel;
+        servicePriceInputs[index].value = label || "";
       } else {
         servicePriceInputs[index].value = "";
       }
@@ -804,12 +931,27 @@ const handleAvailabilitySubmit = async (event) => {
     const collectionName = currentProfile.collection || PROFILE_COLLECTIONS[0];
     const profileRef = doc(db, collectionName, currentProfile.id);
     await setDoc(profileRef, payload, { merge: true });
+    await syncServicesSubcollection({ ...currentProfile, collection: collectionName }, payload.servicos);
+
+    const pricingBase =
+      payload.pricing && typeof payload.pricing === "object"
+        ? Object.fromEntries(
+            Object.entries(payload.pricing).filter(([key]) => key !== "updatedAt"),
+          )
+        : {};
+    const pricingState = {
+      ...(currentProfile?.pricing && typeof currentProfile.pricing === "object" ? currentProfile.pricing : {}),
+      ...pricingBase,
+      services: payload.servicos,
+    };
+
     currentProfile = {
       ...currentProfile,
-      ...payload,
       atendimento: { ...(currentProfile.atendimento || {}), ...payload.atendimento },
       disponibilidade: payload.disponibilidade,
       servicos: payload.servicos,
+      services: payload.services || payload.servicos,
+      pricing: pricingState,
       area: payload.area || currentProfile.area,
       raioAtendimento: payload.raioAtendimento ?? currentProfile.raioAtendimento,
     };
@@ -1184,6 +1326,7 @@ const normalizeServiceEntry = (entry, index = 0) => {
       price: null,
       priceLabel: "Sob consulta",
       duration: "",
+      order: index,
     };
   }
   if (typeof entry === "object") {
@@ -1214,12 +1357,23 @@ const normalizeServiceEntry = (entry, index = 0) => {
     }
     const duration = entry.duracao || entry.duration || entry.tempo || entry.time || "";
     const id = entry.id || entry.uid || entry.slug || entry.codigo || `service-${index}`;
+    const orderCandidates = [entry.ordem, entry.order, entry.posicao, entry.position, entry.index];
+    let order = index;
+    for (const candidate of orderCandidates) {
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        order = candidate;
+        break;
+      }
+    }
+    const normalizedLabel = typeof priceLabel === "string" ? priceLabel.trim() : "";
+    const finalPriceLabel = normalizedLabel || (typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta");
     return {
       id,
       name,
       price: typeof numericPrice === "number" ? numericPrice : null,
-      priceLabel,
+      priceLabel: finalPriceLabel,
       duration,
+      order,
     };
   }
   return null;
@@ -1257,6 +1411,48 @@ const collectInlineServices = (profile) => {
   return services;
 };
 
+const syncServicesSubcollection = async (profile, services) => {
+  if (!profile?.id) {
+    return;
+  }
+  const collectionName = profile.collection || PROFILE_COLLECTIONS[0];
+  const professionalRef = doc(db, collectionName, profile.id);
+  const servicesCollectionRef = collection(professionalRef, "servicos");
+
+  try {
+    const desired = new Map();
+    const batch = writeBatch(db);
+    let hasOperations = false;
+
+    (services || []).forEach((service, index) => {
+      const payload = createServiceStoragePayload(service, index);
+      if (!payload) {
+        return;
+      }
+      const serviceId = payload.id || `service-${index + 1}`;
+      desired.set(serviceId, payload);
+      const serviceRef = doc(servicesCollectionRef, serviceId);
+      batch.set(serviceRef, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+      hasOperations = true;
+    });
+
+    const snapshot = await getDocs(servicesCollectionRef);
+    snapshot.forEach((docSnap) => {
+      if (!desired.has(docSnap.id)) {
+        batch.delete(docSnap.ref);
+        hasOperations = true;
+      }
+    });
+
+    if (hasOperations) {
+      await batch.commit();
+    }
+  } catch (error) {
+    console.warn("Não foi possível sincronizar os serviços cadastrados", error);
+    throw error;
+  }
+};
+
 const fetchServicesSubcollection = async (profile) => {
   if (!profile?.id || !profile?.collection) {
     return [];
@@ -1267,12 +1463,13 @@ const fetchServicesSubcollection = async (profile) => {
     if (snapshot.empty) {
       return [];
     }
-    return snapshot.docs
+    const services = snapshot.docs
       .map((docSnap, index) => {
         const normalized = normalizeServiceEntry({ id: docSnap.id, ...docSnap.data() }, index);
         return normalized;
       })
       .filter(Boolean);
+    return sortServicesByOrder(services);
   } catch (error) {
     console.warn("Não foi possível carregar os serviços cadastrados", error);
     return [];
@@ -1300,7 +1497,19 @@ const loadServicesForProfile = async (profile) => {
     services = Array.from(map.values());
   }
 
+  services = sortServicesByOrder(services);
   renderServices(services);
+
+  if (profile && typeof profile === "object") {
+    profile.servicos = services;
+    profile.services = services;
+    profile.pricing = { ...(profile.pricing || {}), services };
+  }
+  if (currentProfile && profile && currentProfile.id === profile.id) {
+    currentProfile.servicos = services;
+    currentProfile.services = services;
+    currentProfile.pricing = { ...(currentProfile.pricing || {}), services };
+  }
 };
 
 const resolveStatusValue = (data) => {
