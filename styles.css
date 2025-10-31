@@ -42631,15 +42631,34 @@ body.portal .dashboard-hero {
 }
 
 body.portal .portal-hero__headline {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
   gap: clamp(2rem, 5vw, 3rem);
-  flex-wrap: wrap;
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  body.portal .portal-hero__headline {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  }
 }
 
 body.portal .portal-hero__intro {
+  display: grid;
+  gap: clamp(1rem, 3vw, 1.5rem);
+  align-content: start;
   max-width: 60ch;
+}
+
+body.portal .portal-hero__signout {
+  justify-self: start;
+}
+
+body.portal .portal-hero__profile {
+  width: 100%;
+}
+
+body.portal .portal-hero__profile .portal-profile__grid {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 body.portal .portal-hero__metrics {
