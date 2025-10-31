@@ -758,10 +758,18 @@ const resetDashboard = () => {
   profileNameElements.forEach((element) => {
     element.textContent = "cliente";
   });
-  profileDisplay.textContent = "—";
-  profileEmail.textContent = "—";
-  profilePhone.textContent = "—";
-  profileAddress.textContent = "—";
+  if (profileDisplay) {
+    profileDisplay.textContent = "—";
+  }
+  if (profileEmail) {
+    profileEmail.textContent = "—";
+  }
+  if (profilePhone) {
+    profilePhone.textContent = "—";
+  }
+  if (profileAddress) {
+    profileAddress.textContent = "—";
+  }
   if (professionalResults) {
     professionalResults.innerHTML = "";
   }
@@ -2400,10 +2408,18 @@ const updateProfileDisplay = (profile, fallbackEmail = "") => {
   profileNameElements.forEach((element) => {
     element.textContent = displayName;
   });
-  profileDisplay.textContent = displayName;
-  profileEmail.textContent = emailForDisplay || "—";
-  profilePhone.textContent = phoneForDisplay || "Atualize seu telefone";
-  profileAddress.textContent = addressForDisplay || "Atualize seu endereço preferido";
+  if (profileDisplay) {
+    profileDisplay.textContent = displayName;
+  }
+  if (profileEmail) {
+    profileEmail.textContent = emailForDisplay || "—";
+  }
+  if (profilePhone) {
+    profilePhone.textContent = phoneForDisplay || "Atualize seu telefone";
+  }
+  if (profileAddress) {
+    profileAddress.textContent = addressForDisplay || "Atualize seu endereço preferido";
+  }
 };
 
 const hydrateDashboard = async (profile, fallbackEmail = "") => {
