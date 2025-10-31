@@ -1134,6 +1134,10 @@ main {
   color: var(--text-main);
 }
 
+.availability-service__title {
+  font-size: 1rem;
+}
+
 .availability-service__index {
   display: inline-flex;
   align-items: center;
