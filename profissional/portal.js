@@ -28,6 +28,14 @@ const firebaseConfig = {
 const SESSION_KEY = "nailnowManicureSession";
 const PROFILE_COLLECTIONS = ["profissionais"];
 const MAX_SERVICE_ENTRIES = 5;
+const FIXED_SERVICE_NAMES = [
+  "Manicure clássica",
+  "Pedicure clássica",
+  "Alongamento em gel",
+  "Esmaltação em gel (manicure)",
+  "Esmaltação em gel (pedicure)",
+];
+const getFixedServiceName = (index) => FIXED_SERVICE_NAMES[index] || `Serviço ${index + 1}`;
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -76,6 +84,17 @@ const servicePriceInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index
 const serviceDurationInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index) =>
   document.getElementById(`service-duration-${index}`),
 );
+const serviceTitleElements = Array.from(document.querySelectorAll("[data-service-title]"));
+
+serviceTitleElements.forEach((element, index) => {
+  element.textContent = getFixedServiceName(index);
+});
+
+serviceNameInputs.forEach((input, index) => {
+  if (input) {
+    input.value = getFixedServiceName(index);
+  }
+});
 let currentProfile = null;
 let fallbackProfileEmail = "";
 let availabilitySlots = [];
@@ -702,23 +721,15 @@ const gatherServiceEntries = () => {
     const nameInput = serviceNameInputs[index];
     const priceInput = servicePriceInputs[index];
     const durationInput = serviceDurationInputs[index];
-    const name = nameInput?.value?.trim() || "";
+    const fixedName = getFixedServiceName(index);
     const priceRaw = priceInput?.value?.trim() || "";
     const duration = durationInput?.value?.trim() || "";
-    if (!name && !priceRaw && !duration) {
+    if (!priceRaw && !duration) {
       continue;
     }
     const existing = getExistingServiceEntry(index);
     const { amount, label } = parsePriceInput(priceRaw);
-    const resolvedName =
-      name ||
-      existing?.nome ||
-      existing?.name ||
-      existing?.titulo ||
-      existing?.title ||
-      existing?.servico ||
-      existing?.service ||
-      `Serviço ${index + 1}`;
+    const resolvedName = fixedName;
     const resolvedDuration =
       duration || existing?.duracao || existing?.duration || existing?.tempo || existing?.time || "";
     const numericPrice = typeof amount === "number" ? amount : null;
@@ -762,14 +773,7 @@ const createServiceStoragePayload = (service, index) => {
     return null;
   }
   const order = resolveServiceOrder(service, index);
-  const name =
-    service.nome ||
-    service.name ||
-    service.titulo ||
-    service.title ||
-    service.servico ||
-    service.service ||
-    `Serviço ${index + 1}`;
+  const name = getFixedServiceName(index);
   const duration = service.duracao || service.duration || service.tempo || service.time || "";
   const amount =
     typeof service.price === "number"
@@ -954,7 +958,13 @@ const populateAvailabilityForm = (profile) => {
   for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
     const service = services[index];
     if (serviceNameInputs[index]) {
-      serviceNameInputs[index].value = service?.name || "";
+      const input = serviceNameInputs[index];
+      input.value = getFixedServiceName(index);
+      if (service?.id) {
+        input.dataset.serviceId = service.id;
+      } else if (input.dataset.serviceId) {
+        delete input.dataset.serviceId;
+      }
     }
     if (servicePriceInputs[index]) {
       if (typeof service?.price === "number") {
@@ -1425,9 +1435,11 @@ const normalizeServiceEntry = (entry, index = 0) => {
     }
     const normalizedLabel = typeof priceLabel === "string" ? priceLabel.trim() : "";
     const finalPriceLabel = normalizedLabel || (typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta");
+    const fixedName = order < MAX_SERVICE_ENTRIES ? getFixedServiceName(order) : null;
+    const displayName = fixedName || name;
     return {
       id,
-      name,
+      name: displayName,
       price: typeof numericPrice === "number" ? numericPrice : null,
       priceLabel: finalPriceLabel,
       duration,
