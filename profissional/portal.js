@@ -57,8 +57,6 @@ const availabilityAddressInput = document.getElementById("availability-address")
 const availabilityCityInput = document.getElementById("availability-city");
 const availabilityStateInput = document.getElementById("availability-state");
 const availabilityRadiusInput = document.getElementById("availability-radius");
-const availabilityLatitudeInput = document.getElementById("availability-latitude");
-const availabilityLongitudeInput = document.getElementById("availability-longitude");
 const availabilityDetectButton = document.getElementById("availability-detect");
 const availabilityGeocodeButton = document.getElementById("availability-geocode");
 const availabilityLocationStatus = document.getElementById("availability-location-status");
@@ -82,6 +80,42 @@ let currentProfile = null;
 let fallbackProfileEmail = "";
 let availabilitySlots = [];
 let geocodeAbortController = null;
+let availabilityCoordinates = null;
+
+const resolveServiceOrder = (service, fallback) => {
+  if (!service || typeof service !== "object") {
+    return fallback;
+  }
+  const candidates = [service.order, service.ordem, service.posicao, service.position, service.index];
+  for (const candidate of candidates) {
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+  return fallback;
+};
+
+const sortServicesByOrder = (items = []) => {
+  return items
+    .map((service, index) => ({ service, index, order: resolveServiceOrder(service, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry, index) => ({ ...entry.service, ordem: index, order: index }));
+};
+
+const getExistingServiceEntry = (index) => {
+  const sources = [
+    currentProfile?.servicos,
+    currentProfile?.services,
+    currentProfile?.pricing?.servicos,
+    currentProfile?.pricing?.services,
+  ];
+  for (const source of sources) {
+    if (Array.isArray(source) && source[index]) {
+      return source[index];
+    }
+  }
+  return null;
+};
 
 const resolveServiceOrder = (service, fallback) => {
   if (!service || typeof service !== "object") {
@@ -195,6 +229,7 @@ const resetDashboard = () => {
   renderAvailabilitySlots();
   setAvailabilityStatus("");
   setAvailabilityFeedback("");
+  availabilityCoordinates = null;
   currentProfile = null;
   fallbackProfileEmail = "";
 };
@@ -389,13 +424,19 @@ const renderAvailabilitySlots = () => {
 
 const applyAvailabilityCoordinates = (coords) => {
   if (!coords) {
+    availabilityCoordinates = null;
     return;
   }
-  if (availabilityLatitudeInput && Number.isFinite(coords.latitude)) {
-    availabilityLatitudeInput.value = Number(coords.latitude).toFixed(6);
-  }
-  if (availabilityLongitudeInput && Number.isFinite(coords.longitude)) {
-    availabilityLongitudeInput.value = Number(coords.longitude).toFixed(6);
+  const latCandidate =
+    coords.latitude ?? coords.lat ?? coords._lat ?? coords.x ?? coords[0] ?? null;
+  const lngCandidate =
+    coords.longitude ?? coords.lng ?? coords._long ?? coords.lon ?? coords.y ?? coords[1] ?? null;
+  const latitude = Number.parseFloat(latCandidate);
+  const longitude = Number.parseFloat(lngCandidate);
+  if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    availabilityCoordinates = { latitude, longitude };
+  } else {
+    availabilityCoordinates = null;
   }
 };
 
@@ -634,6 +675,27 @@ const parsePriceInput = (value) => {
   return { amount: numeric, label: formatCurrency(numeric) };
 };
 
+const setServiceDurationValue = (select, value) => {
+  if (!select) {
+    return;
+  }
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized) {
+    select.value = "";
+    return;
+  }
+  const options = Array.from(select.options || []);
+  const hasOption = options.some((option) => option.value === normalized);
+  if (!hasOption) {
+    const option = document.createElement("option");
+    option.value = normalized;
+    option.textContent = normalized;
+    option.dataset.customOption = "true";
+    select.appendChild(option);
+  }
+  select.value = normalized;
+};
+
 const gatherServiceEntries = () => {
   const services = [];
   for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
@@ -743,11 +805,14 @@ const buildAvailabilityPayload = () => {
   const city = availabilityCityInput?.value?.trim() || "";
   const state = availabilityStateInput?.value?.trim().toUpperCase() || "";
   const radius = toNumberOrNull(availabilityRadiusInput?.value);
-  const latitude = toNumberOrNull(availabilityLatitudeInput?.value);
-  const longitude = toNumberOrNull(availabilityLongitudeInput?.value);
   const coords =
-    typeof latitude === "number" && typeof longitude === "number"
-      ? { latitude, longitude }
+    availabilityCoordinates &&
+    Number.isFinite(availabilityCoordinates.latitude) &&
+    Number.isFinite(availabilityCoordinates.longitude)
+      ? {
+          latitude: availabilityCoordinates.latitude,
+          longitude: availabilityCoordinates.longitude,
+        }
       : null;
 
   const atendimento = {
@@ -860,18 +925,12 @@ const populateAvailabilityForm = (profile) => {
     profile?.coordenadas ||
     profile?.coordinates ||
     null;
+  applyAvailabilityCoordinates(null);
   if (coordinateSource) {
     applyAvailabilityCoordinates({
       latitude: coordinateSource.latitude ?? coordinateSource.lat ?? coordinateSource._lat,
       longitude: coordinateSource.longitude ?? coordinateSource.lng ?? coordinateSource._long,
     });
-  } else {
-    if (availabilityLatitudeInput) {
-      availabilityLatitudeInput.value = "";
-    }
-    if (availabilityLongitudeInput) {
-      availabilityLongitudeInput.value = "";
-    }
   }
   const slots = toArray(profile?.disponibilidade).map((entry, index) => {
     const days = toArray(entry?.dias || entry?.days || entry?.semana || entry?.weekdays)
@@ -907,9 +966,8 @@ const populateAvailabilityForm = (profile) => {
         servicePriceInputs[index].value = "";
       }
     }
-    if (serviceDurationInputs[index]) {
-      serviceDurationInputs[index].value = service?.duration || service?.duracao || "";
-    }
+    const durationValue = service?.duration || service?.duracao || "";
+    setServiceDurationValue(serviceDurationInputs[index], durationValue);
   }
   setAvailabilityStatus("");
   setAvailabilityFeedback("");
@@ -1786,12 +1844,19 @@ availabilityAddSlotButton?.addEventListener("click", handleAddAvailabilitySlot);
 availabilityForm?.addEventListener("submit", handleAvailabilitySubmit);
 availabilityDetectButton?.addEventListener("click", handleAvailabilityDetect);
 availabilityGeocodeButton?.addEventListener("click", handleAvailabilityGeocode);
-availabilityAddressInput?.addEventListener("input", () => setAvailabilityStatus(""));
-availabilityCityInput?.addEventListener("input", () => setAvailabilityStatus(""));
-availabilityStateInput?.addEventListener("input", () => setAvailabilityStatus(""));
+availabilityAddressInput?.addEventListener("input", () => {
+  setAvailabilityStatus("");
+  applyAvailabilityCoordinates(null);
+});
+availabilityCityInput?.addEventListener("input", () => {
+  setAvailabilityStatus("");
+  applyAvailabilityCoordinates(null);
+});
+availabilityStateInput?.addEventListener("input", () => {
+  setAvailabilityStatus("");
+  applyAvailabilityCoordinates(null);
+});
 availabilityRadiusInput?.addEventListener("input", () => setAvailabilityStatus(""));
-availabilityLatitudeInput?.addEventListener("input", () => setAvailabilityStatus(""));
-availabilityLongitudeInput?.addEventListener("input", () => setAvailabilityStatus(""));
 availabilityStartInput?.addEventListener("input", () => setAvailabilityStatus(""));
 availabilityEndInput?.addEventListener("input", () => setAvailabilityStatus(""));
 
