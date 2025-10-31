@@ -91,6 +91,26 @@ let currentSearchTerm = "";
 let currentSearchTokens = [];
 let geocodeAbortController = null;
 const MAX_SERVICE_OPTIONS = 5;
+
+const resolveServiceOrder = (service, fallback) => {
+  if (!service || typeof service !== "object") {
+    return fallback;
+  }
+  const candidates = [service.order, service.ordem, service.posicao, service.position, service.index];
+  for (const candidate of candidates) {
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+  return fallback;
+};
+
+const sortServicesByOrder = (items = []) => {
+  return items
+    .map((service, index) => ({ service, index, order: resolveServiceOrder(service, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry, index) => ({ ...entry.service, ordem: index, order: index }));
+};
 const dateChipFormatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
 const timeChipFormatter = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
@@ -831,6 +851,7 @@ const normalizeServiceEntry = (entry, index = 0) => {
       price: null,
       priceLabel: "Sob consulta",
       duration: "",
+      order: index,
     };
   }
   if (typeof entry === "object") {
@@ -861,12 +882,23 @@ const normalizeServiceEntry = (entry, index = 0) => {
     }
     const duration = entry.duracao || entry.duration || entry.tempo || entry.time || "";
     const id = entry.id || entry.uid || entry.slug || entry.codigo || `service-${index}`;
+    const orderCandidates = [entry.ordem, entry.order, entry.posicao, entry.position, entry.index];
+    let order = index;
+    for (const candidate of orderCandidates) {
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        order = candidate;
+        break;
+      }
+    }
+    const normalizedLabel = typeof priceLabel === "string" ? priceLabel.trim() : "";
+    const finalPriceLabel = normalizedLabel || (typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta");
     return {
       id,
       name,
       price: typeof numericPrice === "number" ? numericPrice : null,
-      priceLabel,
+      priceLabel: finalPriceLabel,
       duration,
+      order,
     };
   }
   return null;
@@ -2161,7 +2193,7 @@ const collectProfessionalServices = (profile) => {
     });
   });
 
-  return services;
+  return sortServicesByOrder(services);
 };
 
 const resolveStatusValue = (data) => {

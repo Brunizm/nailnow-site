@@ -148,8 +148,33 @@
               <p class="dashboard-intro">
                 Acompanhe solicitações enviadas às profissionais, confirme próximos serviços e consulte o histórico das suas experiências NailNow.
               </p>
+              <button type="button" id="sign-out" class="dashboard-signout portal-hero__signout">Sair</button>
             </div>
-            <button type="button" id="sign-out" class="dashboard-signout">Sair</button>
+            <aside class="portal-hero__profile" aria-labelledby="cliente-profile-heading">
+              <div class="portal-hero__profile-grid">
+                <article class="profile-card" aria-labelledby="cliente-profile-heading">
+                  <h2 id="cliente-profile-heading">Meus dados</h2>
+                  <dl class="profile-details">
+                    <div class="profile-details__item">
+                      <dt>Nome</dt>
+                      <dd id="profile-display">—</dd>
+                    </div>
+                    <div class="profile-details__item">
+                      <dt>E-mail</dt>
+                      <dd id="profile-email">—</dd>
+                    </div>
+                    <div class="profile-details__item">
+                      <dt>Telefone</dt>
+                      <dd id="profile-phone">—</dd>
+                    </div>
+                    <div class="profile-details__item">
+                      <dt>Endereço</dt>
+                      <dd id="profile-address">—</dd>
+                    </div>
+                  </dl>
+                </article>
+              </div>
+            </aside>
           </div>
           <div id="dashboard-status" class="auth-status" role="status" aria-live="polite" hidden></div>
           <div class="portal-hero__metrics" aria-label="Resumo dos agendamentos">
@@ -173,16 +198,16 @@
 
         <div class="portal-columns">
           <section class="request-board portal-section portal-request" aria-labelledby="request-board-heading">
-          <div class="portal-request__header">
-            <div class="request-board__intro">
-              <h2 id="request-board-heading">Solicitar atendimento</h2>
-              <p>
-                Envie uma solicitação rápida para manicures NailNow e acompanhe o retorno diretamente pelo portal.
-              </p>
+            <div class="portal-request__header">
+              <div class="request-board__intro">
+                <h2 id="request-board-heading">Solicitar atendimento</h2>
+                <p>
+                  Envie uma solicitação rápida para manicures NailNow e acompanhe o retorno diretamente pelo portal.
+                </p>
+              </div>
             </div>
-          </div>
-          <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
-            <div class="booking-card__layout">
+            <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
+              <div class="booking-card__layout">
               <div class="booking-card__column booking-card__column--search">
                 <div class="booking-card__field booking-card__field--wide booking-card__field--location">
                   <label class="booking-card__label" for="search-location">Onde você quer ser atendida?</label>
@@ -391,40 +416,8 @@
                 <p id="request-feedback" class="booking-card__feedback auth-status" role="status" aria-live="polite" hidden></p>
               </div>
             </div>
-          </form>
+            </form>
           </section>
-
-          <aside class="portal-section portal-profile" aria-labelledby="cliente-profile-heading">
-            <div class="portal-profile__grid">
-              <article class="profile-card" aria-labelledby="cliente-profile-heading">
-                <h2 id="cliente-profile-heading">Meus dados</h2>
-                <dl class="profile-details">
-                  <div class="profile-details__item">
-                    <dt>Nome</dt>
-                    <dd id="profile-display">—</dd>
-                  </div>
-                  <div class="profile-details__item">
-                    <dt>E-mail</dt>
-                    <dd id="profile-email">—</dd>
-                  </div>
-                  <div class="profile-details__item">
-                    <dt>Telefone</dt>
-                    <dd id="profile-phone">—</dd>
-                  </div>
-                  <div class="profile-details__item">
-                    <dt>Endereço</dt>
-                    <dd id="profile-address">—</dd>
-                  </div>
-                </dl>
-              </article>
-              <div class="portal-profile__support" aria-label="Suporte NailNow">
-                <p class="profile-support-note">
-                  Para atualizar qualquer informação, fale com o suporte NailNow pelo e-mail
-                  <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>.
-                </p>
-              </div>
-            </div>
-          </aside>
         </div>
 
         <section class="portal-section portal-schedule" aria-labelledby="cliente-schedule-heading">
