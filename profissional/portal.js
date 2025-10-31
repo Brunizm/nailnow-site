@@ -30,10 +30,10 @@ const PROFILE_COLLECTIONS = ["profissionais"];
 const MAX_SERVICE_ENTRIES = 5;
 const FIXED_SERVICE_NAMES = [
   "Manicure clássica",
-  "Spa das mãos",
-  "Blindagem",
-  "Alongamento em fibra",
-  "Manutenção",
+  "Pedicure clássica",
+  "Alongamento em gel",
+  "Esmaltação em gel (manicure)",
+  "Esmaltação em gel (pedicure)",
 ];
 const getFixedServiceName = (index) => FIXED_SERVICE_NAMES[index] || `Serviço ${index + 1}`;
 
@@ -1435,9 +1435,11 @@ const normalizeServiceEntry = (entry, index = 0) => {
     }
     const normalizedLabel = typeof priceLabel === "string" ? priceLabel.trim() : "";
     const finalPriceLabel = normalizedLabel || (typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta");
+    const fixedName = order < MAX_SERVICE_ENTRIES ? getFixedServiceName(order) : null;
+    const displayName = fixedName || name;
     return {
       id,
-      name,
+      name: displayName,
       price: typeof numericPrice === "number" ? numericPrice : null,
       priceLabel: finalPriceLabel,
       duration,
