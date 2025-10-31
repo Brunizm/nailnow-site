@@ -63,7 +63,6 @@ const cancelledList = document.getElementById("cancelled-list");
 const availabilityForm = document.getElementById("availability-form");
 const availabilityAddressInput = document.getElementById("availability-address");
 const availabilityCityInput = document.getElementById("availability-city");
-const availabilityStateInput = document.getElementById("availability-state");
 const availabilityRadiusInput = document.getElementById("availability-radius");
 const availabilityDetectButton = document.getElementById("availability-detect");
 const availabilityGeocodeButton = document.getElementById("availability-geocode");
@@ -75,6 +74,11 @@ const availabilityAddSlotButton = document.getElementById("availability-add-slot
 const availabilitySlotsList = document.getElementById("availability-slots");
 const availabilitySlotsEmpty = document.getElementById("availability-slots-empty");
 const availabilityFeedback = document.getElementById("availability-feedback");
+const DEFAULT_AVAILABILITY_CITY = "Porto Alegre";
+const DEFAULT_AVAILABILITY_STATE = "RS";
+const DEFAULT_MAP_COORDINATES = { latitude: -30.0346, longitude: -51.2177 };
+const DEFAULT_MAP_ZOOM = 12;
+const FOCUSED_MAP_ZOOM = 16;
 const serviceNameInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index) =>
   document.getElementById(`service-name-${index}`),
 );
@@ -85,6 +89,10 @@ const serviceDurationInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, in
   document.getElementById(`service-duration-${index}`),
 );
 const serviceTitleElements = Array.from(document.querySelectorAll("[data-service-title]"));
+
+if (availabilityCityInput && !availabilityCityInput.value) {
+  availabilityCityInput.value = DEFAULT_AVAILABILITY_CITY;
+}
 
 serviceTitleElements.forEach((element, index) => {
   element.textContent = getFixedServiceName(index);
@@ -100,41 +108,10 @@ let fallbackProfileEmail = "";
 let availabilitySlots = [];
 let geocodeAbortController = null;
 let availabilityCoordinates = null;
-
-const resolveServiceOrder = (service, fallback) => {
-  if (!service || typeof service !== "object") {
-    return fallback;
-  }
-  const candidates = [service.order, service.ordem, service.posicao, service.position, service.index];
-  for (const candidate of candidates) {
-    if (typeof candidate === "number" && Number.isFinite(candidate)) {
-      return candidate;
-    }
-  }
-  return fallback;
-};
-
-const sortServicesByOrder = (items = []) => {
-  return items
-    .map((service, index) => ({ service, index, order: resolveServiceOrder(service, index) }))
-    .sort((a, b) => a.order - b.order)
-    .map((entry, index) => ({ ...entry.service, ordem: index, order: index }));
-};
-
-const getExistingServiceEntry = (index) => {
-  const sources = [
-    currentProfile?.servicos,
-    currentProfile?.services,
-    currentProfile?.pricing?.servicos,
-    currentProfile?.pricing?.services,
-  ];
-  for (const source of sources) {
-    if (Array.isArray(source) && source[index]) {
-      return source[index];
-    }
-  }
-  return null;
-};
+let availabilityMapInstance = null;
+let availabilityMapMarker = null;
+let availabilityGeocoder = null;
+let availabilityMapReady = false;
 
 const resolveServiceOrder = (service, fallback) => {
   if (!service || typeof service !== "object") {
@@ -187,9 +164,23 @@ const appointmentStatusLabels = {
   cancelled: "Cancelado",
 };
 
-const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
-const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
-const NOMINATIM_EMAIL = "suporte@nailnow.app";
+const isGoogleMapsAvailable = () => Boolean(window.google?.maps);
+
+const ensureAvailabilityGeocoder = () => {
+  if (availabilityGeocoder) {
+    return availabilityGeocoder;
+  }
+  if (!isGoogleMapsAvailable()) {
+    return null;
+  }
+  availabilityGeocoder = new google.maps.Geocoder();
+  return availabilityGeocoder;
+};
+
+const getDefaultMapLatLng = () => ({
+  lat: DEFAULT_MAP_COORDINATES.latitude,
+  lng: DEFAULT_MAP_COORDINATES.longitude,
+});
 const WEEKDAY_OPTIONS = [
   { value: "monday", label: "Seg" },
   { value: "tuesday", label: "Ter" },
@@ -444,6 +435,7 @@ const renderAvailabilitySlots = () => {
 const applyAvailabilityCoordinates = (coords) => {
   if (!coords) {
     availabilityCoordinates = null;
+    updateAvailabilityMap();
     return;
   }
   const latCandidate =
@@ -457,6 +449,105 @@ const applyAvailabilityCoordinates = (coords) => {
   } else {
     availabilityCoordinates = null;
   }
+  updateAvailabilityMap();
+};
+
+const updateAvailabilityMap = () => {
+  if (!availabilityMapInstance || !isGoogleMapsAvailable()) {
+    return;
+  }
+  const coords = availabilityCoordinates;
+  if (coords && Number.isFinite(coords.latitude) && Number.isFinite(coords.longitude)) {
+    const position = { lat: coords.latitude, lng: coords.longitude };
+    availabilityMapInstance.setCenter(position);
+    availabilityMapInstance.setZoom(FOCUSED_MAP_ZOOM);
+    if (!availabilityMapMarker) {
+      availabilityMapMarker = new google.maps.Marker({
+        map: availabilityMapInstance,
+        position,
+      });
+    } else {
+      availabilityMapMarker.setPosition(position);
+      if (!availabilityMapMarker.getMap()) {
+        availabilityMapMarker.setMap(availabilityMapInstance);
+      }
+    }
+  } else {
+    availabilityMapInstance.setCenter(getDefaultMapLatLng());
+    availabilityMapInstance.setZoom(DEFAULT_MAP_ZOOM);
+    if (availabilityMapMarker && availabilityMapMarker.getMap()) {
+      availabilityMapMarker.setMap(null);
+    }
+  }
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
 };
 
 const populateAddressFromGeocode = (result) => {
@@ -470,78 +561,60 @@ const populateAddressFromGeocode = (result) => {
   if (coords) {
     applyAvailabilityCoordinates(coords);
   }
-  const address = raw?.address;
-  if (!address) {
+  if (!availabilityCityInput) {
     return;
   }
-  if (availabilityCityInput && !availabilityCityInput.value) {
-    availabilityCityInput.value =
-      address.city || address.town || address.village || address.hamlet || availabilityCityInput.value;
-  }
-  if (availabilityStateInput && !availabilityStateInput.value) {
-    const state = address.state_code || address.state || address.region || "";
-    availabilityStateInput.value = state ? state.slice(0, 2).toUpperCase() : "";
+  const components = raw?.address_components;
+  const resolvedCity = resolveCityFromComponents(components) || DEFAULT_AVAILABILITY_CITY;
+  const options = Array.from(availabilityCityInput.options || []);
+  const hasExactOption = options.some((option) => option.value === resolvedCity);
+  if (hasExactOption) {
+    availabilityCityInput.value = resolvedCity;
+  } else {
+    availabilityCityInput.value = DEFAULT_AVAILABILITY_CITY;
   }
 };
 
 const geocodeAddress = async (query, signal) => {
-  const params = new URLSearchParams({
-    format: "json",
-    addressdetails: "1",
-    limit: "1",
-    q: query,
-    email: NOMINATIM_EMAIL,
-  });
-  const fetchOptions = { headers: { "Accept-Language": "pt-BR" } };
-  if (signal) {
-    fetchOptions.signal = signal;
-  }
-  const response = await fetch(`${NOMINATIM_SEARCH_URL}?${params.toString()}`, fetchOptions);
-  if (!response.ok) {
-    const error = new Error("geocode-failed");
-    error.status = response.status;
-    throw error;
-  }
-  const payload = await response.json();
-  if (!Array.isArray(payload) || !payload.length) {
+  const controller = signal ? { signal } : null;
+  const results = await runGeocoderRequest(
+    {
+      address: query,
+      componentRestrictions: { country: "BR" },
+    },
+    controller,
+  );
+  if (!Array.isArray(results) || !results.length) {
     return null;
   }
-  const candidate = payload[0];
-  const latitude = Number.parseFloat(candidate.lat);
-  const longitude = Number.parseFloat(candidate.lon);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+  const candidate = results[0];
+  const location = candidate.geometry?.location;
+  const latitude = typeof location?.lat === "function" ? location.lat() : location?.lat;
+  const longitude = typeof location?.lng === "function" ? location.lng() : location?.lng;
+  const latNumber = Number.parseFloat(latitude);
+  const lngNumber = Number.parseFloat(longitude);
+  if (!Number.isFinite(latNumber) || !Number.isFinite(lngNumber)) {
     return null;
   }
   return {
-    coords: { latitude, longitude },
-    label: candidate.display_name || query,
+    coords: { latitude: latNumber, longitude: lngNumber },
+    label: candidate.formatted_address || query,
     raw: candidate,
   };
 };
 
 const reverseGeocodeCoordinates = async (coords, signal) => {
-  const params = new URLSearchParams({
-    format: "json",
-    addressdetails: "1",
-    zoom: "16",
-    lat: String(coords.latitude),
-    lon: String(coords.longitude),
-    email: NOMINATIM_EMAIL,
-  });
-  const fetchOptions = { headers: { "Accept-Language": "pt-BR" } };
-  if (signal) {
-    fetchOptions.signal = signal;
-  }
-  const response = await fetch(`${NOMINATIM_REVERSE_URL}?${params.toString()}`, fetchOptions);
-  if (!response.ok) {
-    const error = new Error("reverse-geocode-failed");
-    error.status = response.status;
-    throw error;
-  }
-  const payload = await response.json();
+  const controller = signal ? { signal } : null;
+  const results = await runGeocoderRequest(
+    {
+      location: { lat: coords.latitude, lng: coords.longitude },
+    },
+    controller,
+  );
+  const candidate = Array.isArray(results) && results.length ? results[0] : null;
   return {
-    label: payload.display_name || "",
-    raw: payload,
+    label: candidate?.formatted_address || "",
+    raw: candidate,
   };
 };
 
@@ -557,6 +630,10 @@ const handleAvailabilityGeocode = async () => {
   if (geocodeAbortController) {
     geocodeAbortController.abort();
   }
+  if (!ensureAvailabilityGeocoder()) {
+    setAvailabilityStatus("O mapa ainda está carregando. Tente novamente em instantes.", "error");
+    return;
+  }
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
   geocodeAbortController = controller;
   setAvailabilityStatus("Buscando o endereço informado...");
@@ -570,6 +647,10 @@ const handleAvailabilityGeocode = async () => {
     setAvailabilityStatus("Endereço localizado!", "success");
   } catch (error) {
     if (error.name === "AbortError") {
+      return;
+    }
+    if (error.code === "geocoder-unavailable") {
+      setAvailabilityStatus("O mapa ainda está carregando. Tente novamente em instantes.", "error");
       return;
     }
     console.warn("Falha ao buscar endereço da profissional", error);
@@ -605,6 +686,11 @@ const handleAvailabilityDetect = () => {
       };
       applyAvailabilityCoordinates(coords);
       const fallbackLabel = `Coordenadas aproximadas (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`;
+      if (!ensureAvailabilityGeocoder()) {
+        populateAddressFromGeocode({ coords, label: fallbackLabel });
+        setAvailabilityStatus("Localização capturada! Ajuste o endereço se preferir.");
+        return;
+      }
       const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
       geocodeAbortController = controller;
       try {
@@ -806,8 +892,8 @@ const createServiceStoragePayload = (service, index) => {
 
 const buildAvailabilityPayload = () => {
   const address = availabilityAddressInput?.value?.trim() || "";
-  const city = availabilityCityInput?.value?.trim() || "";
-  const state = availabilityStateInput?.value?.trim().toUpperCase() || "";
+  const city = availabilityCityInput?.value?.trim() || DEFAULT_AVAILABILITY_CITY;
+  const state = DEFAULT_AVAILABILITY_STATE;
   const radius = toNumberOrNull(availabilityRadiusInput?.value);
   const coords =
     availabilityCoordinates &&
@@ -822,7 +908,10 @@ const buildAvailabilityPayload = () => {
   const atendimento = {
     endereco: address,
     cidade: city,
+    city,
     estado: state,
+    state,
+    uf: state,
     raio: typeof radius === "number" ? radius : null,
   };
   if (coords) {
@@ -901,10 +990,10 @@ const populateAvailabilityForm = (profile) => {
     availabilityAddressInput.value = atendimento.endereco || atendimento.address || "";
   }
   if (availabilityCityInput) {
-    availabilityCityInput.value = atendimento.cidade || atendimento.city || "";
-  }
-  if (availabilityStateInput) {
-    availabilityStateInput.value = (atendimento.estado || atendimento.state || atendimento.uf || "").slice(0, 2).toUpperCase();
+    const cityCandidate = atendimento.cidade || atendimento.city || DEFAULT_AVAILABILITY_CITY;
+    const options = Array.from(availabilityCityInput.options || []);
+    const hasOption = options.some((option) => option.value === cityCandidate);
+    availabilityCityInput.value = hasOption ? cityCandidate : DEFAULT_AVAILABILITY_CITY;
   }
   const radiusCandidates = [
     atendimento.raio,
@@ -936,6 +1025,7 @@ const populateAvailabilityForm = (profile) => {
       longitude: coordinateSource.longitude ?? coordinateSource.lng ?? coordinateSource._long,
     });
   }
+  updateAvailabilityMap();
   const slots = toArray(profile?.disponibilidade).map((entry, index) => {
     const days = toArray(entry?.dias || entry?.days || entry?.semana || entry?.weekdays)
       .map((value) => normalizeWeekdayValue(value))
@@ -1852,6 +1942,37 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
   return loadAppointmentsForProfile(profile);
 };
 
+const initAvailabilityMap = () => {
+  if (availabilityMapReady || !isGoogleMapsAvailable()) {
+    return;
+  }
+  const mapElement = document.getElementById("availability-map");
+  if (!mapElement) {
+    return;
+  }
+  availabilityMapInstance = new google.maps.Map(mapElement, {
+    center: getDefaultMapLatLng(),
+    zoom: DEFAULT_MAP_ZOOM,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControl: true,
+  });
+  availabilityMapReady = true;
+  updateAvailabilityMap();
+};
+
+const scheduleAvailabilityMapInit = () => {
+  if (availabilityMapReady) {
+    return;
+  }
+  if (isGoogleMapsAvailable()) {
+    initAvailabilityMap();
+    return;
+  }
+  setTimeout(scheduleAvailabilityMapInit, 400);
+};
+
 availabilityAddSlotButton?.addEventListener("click", handleAddAvailabilitySlot);
 availabilityForm?.addEventListener("submit", handleAvailabilitySubmit);
 availabilityDetectButton?.addEventListener("click", handleAvailabilityDetect);
@@ -1860,17 +1981,20 @@ availabilityAddressInput?.addEventListener("input", () => {
   setAvailabilityStatus("");
   applyAvailabilityCoordinates(null);
 });
-availabilityCityInput?.addEventListener("input", () => {
+availabilityCityInput?.addEventListener("change", () => {
   setAvailabilityStatus("");
-  applyAvailabilityCoordinates(null);
-});
-availabilityStateInput?.addEventListener("input", () => {
-  setAvailabilityStatus("");
-  applyAvailabilityCoordinates(null);
+  applyAvailabilityCoordinates(availabilityCoordinates);
 });
 availabilityRadiusInput?.addEventListener("input", () => setAvailabilityStatus(""));
 availabilityStartInput?.addEventListener("input", () => setAvailabilityStatus(""));
 availabilityEndInput?.addEventListener("input", () => setAvailabilityStatus(""));
+
+if (typeof window !== "undefined") {
+  window.addEventListener("load", scheduleAvailabilityMapInit);
+  if (document.readyState === "complete") {
+    scheduleAvailabilityMapInit();
+  }
+}
 
 const handleAuthError = (error) => {
   const code = error.code || error.message;
