@@ -542,6 +542,7 @@ const renderAvailabilitySlots = () => {
 const applyAvailabilityCoordinates = (coords) => {
   if (!coords) {
     availabilityCoordinates = null;
+    updateAvailabilityMap();
     return;
   }
   const latCandidate =
@@ -555,6 +556,105 @@ const applyAvailabilityCoordinates = (coords) => {
   } else {
     availabilityCoordinates = null;
   }
+  updateAvailabilityMap();
+};
+
+const updateAvailabilityMap = () => {
+  if (!availabilityMapInstance || !isGoogleMapsAvailable()) {
+    return;
+  }
+  const coords = availabilityCoordinates;
+  if (coords && Number.isFinite(coords.latitude) && Number.isFinite(coords.longitude)) {
+    const position = { lat: coords.latitude, lng: coords.longitude };
+    availabilityMapInstance.setCenter(position);
+    availabilityMapInstance.setZoom(FOCUSED_MAP_ZOOM);
+    if (!availabilityMapMarker) {
+      availabilityMapMarker = new google.maps.Marker({
+        map: availabilityMapInstance,
+        position,
+      });
+    } else {
+      availabilityMapMarker.setPosition(position);
+      if (!availabilityMapMarker.getMap()) {
+        availabilityMapMarker.setMap(availabilityMapInstance);
+      }
+    }
+  } else {
+    availabilityMapInstance.setCenter(getDefaultMapLatLng());
+    availabilityMapInstance.setZoom(DEFAULT_MAP_ZOOM);
+    if (availabilityMapMarker && availabilityMapMarker.getMap()) {
+      availabilityMapMarker.setMap(null);
+    }
+  }
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
 };
 };
 
@@ -2081,6 +2181,37 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
   populateAvailabilityForm(profile);
   await loadServicesForProfile(profile);
   return loadAppointmentsForProfile(profile);
+};
+
+const initAvailabilityMap = () => {
+  if (availabilityMapReady || !isGoogleMapsAvailable()) {
+    return;
+  }
+  const mapElement = document.getElementById("availability-map");
+  if (!mapElement) {
+    return;
+  }
+  availabilityMapInstance = new google.maps.Map(mapElement, {
+    center: getDefaultMapLatLng(),
+    zoom: DEFAULT_MAP_ZOOM,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControl: true,
+  });
+  availabilityMapReady = true;
+  updateAvailabilityMap();
+};
+
+const scheduleAvailabilityMapInit = () => {
+  if (availabilityMapReady) {
+    return;
+  }
+  if (isGoogleMapsAvailable()) {
+    initAvailabilityMap();
+    return;
+  }
+  setTimeout(scheduleAvailabilityMapInit, 400);
 };
 
 availabilityAddSlotButton?.addEventListener("click", handleAddAvailabilitySlot);
