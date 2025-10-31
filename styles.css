@@ -42900,14 +42900,19 @@ body.portal .booking-card {
   margin-top: 0;
   padding: 0;
   width: 100%;
+  border-radius: 0;
 }
 
 body.portal .booking-card--portal {
   width: 100%;
+  border-radius: 0;
 }
 
-body.portal .booking-card__control {
-  border-radius: 16px;
+body.portal .booking-card__control,
+body.portal .booking-card__input--textarea,
+body.portal .booking-card__action,
+body.portal .booking-card__submit {
+  border-radius: 0;
 }
 
 body.portal .request-toolbar {

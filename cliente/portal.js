@@ -1921,9 +1921,23 @@ const handleRequestSubmission = async (event) => {
     return;
   }
 
-  const locationStreet = (requestLocationInput?.value || currentProfile?.endereco || "").trim();
-  const locationNumber = (requestLocationNumberInput?.value || "").trim();
-  const locationComplement = (requestLocationComplementInput?.value || "").trim();
+  const locationStreet = (
+    requestLocationInput?.value ||
+    searchLocationInput?.value ||
+    customerLocation.label ||
+    currentProfile?.endereco ||
+    ""
+  ).trim();
+  const locationNumber = (
+    requestLocationNumberInput?.value ||
+    searchLocationNumberInput?.value ||
+    ""
+  ).trim();
+  const locationComplement = (
+    requestLocationComplementInput?.value ||
+    searchLocationComplementInput?.value ||
+    ""
+  ).trim();
   const location = buildFullLocationLabel(locationStreet, locationNumber, locationComplement) || locationStreet;
   const notes = (requestNotesInput?.value || "").trim();
 
