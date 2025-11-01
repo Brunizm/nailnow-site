@@ -116,25 +116,128 @@ const resolveServiceOrder = (service, fallback) => {
 
 const sortServicesByOrder = (items = []) => {
   return items
-    .map((service, index) => ({ service, index, order: resolveServiceOrder(service, index) }))
-    .sort((a, b) => a.order - b.order)
-    .map((entry, index) => ({ ...entry.service, ordem: index, order: index }));
+    .map((service, index) => {
+      const order = resolveServiceOrder(service, index);
+      return {
+        ...service,
+        ordem: typeof order === "number" && Number.isFinite(order) ? order : index,
+        order: typeof order === "number" && Number.isFinite(order) ? order : index,
+      };
+    })
+    .sort((a, b) => a.order - b.order);
 };
 
 const getExistingServiceEntry = (index) => {
   const sources = [
+    currentProfile?.catalogoPadrao,
+    currentProfile?.catalogDefaults,
+    currentProfile?.catalog?.servicos,
+    currentProfile?.catalog?.services,
+    currentProfile?.catalogo?.servicos,
+    currentProfile?.catalogo?.services,
     currentProfile?.servicos,
     currentProfile?.services,
+    currentProfile?.pricing?.catalog,
+    currentProfile?.pricing?.catalogo,
     currentProfile?.pricing?.servicos,
     currentProfile?.pricing?.services,
   ];
   for (const source of sources) {
-    if (Array.isArray(source) && source[index]) {
-      return source[index];
+    if (!Array.isArray(source)) {
+      continue;
+    }
+    const direct = source[index];
+    if (direct) {
+      return direct;
+    }
+    const match = source.find((entry, position) => {
+      const order = resolveServiceOrder(entry, position);
+      if (typeof order === "number" && Number.isFinite(order) && order === index) {
+        return true;
+      }
+      const name = (entry?.name || entry?.nome || "").toString().trim().toLowerCase();
+      return name === getFixedServiceName(index).toLowerCase();
+    });
+    if (match) {
+      return match;
     }
   }
   return null;
 };
+
+let serviceSelections = new Map();
+
+const resetServiceSelections = () => {
+  serviceSelections = new Map();
+};
+
+const isServiceSelected = (index) => {
+  if (serviceSelections.has(index)) {
+    return Boolean(serviceSelections.get(index));
+  }
+  return true;
+};
+
+const setServiceSelection = (index, selected) => {
+  serviceSelections.set(index, Boolean(selected));
+};
+
+const parseBoolean = (value) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    if (Number.isNaN(value)) {
+      return null;
+    }
+    if (value === 1) {
+      return true;
+    }
+    if (value === 0) {
+      return false;
+    }
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return null;
+    }
+    if (["true", "1", "sim", "ativo", "ativa", "habilitado", "habilitada", "yes", "on", "disponivel", "disponível"].includes(normalized)) {
+      return true;
+    }
+    if (["false", "0", "nao", "não", "inativo", "inativa", "desabilitado", "desabilitada", "no", "off"].includes(normalized)) {
+      return false;
+    }
+  }
+  return null;
+};
+
+const resolveServiceActiveFlag = (service) => {
+  if (!service || typeof service !== "object") {
+    return null;
+  }
+  const candidates = [
+    service.active,
+    service.ativo,
+    service.ativa,
+    service.disponivel,
+    service.disponível,
+    service.available,
+    service.enabled,
+    service.habilitado,
+    service.habilitada,
+    service.status,
+  ];
+  for (const candidate of candidates) {
+    const parsed = parseBoolean(candidate);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const cloneServiceList = (services = []) => services.map((service) => ({ ...service }));
 
 const appointmentCollections = {
   pending: "solicitacoes",
@@ -230,6 +333,7 @@ const resetDashboard = () => {
   });
   availabilitySlots = [];
   renderAvailabilitySlots();
+  resetServiceSelections();
   renderAvailabilityServiceSummary();
   setAvailabilityStatus("");
   setAvailabilityFeedback("");
@@ -257,6 +361,7 @@ const buildDefaultServiceEntry = (index) => {
     priceLabel,
     duration: getFixedServiceDuration(index),
     order: index,
+    active: isServiceSelected(index),
   };
 };
 
@@ -268,8 +373,12 @@ const renderAvailabilityServiceSummary = () => {
   }
   availabilityServicesList.innerHTML = "";
   getDefaultServices().forEach((service, index) => {
+    const selected = isServiceSelected(index);
     const item = document.createElement("li");
     item.className = "availability-service";
+    if (!selected) {
+      item.classList.add("availability-service--disabled");
+    }
 
     const name = document.createElement("div");
     name.className = "availability-service__name";
@@ -282,13 +391,42 @@ const renderAvailabilityServiceSummary = () => {
     title.className = "availability-service__title";
     title.textContent = service.name;
 
+    const toggleWrapper = document.createElement("label");
+    toggleWrapper.className = "availability-service__toggle";
+    const toggleId = `availability-service-toggle-${index}`;
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = toggleId;
+    checkbox.className = "availability-service__checkbox";
+    checkbox.checked = selected;
+    checkbox.dataset.serviceIndex = String(index);
+    checkbox.setAttribute("aria-label", `${service.name} — alternar disponibilidade`);
+
+    const toggleStatus = document.createElement("span");
+    toggleStatus.className = "availability-service__toggle-label";
+    toggleStatus.textContent = selected ? "Ofereço" : "Não ofereço";
+
+    toggleWrapper.appendChild(checkbox);
+    toggleWrapper.appendChild(toggleStatus);
+    toggleWrapper.classList.toggle("availability-service__toggle--active", selected);
+
+    checkbox.addEventListener("change", () => {
+      const isChecked = checkbox.checked;
+      setServiceSelection(index, isChecked);
+      toggleStatus.textContent = isChecked ? "Ofereço" : "Não ofereço";
+      item.classList.toggle("availability-service--disabled", !isChecked);
+      toggleWrapper.classList.toggle("availability-service__toggle--active", isChecked);
+    });
+
     name.appendChild(badge);
     name.appendChild(title);
+    name.appendChild(toggleWrapper);
 
     const price = document.createElement("span");
     price.className = "availability-service__price";
     if (typeof service.price === "number") {
-      price.textContent = service.price.toFixed(2).replace(".", ",");
+      price.textContent = formatCurrency(service.price);
     } else if (service.priceLabel) {
       price.textContent = service.priceLabel;
     } else {
@@ -327,12 +465,13 @@ const renderServices = (services) => {
   }
   servicesList.innerHTML = "";
   const list = Array.isArray(services) && services.length ? services : getDefaultServices();
-  if (!list.length) {
+  const visible = list.filter((service) => service && service.active !== false);
+  if (!visible.length) {
     servicesEmpty.hidden = false;
     return;
   }
   servicesEmpty.hidden = true;
-  list.forEach((service) => {
+  visible.forEach((service) => {
     const item = document.createElement("li");
     item.className = "profile-services__item";
 
@@ -1269,6 +1408,255 @@ const findAddressComponent = (components, types) => {
   return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
 };
 
+const pickAddressComponent = (components, preferredTypes, options = {}) => {
+  const types = Array.isArray(preferredTypes) ? preferredTypes : [preferredTypes];
+  if (!Array.isArray(components) || !components.length || !types.length) {
+    return "";
+  }
+
+  for (const type of types) {
+    const component = components.find((item) => Array.isArray(item?.types) && item.types.includes(type));
+    if (component) {
+      if (options.useShortName && component.short_name) {
+        return component.short_name;
+      }
+      return component.long_name || component.short_name || "";
+    }
+  }
+
+  return "";
+};
+
+const formatPostalCode = (value) => {
+  if (!value) return "";
+  const digits = String(value).replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.length === 8) {
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }
+  if (digits.length === 7) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+  return value;
+};
+
+const getPostalCodeFromComponents = (components) => {
+  if (!Array.isArray(components) || !components.length) {
+    return "";
+  }
+
+  const base = pickAddressComponent(components, ["postal_code"]);
+  const suffix = pickAddressComponent(components, ["postal_code_suffix"]);
+  const combined = `${base || ""}${suffix ? suffix : ""}`;
+  const formatted = formatPostalCode(combined || base);
+  if (formatted) {
+    return formatted;
+  }
+  if (base) {
+    return formatPostalCode(base);
+  }
+  return "";
+};
+
+const getPostalCodeFromFormattedAddress = (address) => {
+  if (typeof address !== "string" || !address) {
+    return "";
+  }
+
+  const match = address.match(/\b\d{5}-?\d{3}\b/);
+  if (!match) {
+    return "";
+  }
+
+  return formatPostalCode(match[0]);
+};
+
+const formatPlaceAddressLabel = (place) => {
+  if (!place) return "";
+
+  const components = place.address_components;
+  if (!Array.isArray(components) || !components.length) {
+    return place.formatted_address || "";
+  }
+
+  const route = pickAddressComponent(components, ["route"]);
+  const streetNumber = pickAddressComponent(components, ["street_number"]);
+  const streetPart = [route, streetNumber].filter(Boolean).join(", ");
+
+  const area = pickAddressComponent(components, [
+    "sublocality",
+    "sublocality_level_1",
+    "neighborhood",
+    "political",
+  ]);
+  const city = pickAddressComponent(components, ["locality", "administrative_area_level_2"]);
+  const state = pickAddressComponent(components, ["administrative_area_level_1"], { useShortName: true });
+  const postalCode =
+    getPostalCodeFromFormattedAddress(place.formatted_address) ||
+    getPostalCodeFromComponents(components);
+
+  const leadingParts = [];
+  if (streetPart) {
+    leadingParts.push(streetPart);
+  }
+  if (area) {
+    leadingParts.push(area);
+  }
+
+  const trailingParts = [];
+  const cityState = [city, state].filter(Boolean).join(" - ");
+  if (cityState) {
+    trailingParts.push(cityState);
+  }
+  if (postalCode) {
+    trailingParts.push(postalCode);
+  }
+
+  const formatted = [];
+  if (leadingParts.length) {
+    formatted.push(leadingParts.join(" - "));
+  }
+  if (trailingParts.length) {
+    formatted.push(trailingParts.join(", "));
+  }
+
+  const label = formatted.join(", ");
+  return label || place.formatted_address || "";
+};
+
+const setAvailabilityStatus = (message, type = "") => {
+  if (!availabilityLocationStatus) {
+    return;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
 const resolveCityFromComponents = (components) => {
   const locality = findAddressComponent(components, "locality");
   if (locality?.long_name) {
@@ -1629,6 +2017,7 @@ const gatherServiceEntries = () => {
     const amount = getFixedServicePrice(index);
     const numericPrice = typeof amount === "number" ? amount : null;
     const finalPriceLabel = typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta";
+    const selected = isServiceSelected(index);
     const id =
       existing?.id ||
       existing?.uid ||
@@ -1650,6 +2039,11 @@ const gatherServiceEntries = () => {
       priceLabel: finalPriceLabel,
       precoTexto: finalPriceLabel,
       valorTexto: finalPriceLabel,
+      active: selected,
+      ativo: selected,
+      disponivel: selected,
+      available: selected,
+      enabled: selected,
     };
     services.push(service);
   }
@@ -1676,6 +2070,8 @@ const createServiceStoragePayload = (service, index) => {
     (typeof amount === "number" ? formatCurrency(amount) : "");
   const normalizedPriceLabel = priceLabelSource ? priceLabelSource.trim() : "";
   const priceLabel = normalizedPriceLabel || "Sob consulta";
+  const activeFlag = resolveServiceActiveFlag(service);
+  const active = activeFlag === null ? service.active !== false : activeFlag;
   return {
     id: service.id || `service-${index + 1}`,
     ordem: order,
@@ -1689,6 +2085,11 @@ const createServiceStoragePayload = (service, index) => {
     priceLabel,
     precoTexto: priceLabel,
     valorTexto: priceLabel,
+    active,
+    ativo: active,
+    disponivel: active,
+    available: active,
+    enabled: active,
   };
 };
 
@@ -1728,12 +2129,28 @@ const buildAvailabilityPayload = () => {
     areaParts.push(cityState);
   }
 
-  const services = sortServicesByOrder(gatherServiceEntries());
-  const pricingServices = services.map((service) => ({ ...service }));
+  const catalogServices = sortServicesByOrder(gatherServiceEntries());
+  const catalogSnapshot = cloneServiceList(catalogServices);
+  const activeCatalog = catalogSnapshot.filter((service) => service.active !== false);
+  const activeServicesPayload = cloneServiceList(activeCatalog);
+  const activeServicesEnglishPayload = cloneServiceList(activeCatalog);
+  const catalogDefaults = cloneServiceList(catalogSnapshot);
+  const pricingCatalog = cloneServiceList(catalogSnapshot);
+  const pricingCatalogo = cloneServiceList(catalogSnapshot);
   const pricingPayload = {
     ...(currentProfile?.pricing && typeof currentProfile.pricing === "object" ? currentProfile.pricing : {}),
-    services: pricingServices,
+    services: cloneServiceList(activeCatalog),
+    catalog: pricingCatalog,
+    catalogo: pricingCatalogo,
     updatedAt: serverTimestamp(),
+  };
+  const catalogContainer = {
+    ...(currentProfile?.catalog && typeof currentProfile.catalog === "object" ? currentProfile.catalog : {}),
+    services: cloneServiceList(catalogSnapshot),
+  };
+  const catalogoContainer = {
+    ...(currentProfile?.catalogo && typeof currentProfile.catalogo === "object" ? currentProfile.catalogo : {}),
+    servicos: cloneServiceList(catalogSnapshot),
   };
   const availability = availabilitySlots.map((slot) => ({
     id: slot.id,
@@ -1745,8 +2162,12 @@ const buildAvailabilityPayload = () => {
   return {
     atendimento,
     area: areaParts.join(" • "),
-    servicos: services,
-    services,
+    servicos: activeServicesPayload,
+    services: activeServicesEnglishPayload,
+    catalogoPadrao: catalogDefaults,
+    catalogDefaults,
+    catalog: catalogContainer,
+    catalogo: catalogoContainer,
     pricing: pricingPayload,
     disponibilidade: availability,
     updatedAt: serverTimestamp(),
@@ -1817,7 +2238,7 @@ const populateAvailabilityForm = (profile) => {
   });
   availabilitySlots = slots.filter(Boolean);
   renderAvailabilitySlots();
-  renderAvailabilityServiceSummary();
+  hydrateServiceSelections(profile);
   setAvailabilityStatus("");
   setAvailabilityFeedback("");
 };
@@ -1849,8 +2270,14 @@ const handleAvailabilitySubmit = async (event) => {
     const pricingState = {
       ...(currentProfile?.pricing && typeof currentProfile.pricing === "object" ? currentProfile.pricing : {}),
       ...pricingBase,
-      services: payload.servicos,
     };
+    pricingState.services = payload.pricing?.services || payload.servicos;
+    if (payload.pricing?.catalog) {
+      pricingState.catalog = payload.pricing.catalog;
+    }
+    if (payload.pricing?.catalogo) {
+      pricingState.catalogo = payload.pricing.catalogo;
+    }
 
     currentProfile = {
       ...currentProfile,
@@ -1858,16 +2285,22 @@ const handleAvailabilitySubmit = async (event) => {
       disponibilidade: payload.disponibilidade,
       servicos: payload.servicos,
       services: payload.services || payload.servicos,
+      catalogoPadrao: payload.catalogoPadrao,
+      catalogDefaults: payload.catalogDefaults,
+      catalog: { ...(currentProfile.catalog || {}), ...(payload.catalog || {}) },
+      catalogo: { ...(currentProfile.catalogo || {}), ...(payload.catalogo || {}) },
       pricing: pricingState,
       area: payload.area || currentProfile.area,
     };
-    renderAvailabilityServiceSummary();
+    hydrateServiceSelections(currentProfile);
     setAvailabilityFeedback("Dados atualizados com sucesso!", "success");
     if (profileArea) {
       profileArea.textContent = formatCoverageArea(currentProfile);
     }
     if (profileSpecialties) {
-      const inlineServices = collectInlineServices(currentProfile);
+      const inlineServices = (currentProfile.servicos || collectInlineServices(currentProfile)).filter(
+        (service) => service && service.active !== false,
+      );
       if (inlineServices.length) {
         profileSpecialties.textContent = inlineServices
           .slice(0, 3)
@@ -2260,6 +2693,14 @@ const normalizeServiceEntry = (entry, index = 0) => {
       entry.servico ||
       entry.service ||
       `Serviço ${index + 1}`;
+    const orderCandidates = [entry.ordem, entry.order, entry.posicao, entry.position, entry.index];
+    let order = index;
+    for (const candidate of orderCandidates) {
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        order = candidate;
+        break;
+      }
+    }
     const rawPrice =
       entry.preco ??
       entry.price ??
@@ -2282,18 +2723,11 @@ const normalizeServiceEntry = (entry, index = 0) => {
         ? getFixedServiceDuration(order)
         : entry.duracao || entry.duration || entry.tempo || entry.time || "";
     const id = entry.id || entry.uid || entry.slug || entry.codigo || `service-${index}`;
-    const orderCandidates = [entry.ordem, entry.order, entry.posicao, entry.position, entry.index];
-    let order = index;
-    for (const candidate of orderCandidates) {
-      if (typeof candidate === "number" && Number.isFinite(candidate)) {
-        order = candidate;
-        break;
-      }
-    }
     const normalizedLabel = typeof priceLabel === "string" ? priceLabel.trim() : "";
     const finalPriceLabel = normalizedLabel || (typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta");
     const fixedName = order < MAX_SERVICE_ENTRIES ? getFixedServiceName(order) : null;
     const displayName = fixedName || name;
+    const activeFlag = resolveServiceActiveFlag(entry);
     return {
       id,
       name: displayName,
@@ -2301,6 +2735,7 @@ const normalizeServiceEntry = (entry, index = 0) => {
       priceLabel: finalPriceLabel,
       duration,
       order,
+      ...(activeFlag === null ? {} : { active: activeFlag }),
     };
   }
   return null;
@@ -2308,6 +2743,10 @@ const normalizeServiceEntry = (entry, index = 0) => {
 
 const collectInlineServices = (profile) => {
   const candidateFields = [
+    "catalogoPadrao",
+    "catalogDefaults",
+    "catalog.services",
+    "catalog.servicos",
     "servicos",
     "services",
     "catalogo.servicos",
@@ -2319,6 +2758,8 @@ const collectInlineServices = (profile) => {
     "serviceList",
     "pricing.servicos",
     "pricing.services",
+    "pricing.catalog",
+    "pricing.catalogo",
   ];
 
   const services = [];
@@ -2336,6 +2777,84 @@ const collectInlineServices = (profile) => {
   });
 
   return services;
+};
+
+const hydrateServiceSelections = (profile) => {
+  resetServiceSelections();
+  if (!profile || typeof profile !== "object") {
+    renderAvailabilityServiceSummary();
+    return;
+  }
+
+  const catalogCandidates = [
+    getNestedValue(profile, "catalogoPadrao"),
+    getNestedValue(profile, "catalogDefaults"),
+    getNestedValue(profile, "catalog.services"),
+    getNestedValue(profile, "catalog.servicos"),
+    getNestedValue(profile, "catalogo.services"),
+    getNestedValue(profile, "catalogo.servicos"),
+    getNestedValue(profile, "pricing.catalog"),
+    getNestedValue(profile, "pricing.catalogo"),
+  ];
+
+  const catalogServices = [];
+  catalogCandidates.forEach((value) => {
+    toArray(value).forEach((entry, index) => {
+      const normalized = normalizeServiceEntry(entry, catalogServices.length + index);
+      if (normalized) {
+        const activeFlag = resolveServiceActiveFlag(entry);
+        if (activeFlag !== null) {
+          normalized.active = activeFlag;
+        }
+        catalogServices.push(normalized);
+      }
+    });
+  });
+
+  if (!catalogServices.length) {
+    collectInlineServices(profile).forEach((service) => {
+      catalogServices.push(service);
+    });
+  }
+
+  const orderedCatalog = sortServicesByOrder(catalogServices);
+  const hasCatalog = orderedCatalog.length > 0;
+  const byOrder = new Map();
+  const byName = new Map();
+
+  orderedCatalog.forEach((service, index) => {
+    const order = resolveServiceOrder(service, index);
+    if (typeof order === "number" && Number.isFinite(order)) {
+      byOrder.set(order, service);
+    }
+    const normalizedName = (service.name || service.nome || "").toString().trim().toLowerCase();
+    if (normalizedName) {
+      byName.set(normalizedName, service);
+    }
+  });
+
+  for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
+    let entry = byOrder.get(index) || null;
+    if (!entry) {
+      entry = byName.get(getFixedServiceName(index).toLowerCase()) || null;
+    }
+    if (entry) {
+      const activeFlag = resolveServiceActiveFlag(entry);
+      setServiceSelection(index, activeFlag === null ? true : activeFlag);
+    } else if (hasCatalog) {
+      setServiceSelection(index, false);
+    }
+  }
+
+  if (!hasCatalog) {
+    for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
+      if (!serviceSelections.has(index)) {
+        setServiceSelection(index, true);
+      }
+    }
+  }
+
+  renderAvailabilityServiceSummary();
 };
 
 const syncServicesSubcollection = async (profile, services) => {
@@ -2424,19 +2943,37 @@ const loadServicesForProfile = async (profile) => {
     services = Array.from(map.values());
   }
 
-  services = sortServicesByOrder(services);
-  renderServices(services);
+  const orderedServices = sortServicesByOrder(services);
+  const activeServices = orderedServices.filter((service) => service.active !== false);
+  renderServices(activeServices);
 
   if (profile && typeof profile === "object") {
-    profile.servicos = services;
-    profile.services = services;
-    profile.pricing = { ...(profile.pricing || {}), services };
+    const catalogSnapshot = cloneServiceList(orderedServices);
+    const activeSnapshot = cloneServiceList(activeServices);
+    profile.catalogoPadrao = catalogSnapshot;
+    profile.catalogDefaults = cloneServiceList(orderedServices);
+    profile.catalog = { ...(profile.catalog || {}), services: cloneServiceList(orderedServices) };
+    profile.catalogo = { ...(profile.catalogo || {}), servicos: cloneServiceList(orderedServices) };
+    profile.servicos = activeSnapshot;
+    profile.services = cloneServiceList(activeServices);
+    profile.pricing = {
+      ...(profile.pricing || {}),
+      services: cloneServiceList(activeServices),
+      catalog: cloneServiceList(orderedServices),
+      catalogo: cloneServiceList(orderedServices),
+    };
   }
   if (currentProfile && profile && currentProfile.id === profile.id) {
-    currentProfile.servicos = services;
-    currentProfile.services = services;
-    currentProfile.pricing = { ...(currentProfile.pricing || {}), services };
+    currentProfile.catalogoPadrao = profile.catalogoPadrao;
+    currentProfile.catalogDefaults = profile.catalogDefaults;
+    currentProfile.catalog = profile.catalog;
+    currentProfile.catalogo = profile.catalogo;
+    currentProfile.servicos = profile.servicos;
+    currentProfile.services = profile.services;
+    currentProfile.pricing = profile.pricing;
   }
+
+  hydrateServiceSelections(profile);
 };
 
 const resolveStatusValue = (data) => {
@@ -2716,7 +3253,7 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
     profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
   }
   if (profileSpecialties) {
-    const inlineServices = collectInlineServices(profile);
+    const inlineServices = collectInlineServices(profile).filter((service) => service.active !== false);
     if (inlineServices.length) {
       profileSpecialties.textContent = inlineServices
         .slice(0, 3)
