@@ -72,17 +72,13 @@ const servicesList = document.getElementById("services-list");
 const servicesEmpty = document.getElementById("services-empty");
 const metricPending = document.getElementById("metric-pending");
 const metricConfirmed = document.getElementById("metric-confirmed");
-const metricCancelled = document.getElementById("metric-cancelled");
 const badgePending = document.getElementById("badge-pending");
 const badgeConfirmed = document.getElementById("badge-confirmed");
-const badgeCancelled = document.getElementById("badge-cancelled");
 const pendingList = document.getElementById("pending-list");
 const confirmedList = document.getElementById("confirmed-list");
-const cancelledList = document.getElementById("cancelled-list");
 const availabilityForm = document.getElementById("availability-form");
 const availabilityAddressInput = document.getElementById("availability-address");
 const availabilityCityInput = document.getElementById("availability-city");
-const availabilityRadiusInput = document.getElementById("availability-radius");
 const availabilityDetectButton = document.getElementById("availability-detect");
 const availabilityGeocodeButton = document.getElementById("availability-geocode");
 const availabilityLocationStatus = document.getElementById("availability-location-status");
@@ -248,10 +244,13 @@ const setStatus = (message, type = "") => {
 };
 
 const resetDashboard = () => {
-  pendingList.innerHTML = "";
-  confirmedList.innerHTML = "";
-  cancelledList.innerHTML = "";
-  updateMetrics([], [], []);
+  if (pendingList) {
+    pendingList.innerHTML = "";
+  }
+  if (confirmedList) {
+    confirmedList.innerHTML = "";
+  }
+  updateMetrics([], []);
   if (servicesList) {
     servicesList.innerHTML = "";
   }
@@ -1116,6 +1115,140 @@ const runGeocoderRequest = (request, controller) => {
     });
   });
 };
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
 
 const populateAddressFromGeocode = (result) => {
   if (!result) {
@@ -1453,7 +1586,6 @@ const buildAvailabilityPayload = () => {
   const address = availabilityAddressInput?.value?.trim() || "";
   const city = availabilityCityInput?.value?.trim() || DEFAULT_AVAILABILITY_CITY;
   const state = DEFAULT_AVAILABILITY_STATE;
-  const radius = toNumberOrNull(availabilityRadiusInput?.value);
   const coords =
     availabilityCoordinates &&
     Number.isFinite(availabilityCoordinates.latitude) &&
@@ -1471,7 +1603,6 @@ const buildAvailabilityPayload = () => {
     estado: state,
     state,
     uf: state,
-    raio: typeof radius === "number" ? radius : null,
   };
   if (coords) {
     atendimento.coordenadas = coords;
@@ -1485,9 +1616,6 @@ const buildAvailabilityPayload = () => {
   const cityState = [city, state].filter(Boolean).join(" - ");
   if (cityState) {
     areaParts.push(cityState);
-  }
-  if (typeof radius === "number") {
-    areaParts.push(`Raio ${radius} km`);
   }
 
   const services = sortServicesByOrder(gatherServiceEntries());
@@ -1511,7 +1639,6 @@ const buildAvailabilityPayload = () => {
     services,
     pricing: pricingPayload,
     disponibilidade: availability,
-    raioAtendimento: typeof radius === "number" ? radius : null,
     updatedAt: serverTimestamp(),
   };
 };
@@ -1528,12 +1655,6 @@ const formatCoverageArea = (profile) => {
       .join(" - ");
     if (cityState) {
       parts.push(cityState);
-    }
-    const radiusValue = toNumberOrNull(
-      source.raio ?? source.radius ?? profile?.raioAtendimento ?? profile?.raio_atendimento,
-    );
-    if (typeof radiusValue === "number") {
-      parts.push(`Raio ${radiusValue} km`);
     }
     return parts.join(" • ") || profile.area || profile.cidade || "Cadastre sua área de atendimento";
   }
@@ -1553,23 +1674,6 @@ const populateAvailabilityForm = (profile) => {
     const options = Array.from(availabilityCityInput.options || []);
     const hasOption = options.some((option) => option.value === cityCandidate);
     availabilityCityInput.value = hasOption ? cityCandidate : DEFAULT_AVAILABILITY_CITY;
-  }
-  const radiusCandidates = [
-    atendimento.raio,
-    atendimento.radius,
-    profile?.raioAtendimento,
-    profile?.raio_atendimento,
-  ];
-  let resolvedRadius = "";
-  for (const candidate of radiusCandidates) {
-    const parsed = toNumberOrNull(candidate);
-    if (parsed !== null) {
-      resolvedRadius = parsed;
-      break;
-    }
-  }
-  if (availabilityRadiusInput) {
-    availabilityRadiusInput.value = resolvedRadius || "";
   }
   const coordinateSource =
     atendimento.coordenadas ||
@@ -1680,16 +1784,24 @@ const handleAvailabilitySubmit = async (event) => {
       services: payload.services || payload.servicos,
       pricing: pricingState,
       area: payload.area || currentProfile.area,
-      raioAtendimento: payload.raioAtendimento ?? currentProfile.raioAtendimento,
     };
     setAvailabilityFeedback("Dados atualizados com sucesso!", "success");
-    profileArea.textContent = formatCoverageArea(currentProfile);
-    const inlineServices = collectInlineServices(currentProfile);
-    if (inlineServices.length) {
-      profileSpecialties.textContent = inlineServices
-        .slice(0, 3)
-        .map((service) => service.name)
-        .join(" · ");
+    if (profileArea) {
+      profileArea.textContent = formatCoverageArea(currentProfile);
+    }
+    if (profileSpecialties) {
+      const inlineServices = collectInlineServices(currentProfile);
+      if (inlineServices.length) {
+        profileSpecialties.textContent = inlineServices
+          .slice(0, 3)
+          .map((service) => service.name)
+          .join(" · ");
+      } else if (currentProfile.especialidades || currentProfile.specialties) {
+        profileSpecialties.textContent =
+          currentProfile.especialidades || currentProfile.specialties || "Atualize seus serviços principais.";
+      } else {
+        profileSpecialties.textContent = "Atualize seus serviços principais.";
+      }
     }
     await loadServicesForProfile(currentProfile);
   } catch (error) {
@@ -1833,7 +1945,6 @@ const renderAppointments = (status, appointments, options = {}) => {
   const mapping = {
     pending: pendingList,
     confirmed: confirmedList,
-    cancelled: cancelledList,
   };
   const target = mapping[status];
   if (!target) {
@@ -1854,7 +1965,6 @@ const renderAppointments = (status, appointments, options = {}) => {
     const emptyMessages = {
       pending: "Nenhuma solicitação aguardando resposta.",
       confirmed: "Nenhum atendimento confirmado por enquanto.",
-      cancelled: "Nenhuma solicitação cancelada registrada.",
     };
     empty.textContent = emptyMessages[status] || "Nenhum agendamento disponível no momento.";
     target.appendChild(empty);
@@ -1983,13 +2093,21 @@ const handleAppointmentDecision = async (appointment, decision, actionsContainer
   }
 };
 
-const updateMetrics = (pending, confirmed, cancelled) => {
-  metricPending.textContent = pending.length;
-  badgePending.textContent = pending.length;
-  metricConfirmed.textContent = confirmed.length;
-  badgeConfirmed.textContent = confirmed.length;
-  metricCancelled.textContent = cancelled.length;
-  badgeCancelled.textContent = cancelled.length;
+const updateMetrics = (pending = [], confirmed = []) => {
+  const pendingCount = Array.isArray(pending) ? pending.length : 0;
+  const confirmedCount = Array.isArray(confirmed) ? confirmed.length : 0;
+  if (metricPending) {
+    metricPending.textContent = pendingCount;
+  }
+  if (badgePending) {
+    badgePending.textContent = pendingCount;
+  }
+  if (metricConfirmed) {
+    metricConfirmed.textContent = confirmedCount;
+  }
+  if (badgeConfirmed) {
+    badgeConfirmed.textContent = confirmedCount;
+  }
 };
 
 const buildLookupCandidates = (rawEmail) => {
@@ -2436,12 +2554,11 @@ const loadAppointmentsForProfile = async (profile) => {
   if (!profile?.id) {
     renderAppointments("pending", []);
     renderAppointments("confirmed", []);
-    renderAppointments("cancelled", []);
-    updateMetrics([], [], []);
+    updateMetrics([], []);
     return { permissionIssue: false };
   }
 
-  const keys = ["pending", "confirmed", "cancelled"];
+  const keys = ["pending", "confirmed"];
   const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
   const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id, profileCollection)));
 
@@ -2465,8 +2582,8 @@ const loadAppointmentsForProfile = async (profile) => {
     return [];
   });
 
-  const [pendingAppointments, confirmedAppointments, cancelledAppointments] = datasets;
-  updateMetrics(pendingAppointments, confirmedAppointments, cancelledAppointments);
+  const [pendingAppointments = [], confirmedAppointments = []] = datasets;
+  updateMetrics(pendingAppointments, confirmedAppointments);
 
   const fallbackNotice = permissionIssue
     ? "Não conseguimos carregar toda a agenda agora. Atualize a página ou fale com o suporte NailNow."
@@ -2491,24 +2608,52 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
   currentProfile = profile;
   fallbackProfileEmail = fallbackEmail;
 
-  const displayName = profile.nome || profile.name || profile.displayName || profile.email || fallbackEmail || "manicure";
+  const nameCandidates = [
+    profile.nome,
+    profile.nomeCompleto,
+    profile.nome_completo,
+    profile.nomeSocial,
+    profile.nome_social,
+    profile.displayName,
+    profile.name,
+    profile?.dados?.nome,
+    profile?.dados?.nomeCompleto,
+    profile?.dados?.nome_completo,
+    profile?.dadosPessoais?.nome,
+    profile?.dadosPessoais?.nomeCompleto,
+    profile.email,
+    profile.emailLowercase,
+    fallbackEmail,
+  ]
+    .filter(Boolean)
+    .map((value) => value.toString().trim())
+    .filter((value, index, array) => value && array.indexOf(value) === index);
+  const displayName = nameCandidates[0] || "Nome da manicure";
   profileNameElements.forEach((element) => {
     element.textContent = displayName;
   });
-  profileDisplay.textContent = displayName;
-  profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
-  const inlineServices = collectInlineServices(profile);
-  if (inlineServices.length) {
-    profileSpecialties.textContent = inlineServices
-      .slice(0, 3)
-      .map((service) => service.name)
-      .join(" · ");
-  } else if (profile.especialidades || profile.specialties) {
-    profileSpecialties.textContent = profile.especialidades || profile.specialties;
-  } else {
-    profileSpecialties.textContent = FIXED_SERVICE_NAMES.slice(0, 3).join(" · ");
+  if (profileDisplay) {
+    profileDisplay.textContent = displayName;
   }
-  profileArea.textContent = formatCoverageArea(profile);
+  if (profileEmail) {
+    profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
+  }
+  if (profileSpecialties) {
+    const inlineServices = collectInlineServices(profile);
+    if (inlineServices.length) {
+      profileSpecialties.textContent = inlineServices
+        .slice(0, 3)
+        .map((service) => service.name)
+        .join(" · ");
+    } else if (profile.especialidades || profile.specialties) {
+      profileSpecialties.textContent = profile.especialidades || profile.specialties;
+    } else {
+      profileSpecialties.textContent = FIXED_SERVICE_NAMES.slice(0, 3).join(" · ");
+    }
+  }
+  if (profileArea) {
+    profileArea.textContent = formatCoverageArea(profile);
+  }
 
   populateAvailabilityForm(profile);
   await loadServicesForProfile(profile);
@@ -2561,12 +2706,14 @@ availabilityAddressInput?.addEventListener("focus", () => {
 availabilityAddressInput?.addEventListener("input", () => {
   setAvailabilityStatus("");
   applyAvailabilityCoordinates(null);
+  if (!availabilityAutocomplete) {
+    scheduleAvailabilityAutocompleteInit();
+  }
 });
 availabilityCityInput?.addEventListener("change", () => {
   setAvailabilityStatus("");
   applyAvailabilityCoordinates(availabilityCoordinates);
 });
-availabilityRadiusInput?.addEventListener("input", () => setAvailabilityStatus(""));
 availabilityStartInput?.addEventListener("input", () => setAvailabilityStatus(""));
 availabilityEndInput?.addEventListener("input", () => setAvailabilityStatus(""));
 
@@ -2641,7 +2788,7 @@ signOutButton.addEventListener("click", async () => {
   clearSession();
   dashboard.hidden = true;
   resetDashboard();
-  window.location.href = "/profissional/index.html";
+  window.location.href = "/index.html";
 });
 
 onAuthStateChanged(auth, async (user) => {
@@ -2650,7 +2797,7 @@ onAuthStateChanged(auth, async (user) => {
     dashboard.hidden = true;
     resetDashboard();
     setStatus("");
-    window.location.replace("/profissional/index.html");
+    window.location.replace("/index.html");
     return;
   }
 
