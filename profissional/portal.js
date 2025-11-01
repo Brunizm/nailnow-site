@@ -60,6 +60,14 @@ const auth = getAuth(app);
 const statusEl = document.getElementById("dashboard-status");
 const dashboard = document.getElementById("dashboard");
 const signOutButton = document.getElementById("sign-out");
+const getHomeUrl = () => {
+  try {
+    return new URL("/", window.location.origin).href;
+  } catch (error) {
+    return "/";
+  }
+};
+const HOME_URL = getHomeUrl();
 const profileNameElements = document.querySelectorAll("[data-profile-name]");
 const profileDisplay = document.getElementById("profile-display");
 const profileEmail = document.getElementById("profile-email");
@@ -3402,7 +3410,7 @@ signOutButton.addEventListener("click", async () => {
   clearSession();
   dashboard.hidden = true;
   resetDashboard();
-  window.location.href = "/index.html";
+  window.location.href = HOME_URL;
 });
 
 onAuthStateChanged(auth, async (user) => {
@@ -3411,7 +3419,7 @@ onAuthStateChanged(auth, async (user) => {
     dashboard.hidden = true;
     resetDashboard();
     setStatus("");
-    window.location.replace("/index.html");
+    window.location.replace(HOME_URL);
     return;
   }
 
