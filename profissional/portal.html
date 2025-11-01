@@ -298,13 +298,14 @@
                         </div>
                         <div class="availability-form__field">
                           <label for="service-duration-0">Duração</label>
-                          <select id="service-duration-0" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
+                          <input
+                            id="service-duration-0"
+                            type="text"
+                            class="availability-form__input"
+                            value="1 hora"
+                            readonly
+                            data-service-index="0"
+                          />
                         </div>
                       </div>
                     </div>
@@ -327,13 +328,14 @@
                         </div>
                         <div class="availability-form__field">
                           <label for="service-duration-1">Duração</label>
-                          <select id="service-duration-1" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
+                          <input
+                            id="service-duration-1"
+                            type="text"
+                            class="availability-form__input"
+                            value="1 hora"
+                            readonly
+                            data-service-index="1"
+                          />
                         </div>
                       </div>
                     </div>
@@ -356,13 +358,14 @@
                         </div>
                         <div class="availability-form__field">
                           <label for="service-duration-2">Duração</label>
-                          <select id="service-duration-2" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
+                          <input
+                            id="service-duration-2"
+                            type="text"
+                            class="availability-form__input"
+                            value="3 horas"
+                            readonly
+                            data-service-index="2"
+                          />
                         </div>
                       </div>
                     </div>
@@ -385,13 +388,14 @@
                         </div>
                         <div class="availability-form__field">
                           <label for="service-duration-3">Duração</label>
-                          <select id="service-duration-3" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
+                          <input
+                            id="service-duration-3"
+                            type="text"
+                            class="availability-form__input"
+                            value="1 hora"
+                            readonly
+                            data-service-index="3"
+                          />
                         </div>
                       </div>
                     </div>
@@ -414,13 +418,86 @@
                         </div>
                         <div class="availability-form__field">
                           <label for="service-duration-4">Duração</label>
-                          <select id="service-duration-4" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
+                          <input
+                            id="service-duration-4"
+                            type="text"
+                            class="availability-form__input"
+                            value="1 hora"
+                            readonly
+                            data-service-index="4"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="availability-service" data-service-index="5">
+                      <div class="availability-service__header">
+                        <span class="availability-service__index">6</span>
+                        <span class="availability-service__title" data-service-title="5"
+                          >Esmaltação em gel (manicure) + retirada de esmalte</span
+                        >
+                      </div>
+                      <input
+                        id="service-name-5"
+                        type="hidden"
+                        value="Esmaltação em gel (manicure) + retirada de esmalte"
+                      />
+                      <div class="availability-service__row">
+                        <div class="availability-form__field">
+                          <label for="service-price-5">Valor (R$)</label>
+                          <input
+                            id="service-price-5"
+                            type="text"
+                            class="availability-form__input"
+                            inputmode="decimal"
+                            placeholder="110,00"
+                          />
+                        </div>
+                        <div class="availability-form__field">
+                          <label for="service-duration-5">Duração</label>
+                          <input
+                            id="service-duration-5"
+                            type="text"
+                            class="availability-form__input"
+                            value="1 hora"
+                            readonly
+                            data-service-index="5"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="availability-service" data-service-index="6">
+                      <div class="availability-service__header">
+                        <span class="availability-service__index">7</span>
+                        <span class="availability-service__title" data-service-title="6"
+                          >Esmaltação em gel (pedicure) + retirada de esmalte</span
+                        >
+                      </div>
+                      <input
+                        id="service-name-6"
+                        type="hidden"
+                        value="Esmaltação em gel (pedicure) + retirada de esmalte"
+                      />
+                      <div class="availability-service__row">
+                        <div class="availability-form__field">
+                          <label for="service-price-6">Valor (R$)</label>
+                          <input
+                            id="service-price-6"
+                            type="text"
+                            class="availability-form__input"
+                            inputmode="decimal"
+                            placeholder="120,00"
+                          />
+                        </div>
+                        <div class="availability-form__field">
+                          <label for="service-duration-6">Duração</label>
+                          <input
+                            id="service-duration-6"
+                            type="text"
+                            class="availability-form__input"
+                            value="1 hora"
+                            readonly
+                            data-service-index="6"
+                          />
                         </div>
                       </div>
                     </div>
