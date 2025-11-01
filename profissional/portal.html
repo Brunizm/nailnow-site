@@ -171,13 +171,6 @@
                   <dd id="profile-area">São Paulo e região metropolitana</dd>
                 </div>
               </dl>
-              <div class="profile-services" aria-live="polite">
-                <h3 class="profile-services__title">Serviços e valores</h3>
-                <ul id="services-list" class="profile-services__list" role="list"></ul>
-                <p id="services-empty" class="profile-services__empty">
-                  Cadastre seus serviços no app NailNow para que as clientes possam solicitar com valores atualizados.
-                </p>
-              </div>
             </article>
             <div class="dashboard-metrics" aria-label="Resumo da agenda">
               <div class="metric-card">
@@ -221,16 +214,14 @@
                       placeholder="Rua, número e bairro"
                       autocomplete="street-address"
                     />
-                    <button type="button" id="availability-geocode" class="availability-form__action">Buscar no mapa</button>
+                    <button type="button" id="availability-geocode" class="availability-form__action">Buscar</button>
                   </div>
                   <div class="availability-form__row availability-form__row--compact">
                     <div class="availability-form__field">
                       <label for="availability-city">Cidade</label>
-                      <input id="availability-city" type="text" class="availability-form__input" autocomplete="address-level2" />
-                    </div>
-                    <div class="availability-form__field">
-                      <label for="availability-state">Estado</label>
-                      <input id="availability-state" type="text" class="availability-form__input" maxlength="2" autocomplete="address-level1" />
+                      <select id="availability-city" class="availability-form__input">
+                        <option value="Porto Alegre" selected>Porto Alegre</option>
+                      </select>
                     </div>
                     <div class="availability-form__field">
                       <label for="availability-radius">Raio (km)</label>
@@ -497,6 +488,7 @@
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script type="module" src="./portal.js"></script>
 
   </body>

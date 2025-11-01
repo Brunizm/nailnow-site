@@ -791,6 +791,30 @@ async function queueConfirmationForSnapshot(
   }
 }
 
+async function scheduleConfirmationRetry(docRef, queuedBy, error) {
+  const retryUpdate = {
+    signupConfirmation: {
+      autoQueueOptOut: false,
+      mailStatus: "requires-client-enqueue",
+      mailQueuedBy: queuedBy || null,
+      mailQueuedAt: null,
+      mailId: null,
+      mailDocumentId: null,
+      lastQueueError: error?.message || "unknown-error",
+      lastQueueErrorCode: error?.code || null,
+      lastQueueErrorAt: FieldValue.serverTimestamp(),
+    },
+    welcomeEmailError: {
+      message: error?.message || "unknown-error",
+      code: error?.code || null,
+      source: queuedBy || null,
+      timestamp: FieldValue.serverTimestamp(),
+    },
+  };
+
+  await docRef.set(retryUpdate, { merge: true });
+}
+
 function normalizeString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -1469,6 +1493,29 @@ exports.registerClientAccount = functions
             profilePath: docRef.path,
             error: queueError?.message,
           });
+
+          try {
+            await scheduleConfirmationRetry(
+              docRef,
+              REGISTER_CLIENT_SOURCE,
+              queueError,
+            );
+          } catch (retryError) {
+            functions.logger.error(
+              "Falha ao preparar retentativa automática da confirmação",
+              {
+                profilePath: docRef.path,
+                error: retryError?.message,
+              },
+            );
+          }
+
+          confirmationResult = {
+            status: "requires-client-enqueue",
+            mailStatus: "requires-client-enqueue",
+            confirmationUrl: null,
+            mailId: null,
+          };
         }
 
         res.status(200).json({
