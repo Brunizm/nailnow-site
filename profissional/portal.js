@@ -325,6 +325,12 @@ const resetDashboard = () => {
   if (availabilityForm) {
     availabilityForm.reset();
   }
+  servicePriceInputs.forEach((input, index) => {
+    if (input) {
+      const defaultPrice = getFixedServicePrice(index);
+      input.value = typeof defaultPrice === "number" ? formatPriceInputValue(defaultPrice) : "";
+    }
+  });
   availabilitySlots = [];
   renderAvailabilitySlots();
   resetServiceSelections();
@@ -742,6 +748,7 @@ const renderAvailabilitySlots = () => {
 const applyAvailabilityCoordinates = (coords) => {
   if (!coords) {
     availabilityCoordinates = null;
+    updateAvailabilityMap();
     return;
   }
   const latCandidate =
@@ -755,6 +762,890 @@ const applyAvailabilityCoordinates = (coords) => {
   } else {
     availabilityCoordinates = null;
   }
+  updateAvailabilityMap();
+};
+
+const updateAvailabilityMap = () => {
+  if (!availabilityMapInstance || !isGoogleMapsAvailable()) {
+    return;
+  }
+  const coords = availabilityCoordinates;
+  if (coords && Number.isFinite(coords.latitude) && Number.isFinite(coords.longitude)) {
+    const position = { lat: coords.latitude, lng: coords.longitude };
+    availabilityMapInstance.setCenter(position);
+    availabilityMapInstance.setZoom(FOCUSED_MAP_ZOOM);
+    if (!availabilityMapMarker) {
+      availabilityMapMarker = new google.maps.Marker({
+        map: availabilityMapInstance,
+        position,
+      });
+    } else {
+      availabilityMapMarker.setPosition(position);
+      if (!availabilityMapMarker.getMap()) {
+        availabilityMapMarker.setMap(availabilityMapInstance);
+      }
+    }
+  } else {
+    availabilityMapInstance.setCenter(getDefaultMapLatLng());
+    availabilityMapInstance.setZoom(DEFAULT_MAP_ZOOM);
+    if (availabilityMapMarker && availabilityMapMarker.getMap()) {
+      availabilityMapMarker.setMap(null);
+    }
+  }
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const pickAddressComponent = (components, preferredTypes, options = {}) => {
+  const types = Array.isArray(preferredTypes) ? preferredTypes : [preferredTypes];
+  if (!Array.isArray(components) || !components.length || !types.length) {
+    return "";
+  }
+
+  for (const type of types) {
+    const component = components.find((item) => Array.isArray(item?.types) && item.types.includes(type));
+    if (component) {
+      if (options.useShortName && component.short_name) {
+        return component.short_name;
+      }
+      return component.long_name || component.short_name || "";
+    }
+  }
+
+  return "";
+};
+
+const formatPostalCode = (value) => {
+  if (!value) return "";
+  const digits = String(value).replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.length === 8) {
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }
+  if (digits.length === 7) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+  return value;
+};
+
+const getPostalCodeFromComponents = (components) => {
+  if (!Array.isArray(components) || !components.length) {
+    return "";
+  }
+
+  const base = pickAddressComponent(components, ["postal_code"]);
+  const suffix = pickAddressComponent(components, ["postal_code_suffix"]);
+  const combined = `${base || ""}${suffix ? suffix : ""}`;
+  const formatted = formatPostalCode(combined || base);
+  if (formatted) {
+    return formatted;
+  }
+  if (base) {
+    return formatPostalCode(base);
+  }
+  return "";
+};
+
+const getPostalCodeFromFormattedAddress = (address) => {
+  if (typeof address !== "string" || !address) {
+    return "";
+  }
+
+  const match = address.match(/\b\d{5}-?\d{3}\b/);
+  if (!match) {
+    return "";
+  }
+
+  return formatPostalCode(match[0]);
+};
+
+const formatPlaceAddressLabel = (place) => {
+  if (!place) return "";
+
+  const components = place.address_components;
+  if (!Array.isArray(components) || !components.length) {
+    return place.formatted_address || "";
+  }
+
+  const route = pickAddressComponent(components, ["route"]);
+  const streetNumber = pickAddressComponent(components, ["street_number"]);
+  const streetPart = [route, streetNumber].filter(Boolean).join(", ");
+
+  const area = pickAddressComponent(components, [
+    "sublocality",
+    "sublocality_level_1",
+    "neighborhood",
+    "political",
+  ]);
+  const city = pickAddressComponent(components, ["locality", "administrative_area_level_2"]);
+  const state = pickAddressComponent(components, ["administrative_area_level_1"], { useShortName: true });
+  const postalCode =
+    getPostalCodeFromFormattedAddress(place.formatted_address) ||
+    getPostalCodeFromComponents(components);
+
+  const leadingParts = [];
+  if (streetPart) {
+    leadingParts.push(streetPart);
+  }
+  if (area) {
+    leadingParts.push(area);
+  }
+
+  const trailingParts = [];
+  const cityState = [city, state].filter(Boolean).join(" - ");
+  if (cityState) {
+    trailingParts.push(cityState);
+  }
+  if (postalCode) {
+    trailingParts.push(postalCode);
+  }
+
+  const formatted = [];
+  if (leadingParts.length) {
+    formatted.push(leadingParts.join(" - "));
+  }
+  if (trailingParts.length) {
+    formatted.push(trailingParts.join(", "));
+  }
+
+  const label = formatted.join(", ");
+  return label || place.formatted_address || "";
+};
+
+const setAvailabilityStatus = (message, type = "") => {
+  if (!availabilityLocationStatus) {
+    return;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
 };
 };
 
@@ -2381,6 +3272,37 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
   populateAvailabilityForm(profile);
   await loadServicesForProfile(profile);
   return loadAppointmentsForProfile(profile);
+};
+
+const initAvailabilityMap = () => {
+  if (availabilityMapReady || !isGoogleMapsAvailable()) {
+    return;
+  }
+  const mapElement = document.getElementById("availability-map");
+  if (!mapElement) {
+    return;
+  }
+  availabilityMapInstance = new google.maps.Map(mapElement, {
+    center: getDefaultMapLatLng(),
+    zoom: DEFAULT_MAP_ZOOM,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControl: true,
+  });
+  availabilityMapReady = true;
+  updateAvailabilityMap();
+};
+
+const scheduleAvailabilityMapInit = () => {
+  if (availabilityMapReady) {
+    return;
+  }
+  if (isGoogleMapsAvailable()) {
+    initAvailabilityMap();
+    return;
+  }
+  setTimeout(scheduleAvailabilityMapInit, 400);
 };
 
 availabilityAddSlotButton?.addEventListener("click", handleAddAvailabilitySlot);
