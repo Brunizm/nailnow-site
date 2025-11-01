@@ -144,41 +144,13 @@
           <div class="dashboard-hero__header">
             <div>
               <p class="dashboard-kicker">Painel NailNow</p>
-              <h1 id="dashboard-heading">Olá, <span data-profile-name>manicure</span>!</h1>
+              <h1 id="dashboard-heading">Olá, <span data-profile-name>Nome da manicure</span>!</h1>
               <p class="dashboard-intro">Gerencie sua agenda, acompanhe solicitações e mantenha o relacionamento com suas clientes em um só lugar.</p>
             </div>
             <button type="button" id="sign-out" class="dashboard-signout">Sair</button>
           </div>
           <div id="dashboard-status" class="auth-status" role="status" aria-live="polite" hidden></div>
           <div class="dashboard-summary">
-            <article class="profile-card" aria-labelledby="profile-heading">
-              <h2 id="profile-heading">Meu perfil</h2>
-              <dl class="profile-details">
-                <div class="profile-details__item">
-                  <dt>Nome</dt>
-                  <dd id="profile-display">—</dd>
-                </div>
-                <div class="profile-details__item">
-                  <dt>E-mail</dt>
-                  <dd id="profile-email">—</dd>
-                </div>
-                <div class="profile-details__item">
-                  <dt>Especialidades</dt>
-                  <dd id="profile-specialties">Alongamento em fibra · Spa das mãos</dd>
-                </div>
-                <div class="profile-details__item">
-                  <dt>Área de atendimento</dt>
-                  <dd id="profile-area">São Paulo e região metropolitana</dd>
-                </div>
-              </dl>
-              <div class="profile-services" aria-live="polite">
-                <h3 class="profile-services__title">Serviços e valores</h3>
-                <ul id="services-list" class="profile-services__list" role="list"></ul>
-                <p id="services-empty" class="profile-services__empty">
-                  Cadastre seus serviços no app NailNow para que as clientes possam solicitar com valores atualizados.
-                </p>
-              </div>
-            </article>
             <div class="dashboard-metrics" aria-label="Resumo da agenda">
               <div class="metric-card">
                 <span class="metric-label">Solicitações</span>
@@ -189,11 +161,6 @@
                 <span class="metric-label">Confirmados</span>
                 <span class="metric-value" id="metric-confirmed">0</span>
                 <span class="metric-footnote">para os próximos dias</span>
-              </div>
-              <div class="metric-card">
-                <span class="metric-label">Cancelados</span>
-                <span class="metric-value" id="metric-cancelled">0</span>
-                <span class="metric-footnote">solicitações perdidas</span>
               </div>
             </div>
           </div>
@@ -221,20 +188,14 @@
                       placeholder="Rua, número e bairro"
                       autocomplete="street-address"
                     />
-                    <button type="button" id="availability-geocode" class="availability-form__action">Buscar no mapa</button>
+                    <button type="button" id="availability-geocode" class="availability-form__action">Buscar</button>
                   </div>
                   <div class="availability-form__row availability-form__row--compact">
                     <div class="availability-form__field">
                       <label for="availability-city">Cidade</label>
-                      <input id="availability-city" type="text" class="availability-form__input" autocomplete="address-level2" />
-                    </div>
-                    <div class="availability-form__field">
-                      <label for="availability-state">Estado</label>
-                      <input id="availability-state" type="text" class="availability-form__input" maxlength="2" autocomplete="address-level1" />
-                    </div>
-                    <div class="availability-form__field">
-                      <label for="availability-radius">Raio (km)</label>
-                      <input id="availability-radius" type="number" min="1" step="1" class="availability-form__input" />
+                      <select id="availability-city" class="availability-form__input">
+                        <option value="Porto Alegre" selected>Porto Alegre</option>
+                      </select>
                     </div>
                   </div>
                   <div class="availability-form__row availability-form__row--compact">
@@ -266,11 +227,11 @@
                   <div class="availability-form__row availability-form__row--compact">
                     <div class="availability-form__field">
                       <label for="availability-start">Horário inicial</label>
-                      <input id="availability-start" type="time" class="availability-form__input" />
+                      <input id="availability-start" type="time" step="900" class="availability-form__input" />
                     </div>
                     <div class="availability-form__field">
                       <label for="availability-end">Horário final</label>
-                      <input id="availability-end" type="time" class="availability-form__input" />
+                      <input id="availability-end" type="time" step="900" class="availability-form__input" />
                     </div>
                     <button type="button" id="availability-add-slot" class="availability-form__action">Adicionar faixa</button>
                   </div>
@@ -282,164 +243,20 @@
               <div class="availability-form__column availability-form__column--services">
                 <fieldset class="availability-form__group">
                   <legend class="availability-form__legend">Serviços principais</legend>
-                  <p class="availability-form__hint">
-                    Cadastre até cinco serviços com valores, durações e o preço que aparecerá para as clientes na hora de
-                    solicitar um atendimento.
-                  </p>
                   <div class="availability-services" id="availability-services">
-                    <div class="availability-service" data-service-index="0">
-                      <div class="availability-service__header">
-                        <span class="availability-service__index">1</span>
-                        <span class="availability-service__title" data-service-title="0">Manicure clássica</span>
-                      </div>
-                      <input id="service-name-0" type="hidden" value="Manicure clássica" />
-                      <div class="availability-service__row">
-                        <div class="availability-form__field">
-                          <label for="service-price-0">Valor (R$)</label>
-                          <input
-                            id="service-price-0"
-                            type="text"
-                            class="availability-form__input"
-                            inputmode="decimal"
-                            placeholder="70,00"
-                          />
-                        </div>
-                        <div class="availability-form__field">
-                          <label for="service-duration-0">Duração</label>
-                          <select id="service-duration-0" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
-                        </div>
-                      </div>
+                    <div class="availability-services__header" aria-hidden="true">
+                      <span>Serviço</span>
+                      <span>Valor (R$)</span>
+                      <span>Duração</span>
                     </div>
-                    <div class="availability-service" data-service-index="1">
-                      <div class="availability-service__header">
-                        <span class="availability-service__index">2</span>
-                        <span class="availability-service__title" data-service-title="1">Pedicure clássica</span>
-                      </div>
-                      <input id="service-name-1" type="hidden" value="Pedicure clássica" />
-                      <div class="availability-service__row">
-                        <div class="availability-form__field">
-                          <label for="service-price-1">Valor (R$)</label>
-                          <input
-                            id="service-price-1"
-                            type="text"
-                            class="availability-form__input"
-                            inputmode="decimal"
-                            placeholder="80,00"
-                          />
-                        </div>
-                        <div class="availability-form__field">
-                          <label for="service-duration-1">Duração</label>
-                          <select id="service-duration-1" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="availability-service" data-service-index="2">
-                      <div class="availability-service__header">
-                        <span class="availability-service__index">3</span>
-                        <span class="availability-service__title" data-service-title="2">Alongamento em gel</span>
-                      </div>
-                      <input id="service-name-2" type="hidden" value="Alongamento em gel" />
-                      <div class="availability-service__row">
-                        <div class="availability-form__field">
-                          <label for="service-price-2">Valor (R$)</label>
-                          <input
-                            id="service-price-2"
-                            type="text"
-                            class="availability-form__input"
-                            inputmode="decimal"
-                            placeholder="180,00"
-                          />
-                        </div>
-                        <div class="availability-form__field">
-                          <label for="service-duration-2">Duração</label>
-                          <select id="service-duration-2" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="availability-service" data-service-index="3">
-                      <div class="availability-service__header">
-                        <span class="availability-service__index">4</span>
-                        <span class="availability-service__title" data-service-title="3">Esmaltação em gel (manicure)</span>
-                      </div>
-                      <input id="service-name-3" type="hidden" value="Esmaltação em gel (manicure)" />
-                      <div class="availability-service__row">
-                        <div class="availability-form__field">
-                          <label for="service-price-3">Valor (R$)</label>
-                          <input
-                            id="service-price-3"
-                            type="text"
-                            class="availability-form__input"
-                            inputmode="decimal"
-                            placeholder="120,00"
-                          />
-                        </div>
-                        <div class="availability-form__field">
-                          <label for="service-duration-3">Duração</label>
-                          <select id="service-duration-3" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="availability-service" data-service-index="4">
-                      <div class="availability-service__header">
-                        <span class="availability-service__index">5</span>
-                        <span class="availability-service__title" data-service-title="4">Esmaltação em gel (pedicure)</span>
-                      </div>
-                      <input id="service-name-4" type="hidden" value="Esmaltação em gel (pedicure)" />
-                      <div class="availability-service__row">
-                        <div class="availability-form__field">
-                          <label for="service-price-4">Valor (R$)</label>
-                          <input
-                            id="service-price-4"
-                            type="text"
-                            class="availability-form__input"
-                            inputmode="decimal"
-                            placeholder="130,00"
-                          />
-                        </div>
-                        <div class="availability-form__field">
-                          <label for="service-duration-4">Duração</label>
-                          <select id="service-duration-4" class="availability-form__input">
-                            <option value="">Selecione</option>
-                            <option value="30 min">30 min</option>
-                            <option value="1 hora">1 hora</option>
-                            <option value="1 hora e meia">1 hora e meia</option>
-                            <option value="2 horas">2 horas</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
+                    <ol class="availability-services__list" id="availability-services-list" role="list"></ol>
                   </div>
                 </fieldset>
-
-                <div class="availability-form__actions">
-                  <button type="submit" class="availability-form__submit">Salvar atualizações</button>
-                  <p id="availability-feedback" class="availability-form__status auth-status" hidden></p>
-                </div>
               </div>
+            </div>
+            <div class="availability-form__actions">
+              <button type="submit" class="availability-form__submit">Salvar atualizações</button>
+              <p id="availability-feedback" class="availability-form__status auth-status" hidden></p>
             </div>
           </form>
         </section>
@@ -461,13 +278,6 @@
             <div id="confirmed-list" class="schedule-list" role="list"></div>
           </section>
 
-          <section class="schedule-section" aria-labelledby="cancelled-heading">
-            <div class="schedule-section__head">
-              <h2 id="cancelled-heading">Solicitações canceladas</h2>
-              <span class="schedule-count" id="badge-cancelled">0</span>
-            </div>
-            <div id="cancelled-list" class="schedule-list" role="list"></div>
-          </section>
         </div>
       </div>
     </main>
@@ -497,6 +307,7 @@
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script type="module" src="./portal.js"></script>
 
   </body>
