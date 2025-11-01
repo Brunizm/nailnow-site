@@ -53,9 +53,6 @@ const getFixedServicePrice = (index) => {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 };
 const getFixedServiceDuration = (index) => FIXED_SERVICE_DURATIONS[index] || "";
-const formatPriceInputValue = (amount) =>
-  typeof amount === "number" ? amount.toFixed(2).replace(".", ",") : "";
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -89,48 +86,13 @@ const availabilityAddSlotButton = document.getElementById("availability-add-slot
 const availabilitySlotsList = document.getElementById("availability-slots");
 const availabilitySlotsEmpty = document.getElementById("availability-slots-empty");
 const availabilityFeedback = document.getElementById("availability-feedback");
+const availabilityServicesList = document.getElementById("availability-services-list");
 const DEFAULT_AVAILABILITY_CITY = "Porto Alegre";
 const DEFAULT_AVAILABILITY_STATE = "RS";
-const serviceNameInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index) =>
-  document.getElementById(`service-name-${index}`),
-);
-const servicePriceInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index) =>
-  document.getElementById(`service-price-${index}`),
-);
-const serviceDurationInputs = Array.from({ length: MAX_SERVICE_ENTRIES }, (_, index) =>
-  document.getElementById(`service-duration-${index}`),
-);
-const serviceTitleElements = Array.from(document.querySelectorAll("[data-service-title]"));
 
 if (availabilityCityInput && !availabilityCityInput.value) {
   availabilityCityInput.value = DEFAULT_AVAILABILITY_CITY;
 }
-
-serviceTitleElements.forEach((element, index) => {
-  element.textContent = getFixedServiceName(index);
-});
-
-serviceNameInputs.forEach((input, index) => {
-  if (input) {
-    input.value = getFixedServiceName(index);
-  }
-});
-servicePriceInputs.forEach((input, index) => {
-  if (input) {
-    const defaultPrice = getFixedServicePrice(index);
-    if (typeof defaultPrice === "number") {
-      input.value = formatPriceInputValue(defaultPrice);
-    }
-  }
-});
-serviceDurationInputs.forEach((input, index) => {
-  if (input) {
-    input.value = getFixedServiceDuration(index);
-    input.readOnly = true;
-    input.setAttribute("aria-readonly", "true");
-    input.dataset.serviceIndex = String(index);
-  }
-});
 let currentProfile = null;
 let fallbackProfileEmail = "";
 let availabilitySlots = [];
@@ -268,6 +230,7 @@ const resetDashboard = () => {
   });
   availabilitySlots = [];
   renderAvailabilitySlots();
+  renderAvailabilityServiceSummary();
   setAvailabilityStatus("");
   setAvailabilityFeedback("");
   availabilityCoordinates = null;
@@ -298,6 +261,53 @@ const buildDefaultServiceEntry = (index) => {
 };
 
 const getDefaultServices = () => FIXED_SERVICE_NAMES.map((_, index) => buildDefaultServiceEntry(index));
+
+const renderAvailabilityServiceSummary = () => {
+  if (!availabilityServicesList) {
+    return;
+  }
+  availabilityServicesList.innerHTML = "";
+  getDefaultServices().forEach((service, index) => {
+    const item = document.createElement("li");
+    item.className = "availability-service";
+
+    const name = document.createElement("div");
+    name.className = "availability-service__name";
+
+    const badge = document.createElement("span");
+    badge.className = "availability-service__index";
+    badge.textContent = String(index + 1);
+
+    const title = document.createElement("span");
+    title.className = "availability-service__title";
+    title.textContent = service.name;
+
+    name.appendChild(badge);
+    name.appendChild(title);
+
+    const price = document.createElement("span");
+    price.className = "availability-service__price";
+    if (typeof service.price === "number") {
+      price.textContent = service.price.toFixed(2).replace(".", ",");
+    } else if (service.priceLabel) {
+      price.textContent = service.priceLabel;
+    } else {
+      price.textContent = "Sob consulta";
+    }
+
+    const duration = document.createElement("span");
+    duration.className = "availability-service__duration";
+    duration.textContent = service.duration || getFixedServiceDuration(index) || "";
+
+    item.appendChild(name);
+    item.appendChild(price);
+    item.appendChild(duration);
+
+    availabilityServicesList.appendChild(item);
+  });
+};
+
+renderAvailabilityServiceSummary();
 
 const parsePriceValue = (value) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -1249,6 +1259,140 @@ const runGeocoderRequest = (request, controller) => {
     });
   });
 };
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
 
 const populateAddressFromGeocode = (result) => {
   if (!result) {
@@ -1472,59 +1616,25 @@ const handleAddAvailabilitySlot = () => {
   renderAvailabilitySlots();
 };
 
-const parsePriceInput = (value) => {
-  const numeric = toNumberOrNull(value);
-  if (numeric === null) {
-    return { amount: null, label: value.trim() };
-  }
-  return { amount: numeric, label: formatCurrency(numeric) };
-};
-
-const setServiceDurationValue = (field, value, index) => {
-  if (!field) {
-    return;
-  }
-  const normalized = typeof value === "string" ? value.trim() : "";
-  let resolvedIndex = typeof index === "number" && Number.isFinite(index) ? index : null;
-  if (resolvedIndex === null) {
-    const parsedIndex = Number.parseInt(field.dataset?.serviceIndex ?? "", 10);
-    resolvedIndex = Number.isNaN(parsedIndex) ? null : parsedIndex;
-  }
-  const fallback = resolvedIndex !== null ? getFixedServiceDuration(resolvedIndex) : "";
-  field.value = normalized || fallback || "";
-};
-
 const gatherServiceEntries = () => {
   const services = [];
   for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
-    const nameInput = serviceNameInputs[index];
-    const priceInput = servicePriceInputs[index];
-    const durationInput = serviceDurationInputs[index];
     const fixedName = getFixedServiceName(index);
-    const priceRaw = priceInput?.value?.trim() || "";
-    const duration = durationInput?.value?.trim() || "";
-    if (!priceRaw && !duration) {
+    if (!fixedName) {
       continue;
     }
     const existing = getExistingServiceEntry(index);
-    const { amount, label } = parsePriceInput(priceRaw);
     const resolvedName = fixedName;
     const resolvedDuration = getFixedServiceDuration(index);
+    const amount = getFixedServicePrice(index);
     const numericPrice = typeof amount === "number" ? amount : null;
-    const priceLabelSource =
-      label ||
-      existing?.priceLabel ||
-      existing?.precoTexto ||
-      existing?.valorTexto ||
-      (typeof numericPrice === "number" ? formatCurrency(numericPrice) : "");
-    const normalizedPriceLabel = priceLabelSource ? priceLabelSource.trim() : "";
-    const finalPriceLabel = normalizedPriceLabel || "Sob consulta";
+    const finalPriceLabel = typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta";
     const id =
       existing?.id ||
       existing?.uid ||
       existing?.slug ||
       existing?.codigo ||
-      (nameInput?.dataset?.serviceId ? nameInput.dataset.serviceId : `service-${index + 1}`);
+      `service-${index + 1}`;
     const order = index;
     const amountValue = numericPrice;
     const service = {
@@ -1707,41 +1817,7 @@ const populateAvailabilityForm = (profile) => {
   });
   availabilitySlots = slots.filter(Boolean);
   renderAvailabilitySlots();
-  const services = collectInlineServices(profile).slice(0, MAX_SERVICE_ENTRIES);
-  for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
-    const service = services[index];
-    if (serviceNameInputs[index]) {
-      const input = serviceNameInputs[index];
-      input.value = getFixedServiceName(index);
-      if (service?.id) {
-        input.dataset.serviceId = service.id;
-      } else if (input.dataset.serviceId) {
-        delete input.dataset.serviceId;
-      }
-    }
-    if (servicePriceInputs[index]) {
-      const defaultPrice = getFixedServicePrice(index);
-      if (typeof service?.price === "number") {
-        servicePriceInputs[index].value = formatPriceInputValue(service.price);
-      } else if (service?.priceLabel) {
-        const rawLabel = typeof service.priceLabel === "string" ? service.priceLabel : String(service.priceLabel || "");
-        const trimmedLabel = rawLabel.trim();
-        if (trimmedLabel && trimmedLabel.toLowerCase() !== "sob consulta") {
-          servicePriceInputs[index].value = trimmedLabel;
-        } else if (typeof defaultPrice === "number") {
-          servicePriceInputs[index].value = formatPriceInputValue(defaultPrice);
-        } else {
-          servicePriceInputs[index].value = trimmedLabel;
-        }
-      } else if (typeof defaultPrice === "number") {
-        servicePriceInputs[index].value = formatPriceInputValue(defaultPrice);
-      } else {
-        servicePriceInputs[index].value = "";
-      }
-    }
-    const durationValue = getFixedServiceDuration(index);
-    setServiceDurationValue(serviceDurationInputs[index], durationValue, index);
-  }
+  renderAvailabilityServiceSummary();
   setAvailabilityStatus("");
   setAvailabilityFeedback("");
 };
@@ -1785,6 +1861,7 @@ const handleAvailabilitySubmit = async (event) => {
       pricing: pricingState,
       area: payload.area || currentProfile.area,
     };
+    renderAvailabilityServiceSummary();
     setAvailabilityFeedback("Dados atualizados com sucesso!", "success");
     if (profileArea) {
       profileArea.textContent = formatCoverageArea(currentProfile);
