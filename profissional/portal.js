@@ -36,6 +36,13 @@ const FIXED_SERVICE_NAMES = [
   "Esmaltação em gel (pedicure)",
 ];
 const getFixedServiceName = (index) => FIXED_SERVICE_NAMES[index] || `Serviço ${index + 1}`;
+const FIXED_SERVICE_PRICES = [40, 50, 150, 90, 110];
+const getFixedServicePrice = (index) => {
+  const value = FIXED_SERVICE_PRICES[index];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+};
+const formatPriceInputValue = (amount) =>
+  typeof amount === "number" ? amount.toFixed(2).replace(".", ",") : "";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -98,6 +105,14 @@ serviceTitleElements.forEach((element, index) => {
 serviceNameInputs.forEach((input, index) => {
   if (input) {
     input.value = getFixedServiceName(index);
+  }
+});
+servicePriceInputs.forEach((input, index) => {
+  if (input) {
+    const defaultPrice = getFixedServicePrice(index);
+    if (typeof defaultPrice === "number") {
+      input.value = formatPriceInputValue(defaultPrice);
+    }
   }
 });
 let currentProfile = null;
@@ -226,6 +241,12 @@ const resetDashboard = () => {
   if (availabilityForm) {
     availabilityForm.reset();
   }
+  servicePriceInputs.forEach((input, index) => {
+    if (input) {
+      const defaultPrice = getFixedServicePrice(index);
+      input.value = typeof defaultPrice === "number" ? formatPriceInputValue(defaultPrice) : "";
+    }
+  });
   availabilitySlots = [];
   renderAvailabilitySlots();
   setAvailabilityStatus("");
@@ -242,6 +263,22 @@ const formatCurrency = (value) => {
   if (!value) return "—";
   return value;
 };
+
+const buildDefaultServiceEntry = (index) => {
+  const name = getFixedServiceName(index);
+  const amount = getFixedServicePrice(index);
+  const priceLabel = typeof amount === "number" ? formatCurrency(amount) : "Sob consulta";
+  return {
+    id: `default-service-${index + 1}`,
+    name,
+    price: typeof amount === "number" ? amount : null,
+    priceLabel,
+    duration: "",
+    order: index,
+  };
+};
+
+const getDefaultServices = () => FIXED_SERVICE_NAMES.map((_, index) => buildDefaultServiceEntry(index));
 
 const parsePriceValue = (value) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -260,12 +297,13 @@ const renderServices = (services) => {
     return;
   }
   servicesList.innerHTML = "";
-  if (!Array.isArray(services) || services.length === 0) {
+  const list = Array.isArray(services) && services.length ? services : getDefaultServices();
+  if (!list.length) {
     servicesEmpty.hidden = false;
     return;
   }
   servicesEmpty.hidden = true;
-  services.forEach((service) => {
+  list.forEach((service) => {
     const item = document.createElement("li");
     item.className = "profile-services__item";
 
@@ -610,6 +648,140 @@ const resolveCityFromComponents = (components) => {
     return neighborhood.long_name;
   }
   return "";
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
 };
 
 const runGeocoderRequest = (request, controller) => {
@@ -1298,11 +1470,21 @@ const populateAvailabilityForm = (profile) => {
       }
     }
     if (servicePriceInputs[index]) {
+      const defaultPrice = getFixedServicePrice(index);
       if (typeof service?.price === "number") {
-        servicePriceInputs[index].value = service.price.toFixed(2).replace(".", ",");
+        servicePriceInputs[index].value = formatPriceInputValue(service.price);
       } else if (service?.priceLabel) {
-        const label = typeof service.priceLabel === "string" ? service.priceLabel.trim() : service.priceLabel;
-        servicePriceInputs[index].value = label || "";
+        const rawLabel = typeof service.priceLabel === "string" ? service.priceLabel : String(service.priceLabel || "");
+        const trimmedLabel = rawLabel.trim();
+        if (trimmedLabel && trimmedLabel.toLowerCase() !== "sob consulta") {
+          servicePriceInputs[index].value = trimmedLabel;
+        } else if (typeof defaultPrice === "number") {
+          servicePriceInputs[index].value = formatPriceInputValue(defaultPrice);
+        } else {
+          servicePriceInputs[index].value = trimmedLabel;
+        }
+      } else if (typeof defaultPrice === "number") {
+        servicePriceInputs[index].value = formatPriceInputValue(defaultPrice);
       } else {
         servicePriceInputs[index].value = "";
       }
@@ -2172,9 +2354,10 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
       .slice(0, 3)
       .map((service) => service.name)
       .join(" · ");
+  } else if (profile.especialidades || profile.specialties) {
+    profileSpecialties.textContent = profile.especialidades || profile.specialties;
   } else {
-    profileSpecialties.textContent =
-      profile.especialidades || profile.specialties || "Cadastre seus serviços principais";
+    profileSpecialties.textContent = FIXED_SERVICE_NAMES.slice(0, 3).join(" · ");
   }
   profileArea.textContent = formatCoverageArea(profile);
 
