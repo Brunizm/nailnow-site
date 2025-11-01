@@ -52,6 +52,58 @@ function sanitizeEmail(value) {
   return sanitizeString(value).toLowerCase();
 }
 
+function escapeHtml(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return value
+    .toString()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatDateLabel(dateString) {
+  if (typeof dateString !== "string") {
+    return "";
+  }
+
+  const trimmed = dateString.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return trimmed;
+  }
+
+  const [, year, month, day] = match;
+  return `${day}/${month}/${year}`;
+}
+
+function formatTimeLabel(timeString) {
+  if (typeof timeString !== "string") {
+    return "";
+  }
+
+  const trimmed = timeString.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const match = trimmed.match(/^(\d{2}):(\d{2})$/);
+  if (!match) {
+    return trimmed;
+  }
+
+  const [, hour, minute] = match;
+  return `${hour}:${minute}`;
+}
+
 function buildConfirmationUrl(profilePath, token) {
   const params = new URLSearchParams({
     profile: profilePath,
@@ -81,6 +133,250 @@ function buildConfirmationMessage({ name, role, confirmationUrl }) {
   ].join("");
 
   return { subject, text, html };
+}
+
+function buildAppointmentScheduleLabel(dateValue, timeValue) {
+  const dateLabel = formatDateLabel(dateValue);
+  const timeLabel = formatTimeLabel(timeValue);
+
+  if (dateLabel && timeLabel) {
+    return `${dateLabel} às ${timeLabel}`;
+  }
+  if (dateLabel) {
+    return dateLabel;
+  }
+  if (timeLabel) {
+    return timeLabel;
+  }
+  return "a combinar";
+}
+
+function buildAppointmentClientMailPayload({
+  appointmentId,
+  professionalId,
+  clientId,
+  clientName,
+  clientEmail,
+  professionalName,
+  serviceName,
+  serviceId,
+  priceLabel,
+  priceValue,
+  date,
+  time,
+  location,
+  locationDetails,
+  note,
+  sourcePath,
+  requestedAt,
+}) {
+  if (!clientEmail) {
+    return null;
+  }
+
+  const safeClientName = clientName || "Cliente NailNow";
+  const safeProfessionalName = professionalName || "sua manicure";
+  const safeServiceName = serviceName || "Serviço NailNow";
+  const scheduleLabel = buildAppointmentScheduleLabel(date, time);
+  const safeLocation = location || "Definido com a profissional";
+  const clientPortalUrl = `${APP_URL}${ROLE_PORTAL_PATH.cliente}`;
+  const locationLines = locationDetails.filter(Boolean);
+  const locationText = locationLines.length ? `${safeLocation} (${locationLines.join(", ")})` : safeLocation;
+
+  const textParts = [
+    `Olá, ${safeClientName}! 💖`,
+    `Recebemos sua solicitação para ${safeServiceName} com ${safeProfessionalName}.`,
+    `Detalhes:`,
+    `• Quando: ${scheduleLabel}`,
+    `• Local: ${locationText}`,
+  ];
+
+  if (priceLabel) {
+    textParts.push(`• Valor previsto: ${priceLabel}`);
+  }
+
+  if (note) {
+    textParts.push(`Observações enviadas: ${note}`);
+  }
+
+  textParts.push(
+    `Acompanhe a resposta da profissional pelo portal do NailNow: ${clientPortalUrl}`,
+    "Com carinho, equipe NailNow 💅",
+  );
+
+  const htmlParts = [
+    `<p>Olá, <strong>${escapeHtml(safeClientName)}</strong>! 💖</p>`,
+    `<p>Recebemos sua solicitação para <strong>${escapeHtml(safeServiceName)}</strong> com <strong>${escapeHtml(
+      safeProfessionalName,
+    )}</strong>.</p>`,
+    "<p><strong>Detalhes do pedido:</strong></p>",
+    "<ul>",
+    `<li><strong>Quando:</strong> ${escapeHtml(scheduleLabel)}</li>`,
+    `<li><strong>Local:</strong> ${escapeHtml(locationText)}</li>`,
+  ];
+
+  if (priceLabel) {
+    htmlParts.push(`<li><strong>Valor previsto:</strong> ${escapeHtml(priceLabel)}</li>`);
+  }
+
+  htmlParts.push("</ul>");
+
+  if (note) {
+    htmlParts.push(
+      "<p><strong>Observações enviadas:</strong></p>",
+      `<blockquote style="border-left:4px solid #f55ba2;padding:12px 16px;background:#fff7fb;">${escapeHtml(note).replace(
+        /\n/g,
+        "<br />",
+      )}</blockquote>`,
+    );
+  }
+
+  htmlParts.push(
+    `<p>Acompanhe a resposta da profissional pelo portal do NailNow: <a href="${clientPortalUrl}">${clientPortalUrl}</a></p>`,
+    "<p>Com carinho, equipe NailNow 💅</p>",
+  );
+
+  const subject = `Recebemos sua solicitação com ${safeProfessionalName}`;
+
+  return {
+    to: [clientEmail],
+    from: SUPPORT_SENDER,
+    message: {
+      subject,
+      text: textParts.join("\n\n"),
+      html: htmlParts.join(""),
+    },
+    metadata: {
+      emailType: "appointment-request-client",
+      appointmentId,
+      professionalId,
+      clientId,
+      serviceName: safeServiceName,
+      serviceId: serviceId || null,
+      requestedAt: requestedAt || new Date().toISOString(),
+      scheduledDate: date || null,
+      scheduledTime: time || null,
+      location: safeLocation,
+      sourcePath: sourcePath || null,
+      recipientRole: "cliente",
+      priceLabel: priceLabel || null,
+      priceValue: typeof priceValue === "number" ? priceValue : null,
+    },
+  };
+}
+
+function buildAppointmentProfessionalMailPayload({
+  appointmentId,
+  professionalId,
+  professionalName,
+  professionalEmail,
+  clientId,
+  clientName,
+  serviceName,
+  serviceId,
+  priceLabel,
+  priceValue,
+  date,
+  time,
+  location,
+  locationDetails,
+  note,
+  sourcePath,
+  requestedAt,
+}) {
+  if (!professionalEmail) {
+    return null;
+  }
+
+  const safeProfessionalName = professionalName || "Profissional";
+  const safeClientName = clientName || "cliente NailNow";
+  const safeServiceName = serviceName || "Serviço NailNow";
+  const scheduleLabel = buildAppointmentScheduleLabel(date, time);
+  const safeLocation = location || "Definido com a cliente";
+  const professionalPortalUrl = `${APP_URL}${ROLE_PORTAL_PATH.profissional}`;
+  const locationLines = locationDetails.filter(Boolean);
+  const locationText = locationLines.length ? `${safeLocation} (${locationLines.join(", ")})` : safeLocation;
+
+  const textParts = [
+    `Olá, ${safeProfessionalName}! 💅`,
+    `Você recebeu uma nova solicitação de ${safeServiceName} da cliente ${safeClientName}.`,
+    `Detalhes:`,
+    `• Quando: ${scheduleLabel}`,
+    `• Local: ${locationText}`,
+  ];
+
+  if (priceLabel) {
+    textParts.push(`• Valor previsto: ${priceLabel}`);
+  }
+
+  if (note) {
+    textParts.push(`Observações enviadas pela cliente: ${note}`);
+  }
+
+  textParts.push(
+    `Acesse o portal NailNow para aceitar ou recusar este pedido: ${professionalPortalUrl}`,
+    "Equipe NailNow",
+  );
+
+  const htmlParts = [
+    `<p>Olá, <strong>${escapeHtml(safeProfessionalName)}</strong>! 💅</p>`,
+    `<p>Você recebeu uma nova solicitação de <strong>${escapeHtml(safeServiceName)}</strong> da cliente <strong>${escapeHtml(
+      safeClientName,
+    )}</strong>.</p>`,
+    "<p><strong>Detalhes do pedido:</strong></p>",
+    "<ul>",
+    `<li><strong>Quando:</strong> ${escapeHtml(scheduleLabel)}</li>`,
+    `<li><strong>Local:</strong> ${escapeHtml(locationText)}</li>`,
+  ];
+
+  if (priceLabel) {
+    htmlParts.push(`<li><strong>Valor previsto:</strong> ${escapeHtml(priceLabel)}</li>`);
+  }
+
+  htmlParts.push("</ul>");
+
+  if (note) {
+    htmlParts.push(
+      "<p><strong>Observações enviadas pela cliente:</strong></p>",
+      `<blockquote style="border-left:4px solid #f55ba2;padding:12px 16px;background:#fff7fb;">${escapeHtml(note).replace(
+        /\n/g,
+        "<br />",
+      )}</blockquote>`,
+    );
+  }
+
+  htmlParts.push(
+    `<p>Acesse o portal NailNow para aceitar ou recusar este pedido: <a href="${professionalPortalUrl}">${professionalPortalUrl}</a></p>`,
+    "<p>Equipe NailNow</p>",
+  );
+
+  const subject = `Nova solicitação de ${safeServiceName} - ${safeClientName}`;
+
+  return {
+    to: [professionalEmail],
+    from: SUPPORT_SENDER,
+    message: {
+      subject,
+      text: textParts.join("\n\n"),
+      html: htmlParts.join(""),
+    },
+    metadata: {
+      emailType: "appointment-request-professional",
+      appointmentId,
+      professionalId,
+      clientId,
+      serviceName: safeServiceName,
+      serviceId: serviceId || null,
+      requestedAt: requestedAt || new Date().toISOString(),
+      scheduledDate: date || null,
+      scheduledTime: time || null,
+      location: safeLocation,
+      sourcePath: sourcePath || null,
+      recipientRole: "profissional",
+      priceLabel: priceLabel || null,
+      priceValue: typeof priceValue === "number" ? priceValue : null,
+    },
+  };
 }
 
 function buildConfirmationMailPayload({
@@ -1544,6 +1840,213 @@ exports.registerClientAccount = functions
         res.status(500).json({ error: "internal-error" });
       }
     });
+  });
+
+exports.notifyAppointmentRequest = functions
+  .region("southamerica-east1")
+  .firestore.document("profissionais/{professionalId}/solicitacoes/{appointmentId}")
+  .onCreate(async (snapshot, context) => {
+    const data = snapshot.data() || {};
+    const appointmentId = context.params.appointmentId;
+    const professionalId = context.params.professionalId;
+    const sourcePath = snapshot.ref.path;
+
+    const clientId = sanitizeString(data.clientId || data.clienteId || "");
+    const professionalName = sanitizeString(data.professional || data.professionalName || data.manicure || "");
+    const clientName = sanitizeString(data.client || data.clientName || data.cliente || "");
+    const serviceName = sanitizeString(data.service || data.serviceName || data.servico || "");
+    const serviceId = sanitizeString(data.serviceId || data.servicoId || "");
+    const priceLabel = sanitizeString(data.priceLabel || data.precoLabel || data.preco || "");
+    let priceValue = null;
+    if (typeof data.price === "number" && Number.isFinite(data.price)) {
+      priceValue = Number(data.price);
+    } else if (typeof data.price === "string") {
+      const normalizedPrice = data.price.replace(/[^0-9,.-]+/g, "").replace(/,/g, ".");
+      const parsedPrice = Number.parseFloat(normalizedPrice);
+      if (Number.isFinite(parsedPrice)) {
+        priceValue = parsedPrice;
+      }
+    }
+    const dateValue = sanitizeString(data.date || data.data || "");
+    const timeValue = sanitizeString(data.time || data.hora || data.horario || "");
+    const locationStreet = sanitizeString(data.locationStreet || data.enderecoRua || data.rua || "");
+    const locationNumber = sanitizeString(data.locationNumber || data.enderecoNumero || data.numero || "");
+    const locationComplement = sanitizeString(
+      data.locationComplement || data.enderecoComplemento || data.complemento || "",
+    );
+    let locationLabel = sanitizeString(data.location || data.locationLabel || data.endereco || "");
+
+    if (!locationLabel) {
+      const composedLocation = [locationStreet, locationNumber, locationComplement]
+        .filter(Boolean)
+        .join(", ");
+      locationLabel = composedLocation || "";
+    }
+
+    const rawClientEmail = data.clientEmail || data.emailCliente || data.clienteEmail || "";
+    const rawProfessionalEmail =
+      data.professionalEmail || data.emailProfissional || data.manicureEmail || "";
+
+    const clientEmail = sanitizeEmail(rawClientEmail);
+    const professionalEmail = sanitizeEmail(rawProfessionalEmail);
+    const noteValue = typeof data.note === "string" ? data.note.trim() : "";
+    const locationDetails = [locationStreet, locationNumber, locationComplement];
+    const requestTimestamp = new Date().toISOString();
+    const clientCollection = sanitizeString(data.clientCollection || data.clienteCollection || "");
+    const professionalCollection = sanitizeString(
+      data.professionalCollection || data.proCollection || data.manicureCollection || "",
+    );
+
+    const clientMailPayload = buildAppointmentClientMailPayload({
+      appointmentId,
+      professionalId,
+      clientId: clientId || null,
+      clientName,
+      clientEmail,
+      professionalName,
+      serviceName,
+      serviceId,
+      priceLabel,
+      priceValue,
+      date: dateValue,
+      time: timeValue,
+      location: locationLabel,
+      locationDetails,
+      note: noteValue,
+      sourcePath,
+      requestedAt: requestTimestamp,
+    });
+
+    const professionalMailPayload = buildAppointmentProfessionalMailPayload({
+      appointmentId,
+      professionalId,
+      professionalName,
+      professionalEmail,
+      clientId: clientId || null,
+      clientName,
+      serviceName,
+      serviceId,
+      priceLabel,
+      priceValue,
+      date: dateValue,
+      time: timeValue,
+      location: locationLabel,
+      locationDetails,
+      note: noteValue,
+      sourcePath,
+      requestedAt: requestTimestamp,
+    });
+
+    const metadataExtras = {
+      clientCollection: clientCollection || null,
+      professionalCollection: professionalCollection || null,
+    };
+
+    if (clientMailPayload) {
+      clientMailPayload.metadata = {
+        ...(clientMailPayload.metadata || {}),
+        ...metadataExtras,
+      };
+    }
+
+    if (professionalMailPayload) {
+      professionalMailPayload.metadata = {
+        ...(professionalMailPayload.metadata || {}),
+        ...metadataExtras,
+      };
+    }
+
+    const notificationStatus = {
+      client: {
+        email: clientEmail || null,
+        queued: false,
+        mailId: null,
+        error: null,
+      },
+      professional: {
+        email: professionalEmail || null,
+        queued: false,
+        mailId: null,
+        error: null,
+      },
+    };
+
+    if (clientMailPayload) {
+      try {
+        const mailDoc = await firestore.collection("mail").add(clientMailPayload);
+        notificationStatus.client.mailId = mailDoc.id;
+        notificationStatus.client.queued = true;
+        functions.logger.info("E-mail de solicitação enviado para cliente", {
+          appointmentId,
+          professionalId,
+          mailId: mailDoc.id,
+        });
+      } catch (error) {
+        notificationStatus.client.error = error?.message || "unknown-error";
+        functions.logger.error("Falha ao enfileirar e-mail de solicitação para cliente", {
+          appointmentId,
+          professionalId,
+          error: error?.message,
+        });
+      }
+    } else if (clientEmail) {
+      notificationStatus.client.error = "mail-payload-missing";
+    } else {
+      notificationStatus.client.error = "missing-email";
+    }
+
+    if (professionalMailPayload) {
+      try {
+        const mailDoc = await firestore.collection("mail").add(professionalMailPayload);
+        notificationStatus.professional.mailId = mailDoc.id;
+        notificationStatus.professional.queued = true;
+        functions.logger.info("E-mail de solicitação enviado para profissional", {
+          appointmentId,
+          professionalId,
+          mailId: mailDoc.id,
+        });
+      } catch (error) {
+        notificationStatus.professional.error = error?.message || "unknown-error";
+        functions.logger.error("Falha ao enfileirar e-mail de solicitação para profissional", {
+          appointmentId,
+          professionalId,
+          error: error?.message,
+        });
+      }
+    } else if (professionalEmail) {
+      notificationStatus.professional.error = "mail-payload-missing";
+    } else {
+      notificationStatus.professional.error = "missing-email";
+    }
+
+    const appointmentMailUpdate = {
+      lastAttemptAt: FieldValue.serverTimestamp(),
+      client: {
+        email: notificationStatus.client.email,
+        mailId: notificationStatus.client.mailId,
+        queued: notificationStatus.client.queued,
+        queuedAt: notificationStatus.client.queued ? FieldValue.serverTimestamp() : null,
+        error: notificationStatus.client.error,
+      },
+      professional: {
+        email: notificationStatus.professional.email,
+        mailId: notificationStatus.professional.mailId,
+        queued: notificationStatus.professional.queued,
+        queuedAt: notificationStatus.professional.queued ? FieldValue.serverTimestamp() : null,
+        error: notificationStatus.professional.error,
+      },
+    };
+
+    await snapshot.ref.set(
+      {
+        notifications: {
+          appointmentMail: appointmentMailUpdate,
+        },
+      },
+      { merge: true },
+    );
+
+    return null;
   });
 
 exports.registerQuickLead = functions
