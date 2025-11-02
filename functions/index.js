@@ -52,6 +52,63 @@ function sanitizeEmail(value) {
   return sanitizeString(value).toLowerCase();
 }
 
+function extractEmailFromData(data) {
+  if (!data || typeof data !== "object") {
+    return "";
+  }
+
+  const directFields = [
+    "email",
+    "contatoEmail",
+    "contactEmail",
+    "contato_email",
+    "contato_emailPrincipal",
+    "emailPrincipal",
+    "primaryEmail",
+  ];
+
+  for (const field of directFields) {
+    const candidate = sanitizeEmail(data[field]);
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  const nestedFields = [
+    ["contato", "email"],
+    ["contato", "emailPrincipal"],
+    ["contact", "email"],
+    ["contact", "emailPrincipal"],
+    ["profile", "email"],
+    ["dados", "email"],
+    ["dados", "emailPrincipal"],
+    ["dadosContato", "email"],
+    ["dadosContato", "emailPrincipal"],
+  ];
+
+  for (const path of nestedFields) {
+    const [parentKey, childKey] = path;
+    const parent = data[parentKey];
+    if (parent && typeof parent === "object") {
+      const candidate = sanitizeEmail(parent[childKey]);
+      if (candidate) {
+        return candidate;
+      }
+    }
+  }
+
+  if (Array.isArray(data.emails)) {
+    for (const value of data.emails) {
+      const candidate = sanitizeEmail(value);
+      if (candidate) {
+        return candidate;
+      }
+    }
+  }
+
+  return "";
+}
+
 function escapeHtml(value) {
   if (value === null || value === undefined) {
     return "";
@@ -937,7 +994,7 @@ async function queueConfirmationForSnapshot(
 ) {
   const { queueMail = false, force = false } = options;
   const data = snap.data() || {};
-  const email = data.email || data.contatoEmail || "";
+  const email = extractEmailFromData(data);
   const name = data.nome || data.name || data.displayName || "";
 
   try {
@@ -1237,8 +1294,7 @@ function normalizeLower(value) {
 }
 
 function getPrimaryEmail(data) {
-  const raw = normalizeString(data.email || data.contatoEmail || "");
-  return raw.toLowerCase();
+  return extractEmailFromData(data || {});
 }
 
 function getSignupMailStatus(data) {
