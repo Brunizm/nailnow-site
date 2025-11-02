@@ -59,12 +59,18 @@ function extractEmailFromData(data) {
 
   const directFields = [
     "email",
+    "emailLowercase",
+    "email_lowercase",
     "contatoEmail",
     "contactEmail",
     "contato_email",
     "contato_emailPrincipal",
+    "contato_emailLowercase",
+    "contact_email",
+    "contact_emailLowercase",
     "emailPrincipal",
     "primaryEmail",
+    "primary_email",
   ];
 
   for (const field of directFields) {
@@ -77,13 +83,22 @@ function extractEmailFromData(data) {
   const nestedFields = [
     ["contato", "email"],
     ["contato", "emailPrincipal"],
+    ["contato", "emailLowercase"],
     ["contact", "email"],
     ["contact", "emailPrincipal"],
+    ["contact", "emailLowercase"],
     ["profile", "email"],
+    ["profile", "emailLowercase"],
     ["dados", "email"],
     ["dados", "emailPrincipal"],
+    ["dados", "emailLowercase"],
     ["dadosContato", "email"],
     ["dadosContato", "emailPrincipal"],
+    ["dadosContato", "emailLowercase"],
+    ["login", "email"],
+    ["login", "emailLowercase"],
+    ["account", "email"],
+    ["account", "emailLowercase"],
   ];
 
   for (const path of nestedFields) {
