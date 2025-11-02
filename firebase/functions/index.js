@@ -52,6 +52,392 @@ function sanitizeEmail(value) {
   return sanitizeString(value).toLowerCase();
 }
 
+function parseCoordinate(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  const normalized = sanitizeString(value).replace(",", ".");
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function mergeUniqueStrings(...groups) {
+  const seen = new Set();
+  const result = [];
+
+  for (const group of groups) {
+    if (!group) {
+      continue;
+    }
+
+    const values = Array.isArray(group) ? group : [group];
+
+    for (const value of values) {
+      if (typeof value !== "string" && typeof value !== "number") {
+        continue;
+      }
+
+      const normalized = sanitizeString(value);
+      if (!normalized || seen.has(normalized)) {
+        continue;
+      }
+
+      seen.add(normalized);
+      result.push(normalized);
+    }
+  }
+
+  return result;
+}
+
+function buildClientProfileData({
+  uid,
+  nome,
+  email,
+  senha,
+  telefone,
+  endereco,
+  complemento,
+  enderecoFormatado,
+  placeId,
+  lat,
+  lng,
+  aceiteTermos,
+  newsletter,
+  preferencias,
+  existingData = {},
+}) {
+  const timestamp = FieldValue.serverTimestamp();
+  const normalizedEmail = sanitizeEmail(email);
+  const normalizedPhone = sanitizeString(telefone);
+  const safeName = sanitizeString(nome);
+  const safeAddress = sanitizeString(endereco);
+  const safeComplement = sanitizeString(complemento);
+  const safeFormattedAddress = sanitizeString(enderecoFormatado);
+  const safePlaceId = sanitizeString(placeId);
+  const latitude = parseCoordinate(lat);
+  const longitude = parseCoordinate(lng);
+  const existingStatus = existingData.status || "";
+  const normalizedStatus = normalizeLower(existingStatus);
+  const status =
+    normalizedStatus && !["lead", "novo", "new"].includes(normalizedStatus)
+      ? existingData.status
+      : "pendente";
+  const createdAt =
+    existingData.criadoEm || existingData.createdAt || FieldValue.serverTimestamp();
+  const existingEmails = Array.isArray(existingData.emails)
+    ? existingData.emails.map((value) => sanitizeEmail(value)).filter(Boolean)
+    : [];
+  const emailHistory = Array.isArray(existingData.emailsHistorico)
+    ? existingData.emailsHistorico.map((value) => sanitizeEmail(value)).filter(Boolean)
+    : [];
+  const allEmails = mergeUniqueStrings(existingEmails, normalizedEmail);
+  const historicEmails = mergeUniqueStrings(emailHistory, normalizedEmail);
+  const confirmation = existingData.signupConfirmation || {};
+  const confirmationStatus = normalizeLower(confirmation.status || "");
+  const confirmationStatusCode = normalizeLower(confirmation.statusCode || "");
+  const pendingStatuses = new Set(["pendente", "pending", "aguardando", "awaiting"]);
+  const pendingCodes = new Set(["pending", "awaiting", "waiting"]);
+  const roles = mergeUniqueStrings(existingData.roles || [], "cliente");
+
+  if (!roles.length) {
+    roles.push("cliente");
+  }
+
+  const profile = {
+    uid,
+    role: "cliente",
+    roles,
+    tipo: existingData.tipo || "cliente",
+    tipoConta: existingData.tipoConta || "cliente",
+    categoria: existingData.categoria || "cliente",
+    nome: safeName,
+    displayName: safeName,
+    nomeCompleto: safeName,
+    name: safeName,
+    email: normalizedEmail,
+    emailPrincipal: normalizedEmail,
+    emailLowercase: normalizedEmail,
+    email_lowercase: normalizedEmail,
+    emails: allEmails,
+    senha,
+    senhaAtualizadaEm: timestamp,
+    telefone: normalizedPhone,
+    telefonePrincipal: normalizedPhone,
+    phone: normalizedPhone,
+    phoneNumber: normalizedPhone,
+    telefone_lowercase: normalizedPhone,
+    endereco: safeAddress,
+    endereco_text: safeAddress,
+    address: safeAddress,
+    address_text: safeAddress,
+    complemento: safeComplement,
+    enderecoComplemento: safeComplement,
+    addressComplement: safeComplement,
+    endereco_formatado: safeFormattedAddress,
+    enderecoFormatado: safeFormattedAddress,
+    formattedAddress: safeFormattedAddress,
+    place_id: safePlaceId,
+    placeId: safePlaceId,
+    lat: latitude ?? sanitizeString(lat),
+    lng: longitude ?? sanitizeString(lng),
+    aceiteTermos: Boolean(aceiteTermos),
+    termosAceitos: Boolean(aceiteTermos),
+    aceitouTermos: Boolean(aceiteTermos),
+    termosAceitosEm: timestamp,
+    acceptedTerms: Boolean(aceiteTermos),
+    acceptedTermsAt: timestamp,
+    termos: {
+      ...(existingData.termos || {}),
+      aceito: Boolean(aceiteTermos),
+      aceitoEm: timestamp,
+    },
+    newsletter: Boolean(newsletter),
+    preferencias: Array.isArray(preferencias) ? preferencias : [],
+    status,
+    criadoEm: createdAt,
+    createdAt,
+    atualizadoEm: timestamp,
+    updatedAt: timestamp,
+    signupSource: REGISTER_CLIENT_SOURCE,
+    signup: {
+      ...(existingData.signup || {}),
+      source: REGISTER_CLIENT_SOURCE,
+      capturedAt: timestamp,
+    },
+    signupMetadata: {
+      ...(existingData.signupMetadata || {}),
+      source: REGISTER_CLIENT_SOURCE,
+      capturedAt: timestamp,
+    },
+    lastSignupSource: REGISTER_CLIENT_SOURCE,
+    profileType: "cliente",
+    accountType: "cliente",
+    portal: {
+      ...(existingData.portal || {}),
+      role: "cliente",
+      loginPath: ROLE_LOGIN_PATH.cliente,
+      portalPath: ROLE_PORTAL_PATH.cliente,
+      updatedAt: timestamp,
+    },
+    contato: {
+      ...(existingData.contato || {}),
+      email: normalizedEmail || existingData.contato?.email || null,
+      emailPrincipal:
+        normalizedEmail || existingData.contato?.emailPrincipal || null,
+      emailLowercase:
+        normalizedEmail || existingData.contato?.emailLowercase || null,
+      telefone: normalizedPhone || existingData.contato?.telefone || null,
+      telefonePrincipal:
+        normalizedPhone || existingData.contato?.telefonePrincipal || null,
+      atualizadoEm: timestamp,
+    },
+    contact: {
+      ...(existingData.contact || {}),
+      email: normalizedEmail || existingData.contact?.email || null,
+      emailPrincipal:
+        normalizedEmail || existingData.contact?.emailPrincipal || null,
+      emailLowercase:
+        normalizedEmail || existingData.contact?.emailLowercase || null,
+      phone: normalizedPhone || existingData.contact?.phone || null,
+      phoneNumber:
+        normalizedPhone || existingData.contact?.phoneNumber || null,
+      updatedAt: timestamp,
+    },
+    account: {
+      ...(existingData.account || {}),
+      email: normalizedEmail || existingData.account?.email || null,
+      emailLowercase:
+        normalizedEmail || existingData.account?.emailLowercase || null,
+      phone: normalizedPhone || existingData.account?.phone || null,
+      role: "cliente",
+      updatedAt: timestamp,
+    },
+    dadosContato: {
+      ...(existingData.dadosContato || {}),
+      email: normalizedEmail || existingData.dadosContato?.email || null,
+      telefone: normalizedPhone || existingData.dadosContato?.telefone || null,
+      atualizadoEm: timestamp,
+    },
+    dados: {
+      ...(existingData.dados || {}),
+      nome: safeName || existingData.dados?.nome || null,
+      email: normalizedEmail || existingData.dados?.email || null,
+      telefone: normalizedPhone || existingData.dados?.telefone || null,
+      endereco: safeAddress || existingData.dados?.endereco || null,
+      complemento: safeComplement || existingData.dados?.complemento || null,
+      atualizadoEm: timestamp,
+    },
+    profile: {
+      ...(existingData.profile || {}),
+      nome: safeName || existingData.profile?.nome || null,
+      name: safeName || existingData.profile?.name || null,
+      displayName: safeName || existingData.profile?.displayName || null,
+      email: normalizedEmail || existingData.profile?.email || null,
+      telefone: normalizedPhone || existingData.profile?.telefone || null,
+      phone: normalizedPhone || existingData.profile?.phone || null,
+      endereco: safeAddress || existingData.profile?.endereco || null,
+      address: safeAddress || existingData.profile?.address || null,
+      role: "cliente",
+      tipo: "cliente",
+      status,
+      atualizadoEm: timestamp,
+    },
+    addressDetails: {
+      ...(existingData.addressDetails || {}),
+      street: safeAddress || existingData.addressDetails?.street || null,
+      formatted:
+        safeFormattedAddress || existingData.addressDetails?.formatted || null,
+      complement:
+        safeComplement || existingData.addressDetails?.complement || null,
+      placeId: safePlaceId || existingData.addressDetails?.placeId || null,
+      lat: latitude ?? existingData.addressDetails?.lat ?? null,
+      lng: longitude ?? existingData.addressDetails?.lng ?? null,
+      updatedAt: timestamp,
+    },
+    addressMetadata: {
+      ...(existingData.addressMetadata || {}),
+      formatted:
+        safeFormattedAddress || existingData.addressMetadata?.formatted || null,
+      placeId: safePlaceId || existingData.addressMetadata?.placeId || null,
+      updatedAt: timestamp,
+    },
+    login: {
+      ...(existingData.login || {}),
+      email: normalizedEmail || existingData.login?.email || null,
+      emailLowercase:
+        normalizedEmail || existingData.login?.emailLowercase || null,
+      phone: normalizedPhone || existingData.login?.phone || null,
+      updatedAt: timestamp,
+      passwordUpdatedAt: timestamp,
+      lastUpdatedBy: REGISTER_CLIENT_SOURCE,
+    },
+    emailsHistorico: historicEmails,
+    signupConfirmation: {
+      ...confirmation,
+      status:
+        confirmationStatus && !pendingStatuses.has(confirmationStatus)
+          ? confirmation.status
+          : "pendente",
+      statusCode:
+        confirmationStatusCode && !pendingCodes.has(confirmationStatusCode)
+          ? confirmation.statusCode
+          : "pending",
+      role: confirmation.role || "cliente",
+      autoQueueOptOut:
+        confirmation.autoQueueOptOut === false ? false : true,
+      preparedBy: confirmation.preparedBy || REGISTER_CLIENT_SOURCE,
+      preparedAt: confirmation.preparedAt || timestamp,
+    },
+  };
+
+  if (latitude !== null || longitude !== null) {
+    const location = {
+      lat: latitude ?? null,
+      lng: longitude ?? null,
+    };
+    profile.location = { ...(existingData.location || {}), ...location };
+    profile.localizacao = {
+      ...(existingData.localizacao || {}),
+      ...location,
+    };
+  }
+
+  if (latitude !== null && longitude !== null) {
+    const geoPoint = new admin.firestore.GeoPoint(latitude, longitude);
+    profile.geo = geoPoint;
+    profile.geoPoint = geoPoint;
+    profile.coordenadas = geoPoint;
+  }
+
+  if (!profile.emails.length && normalizedEmail) {
+    profile.emails = [normalizedEmail];
+  }
+
+  return profile;
+}
+
+function extractEmailFromData(data) {
+  if (!data || typeof data !== "object") {
+    return "";
+  }
+
+  const directFields = [
+    "email",
+    "emailLowercase",
+    "email_lowercase",
+    "contatoEmail",
+    "contactEmail",
+    "contato_email",
+    "contato_emailPrincipal",
+    "contato_emailLowercase",
+    "contact_email",
+    "contact_emailLowercase",
+    "emailPrincipal",
+    "primaryEmail",
+    "primary_email",
+  ];
+
+  for (const field of directFields) {
+    const candidate = sanitizeEmail(data[field]);
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  const nestedFields = [
+    ["contato", "email"],
+    ["contato", "emailPrincipal"],
+    ["contato", "emailLowercase"],
+    ["contact", "email"],
+    ["contact", "emailPrincipal"],
+    ["contact", "emailLowercase"],
+    ["profile", "email"],
+    ["profile", "emailLowercase"],
+    ["dados", "email"],
+    ["dados", "emailPrincipal"],
+    ["dados", "emailLowercase"],
+    ["dadosContato", "email"],
+    ["dadosContato", "emailPrincipal"],
+    ["dadosContato", "emailLowercase"],
+    ["login", "email"],
+    ["login", "emailLowercase"],
+    ["account", "email"],
+    ["account", "emailLowercase"],
+  ];
+
+  for (const path of nestedFields) {
+    const [parentKey, childKey] = path;
+    const parent = data[parentKey];
+    if (parent && typeof parent === "object") {
+      const candidate = sanitizeEmail(parent[childKey]);
+      if (candidate) {
+        return candidate;
+      }
+    }
+  }
+
+  if (Array.isArray(data.emails)) {
+    for (const value of data.emails) {
+      const candidate = sanitizeEmail(value);
+      if (candidate) {
+        return candidate;
+      }
+    }
+  }
+
+  return "";
+}
+
 function buildConfirmationUrl(profilePath, token) {
   const params = new URLSearchParams({
     profile: profilePath,
@@ -107,7 +493,7 @@ function buildConfirmationMailPayload({
   const confirmationKey = profilePath || (profileId ? `${role || ""}:${profileId}` : null);
 
   return {
-    to: [trimmedEmail],
+    to: trimmedEmail,
     from: SUPPORT_SENDER,
     message,
     metadata: {
@@ -247,13 +633,115 @@ async function upsertQuickLeadProfile({ role, nome, email, origem, referrer }) {
 
 const MAIL_SUCCESS_STATUSES = new Set([
   "queued",
+  "queuing",
   "sending",
   "processing",
   "sent",
   "delivered",
   "success",
   "queued-via-extension",
+  "accepted",
+  "already-queued",
 ]);
+
+const MAIL_FAILURE_STATUSES = new Set([
+  "failed",
+  "error",
+  "invalid",
+  "bounced",
+  "undeliverable",
+  "blocked",
+  "rejected",
+  "cancelled",
+  "canceled",
+  "suppressed",
+]);
+
+function extractMailDeliveryStatus(mailData) {
+  if (!mailData || typeof mailData !== "object") {
+    return "";
+  }
+
+  const delivery = mailData.delivery || {};
+  const metadata = mailData.metadata || {};
+
+  const candidates = [
+    delivery.status,
+    delivery.state,
+    delivery.result,
+    mailData.status,
+    mailData.mailStatus,
+    metadata.deliveryStatus,
+    metadata.status,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeLower(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return "";
+}
+
+function shouldReuseExistingMailDoc(mailData) {
+  const status = extractMailDeliveryStatus(mailData);
+
+  if (!status) {
+    return false;
+  }
+
+  if (MAIL_FAILURE_STATUSES.has(status)) {
+    return false;
+  }
+
+  return MAIL_SUCCESS_STATUSES.has(status);
+}
+
+function sanitizeMailPayloadForFirestore(payload) {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+
+  const normalized = { ...payload };
+  const message = normalized.message;
+
+  if (Array.isArray(normalized.to)) {
+    normalized.to = normalized.to
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean)
+      .join(",");
+  } else if (typeof normalized.to === "string") {
+    normalized.to = normalized.to.trim();
+  }
+
+  if (message && typeof message === "object") {
+    const { subject, text, html } = message;
+
+    if (subject && !normalized.subject) {
+      normalized.subject = subject;
+    }
+
+    if (text && !normalized.text) {
+      normalized.text = text;
+    }
+
+    if (html && !normalized.html) {
+      normalized.html = html;
+    }
+  }
+
+  return JSON.parse(
+    JSON.stringify(normalized, (key, value) => {
+      if (value === undefined) {
+        return null;
+      }
+
+      return value;
+    }),
+  );
+}
 
 async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
   const normalizedEmail = sanitizeEmail(email);
@@ -325,8 +813,8 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
 
   try {
     const message = buildQuickSignupMailMessage({ name: nome, role });
-    const mailDoc = await firestore.collection("mail").add({
-      to: [normalizedEmail],
+    const mailPayload = sanitizeMailPayloadForFirestore({
+      to: normalizedEmail,
       from: SUPPORT_SENDER,
       message,
       metadata: {
@@ -337,6 +825,7 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
         profilePath: profileRef.path,
       },
     });
+    const mailDoc = await firestore.collection("mail").add(mailPayload);
 
     mailId = mailDoc.id;
     mailStatus = "queued";
@@ -538,7 +1027,7 @@ async function queueConfirmationForSnapshot(
 ) {
   const { queueMail = false, force = false } = options;
   const data = snap.data() || {};
-  const email = data.email || data.contatoEmail || "";
+  const email = extractEmailFromData(data);
   const name = data.nome || data.name || data.displayName || "";
 
   try {
@@ -664,8 +1153,9 @@ async function queueConfirmationForSnapshot(
             sourcePath,
           },
         };
+        const firestorePayload = sanitizeMailPayloadForFirestore(payload);
 
-        const dedupKey = payload.metadata?.confirmationKey || null;
+        const dedupKey = firestorePayload.metadata?.confirmationKey || null;
         let reusedExistingMail = false;
 
         if (!force && dedupKey) {
@@ -681,42 +1171,55 @@ async function queueConfirmationForSnapshot(
             const existingMetadata = existingData.metadata || {};
             const existingToken = existingMetadata.confirmationToken || null;
             const existingUrl = existingMetadata.confirmationUrl || null;
+            const existingStatus = extractMailDeliveryStatus(existingData);
+            const canReuseExisting = shouldReuseExistingMailDoc(existingData);
 
-            reusedExistingMail = true;
-            mailId = existingDoc.id;
-            mailStatus = "already-queued";
-            confirmationUpdate.mailId = mailId;
-            confirmationUpdate.mailDocumentId = mailId;
-            confirmationUpdate.mailStatus = "already-queued";
-            confirmationUpdate.mailQueuedBy =
-              signupConfirmation.mailQueuedBy || existingMetadata.queuedBy || queuedBy;
-            if (signupConfirmation.mailQueuedAt) {
-              confirmationUpdate.mailQueuedAt = signupConfirmation.mailQueuedAt;
-            } else if (existingDoc.createTime) {
-              confirmationUpdate.mailQueuedAt = existingDoc.createTime;
+            if (canReuseExisting) {
+              reusedExistingMail = true;
+              mailId = existingDoc.id;
+              mailStatus = existingStatus || "already-queued";
+              confirmationUpdate.mailId = mailId;
+              confirmationUpdate.mailDocumentId = mailId;
+              confirmationUpdate.mailStatus = mailStatus || "already-queued";
+              confirmationUpdate.mailQueuedBy =
+                signupConfirmation.mailQueuedBy || existingMetadata.queuedBy || queuedBy;
+              if (signupConfirmation.mailQueuedAt) {
+                confirmationUpdate.mailQueuedAt = signupConfirmation.mailQueuedAt;
+              } else if (existingDoc.createTime) {
+                confirmationUpdate.mailQueuedAt = existingDoc.createTime;
+              }
+
+              if (existingUrl) {
+                confirmationUpdate.confirmationUrl = existingUrl;
+              }
+
+              if (existingToken && existingToken !== confirmationUpdate.token) {
+                confirmationUpdate.token = existingToken;
+                confirmationUpdate.confirmationUrl =
+                  existingUrl || buildConfirmationUrl(snap.ref.path, existingToken);
+              }
+
+              functions.logger.info("Email de confirmação reutilizado", {
+                role,
+                sourcePath,
+                queuedBy,
+                mailId,
+                status: mailStatus,
+              });
+            } else {
+              functions.logger.warn("Email de confirmação antigo será substituído", {
+                role,
+                sourcePath,
+                queuedBy,
+                existingMailId: existingDoc.id,
+                existingStatus: existingStatus || null,
+              });
             }
-
-            if (existingUrl) {
-              confirmationUpdate.confirmationUrl = existingUrl;
-            }
-
-            if (existingToken && existingToken !== confirmationUpdate.token) {
-              confirmationUpdate.token = existingToken;
-              confirmationUpdate.confirmationUrl =
-                existingUrl || buildConfirmationUrl(snap.ref.path, existingToken);
-            }
-
-            functions.logger.info("Email de confirmação reutilizado", {
-              role,
-              sourcePath,
-              queuedBy,
-              mailId,
-            });
           }
         }
 
         if (!reusedExistingMail) {
-          const mailRef = await firestore.collection("mail").add(payload);
+          const mailRef = await firestore.collection("mail").add(firestorePayload);
           mailId = mailRef.id;
           mailStatus = "queued";
           confirmationUpdate.mailId = mailId;
@@ -824,8 +1327,7 @@ function normalizeLower(value) {
 }
 
 function getPrimaryEmail(data) {
-  const raw = normalizeString(data.email || data.contatoEmail || "");
-  return raw.toLowerCase();
+  return extractEmailFromData(data || {});
 }
 
 function getSignupMailStatus(data) {
@@ -1442,39 +1944,25 @@ exports.registerClientAccount = functions
         }
 
         const docRef = firestore.collection("clientes").doc(userRecord.uid);
-        const baseData = {
+        const existingSnapshot = await docRef.get();
+        const existingData = existingSnapshot.exists ? existingSnapshot.data() || {} : {};
+        const baseData = buildClientProfileData({
           uid: userRecord.uid,
           nome,
           email,
           senha,
-          senhaAtualizadaEm: FieldValue.serverTimestamp(),
           telefone,
           endereco,
           complemento,
-          endereco_formatado: enderecoFormatado,
-          place_id: placeId,
+          enderecoFormatado,
+          placeId,
           lat,
           lng,
           aceiteTermos,
-          newsletter: Boolean(payload.newsletter),
-          preferencias: Array.isArray(payload.preferencias) ? payload.preferencias : [],
-          status: "pendente",
-          criadoEm: FieldValue.serverTimestamp(),
-          atualizadoEm: FieldValue.serverTimestamp(),
-          signupSource: REGISTER_CLIENT_SOURCE,
-          signupConfirmation: {
-            status: "pendente",
-            statusCode: "pending",
-            role: "cliente",
-            autoQueueOptOut: true,
-            preparedBy: REGISTER_CLIENT_SOURCE,
-            preparedAt: FieldValue.serverTimestamp(),
-          },
-        };
-
-        if (enderecoFormatado) {
-          baseData.endereco_formatado = enderecoFormatado;
-        }
+          newsletter: payload.newsletter,
+          preferencias: payload.preferencias,
+          existingData,
+        });
 
         await docRef.set(baseData, { merge: true });
 
@@ -1492,49 +1980,91 @@ exports.registerClientAccount = functions
           functions.logger.error("Falha ao enfileirar confirmação do cliente", {
             profilePath: docRef.path,
             error: queueError?.message,
+            attempt: "initial",
           });
 
           try {
-            await scheduleConfirmationRetry(
+            confirmationResult = await queueConfirmationByRef(
               docRef,
+              "cliente",
+              `registerClientAccount:${docRef.path}`,
               REGISTER_CLIENT_SOURCE,
-              queueError,
+              { queueMail: true, force: true },
             );
-          } catch (retryError) {
+
+            functions.logger.warn("Confirmação reenfileirada após falha inicial", {
+              profilePath: docRef.path,
+              mailStatus: confirmationResult?.mailStatus || null,
+            });
+          } catch (forcedError) {
             functions.logger.error(
-              "Falha ao preparar retentativa automática da confirmação",
+              "Falha ao reenfileirar confirmação do cliente (forçado)",
               {
                 profilePath: docRef.path,
-                error: retryError?.message,
+                error: forcedError?.message,
               },
             );
-          }
 
-          confirmationResult = {
-            status: "requires-client-enqueue",
-            mailStatus: "requires-client-enqueue",
-            confirmationUrl: null,
-            mailId: null,
-          };
+            try {
+              await scheduleConfirmationRetry(
+                docRef,
+                REGISTER_CLIENT_SOURCE,
+                forcedError,
+              );
+            } catch (retryError) {
+              functions.logger.error(
+                "Falha ao preparar retentativa automática da confirmação",
+                {
+                  profilePath: docRef.path,
+                  error: retryError?.message,
+                },
+              );
+            }
+
+            confirmationResult = {
+              status: "requires-client-enqueue",
+              mailStatus: "requires-client-enqueue",
+              confirmationUrl: null,
+              mailId: null,
+              mailPayload: null,
+            };
+          }
         }
 
+        const confirmationPayload = confirmationResult
+          ? {
+              status: confirmationResult.status,
+              mailStatus: confirmationResult.mailStatus,
+              confirmationUrl: confirmationResult.confirmationUrl,
+              mailId: confirmationResult.mailId || null,
+              mailPayload: confirmationResult.mailPayload || null,
+              profilePath: confirmationResult.profilePath || docRef.path,
+            }
+          : {
+              status: "error",
+              mailStatus: "error",
+              confirmationUrl: null,
+              mailId: null,
+              mailPayload: null,
+              profilePath: docRef.path,
+            };
+
+        const normalizedMailStatus = (confirmationPayload.mailStatus || "")
+          .toString()
+          .toLowerCase();
+        const confirmationQueued = normalizedMailStatus
+          ? MAIL_SUCCESS_STATUSES.has(normalizedMailStatus)
+          : false;
+
         res.status(200).json({
+          ok: true,
           status: "pending",
           profilePath: docRef.path,
+          id: userRecord.uid,
           uid: userRecord.uid,
-          confirmation: confirmationResult
-            ? {
-                status: confirmationResult.status,
-                mailStatus: confirmationResult.mailStatus,
-                confirmationUrl: confirmationResult.confirmationUrl,
-                mailId: confirmationResult.mailId || null,
-              }
-            : {
-                status: "error",
-                mailStatus: "error",
-                confirmationUrl: null,
-                mailId: null,
-              },
+          confirmation: confirmationPayload,
+          emailSent: confirmationQueued,
+          emailStatus: normalizedMailStatus || null,
         });
       } catch (error) {
         functions.logger.error("Falha ao registrar cliente", {
@@ -1637,8 +2167,9 @@ exports.requestSignupConfirmation = functions
       return;
     }
 
+    const docRef = firestore.collection(collection).doc(documentId);
+
     try {
-      const docRef = firestore.collection(collection).doc(documentId);
       const result = await queueConfirmationByRef(
         docRef,
         mapping.role,
@@ -1658,7 +2189,57 @@ exports.requestSignupConfirmation = functions
         mailPayload: result.mailPayload || null,
       });
     } catch (error) {
-      const errorCode = error?.code || error?.message;
+      let queueError = error;
+      let errorCode = queueError?.code || queueError?.message;
+
+      if (!forceRequest) {
+        functions.logger.error("Falha ao enfileirar confirmação via requestSignupConfirmation", {
+          profilePath,
+          error: queueError?.message,
+          attempt: "initial",
+        });
+
+        try {
+          const forcedResult = await queueConfirmationByRef(
+            docRef,
+            mapping.role,
+            `requestSignupConfirmation:${profilePath}`,
+            "requestSignupConfirmation",
+            {
+              queueMail: true,
+              force: true,
+            },
+          );
+
+          functions.logger.warn(
+            "Confirmação reenfileirada via requestSignupConfirmation após falha inicial",
+            {
+              profilePath,
+              mailStatus: forcedResult?.mailStatus || null,
+            },
+          );
+
+          res.status(200).json({
+            status: forcedResult.status,
+            confirmationUrl: forcedResult.confirmationUrl,
+            mailStatus: forcedResult.mailStatus,
+            mailId: forcedResult.mailId || null,
+            mailPayload: forcedResult.mailPayload || null,
+          });
+          return;
+        } catch (forcedError) {
+          functions.logger.error(
+            "Falha ao reenfileirar confirmação via requestSignupConfirmation (forçado)",
+            {
+              profilePath,
+              error: forcedError?.message,
+            },
+          );
+
+          queueError = forcedError;
+          errorCode = queueError?.code || queueError?.message;
+        }
+      }
 
       if (errorCode === "profile-not-found") {
         res.status(404).json({ error: "profile-not-found" });
@@ -1667,7 +2248,7 @@ exports.requestSignupConfirmation = functions
 
       functions.logger.error("Falha ao solicitar confirmação", {
         profilePath,
-        error: error?.message,
+        error: queueError?.message,
       });
 
       res.status(500).json({ error: "internal-error" });
