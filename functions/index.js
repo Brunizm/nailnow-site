@@ -239,7 +239,7 @@ function buildAppointmentClientMailPayload({
   const subject = `Recebemos sua solicitação com ${safeProfessionalName}`;
 
   return {
-    to: [clientEmail],
+    to: clientEmail,
     from: SUPPORT_SENDER,
     message: {
       subject,
@@ -353,7 +353,7 @@ function buildAppointmentProfessionalMailPayload({
   const subject = `Nova solicitação de ${safeServiceName} - ${safeClientName}`;
 
   return {
-    to: [professionalEmail],
+    to: professionalEmail,
     from: SUPPORT_SENDER,
     message: {
       subject,
@@ -403,7 +403,7 @@ function buildConfirmationMailPayload({
   const confirmationKey = profilePath || (profileId ? `${role || ""}:${profileId}` : null);
 
   return {
-    to: [trimmedEmail],
+    to: trimmedEmail,
     from: SUPPORT_SENDER,
     message,
     metadata: {
@@ -617,6 +617,15 @@ function sanitizeMailPayloadForFirestore(payload) {
   const normalized = { ...payload };
   const message = normalized.message;
 
+  if (Array.isArray(normalized.to)) {
+    normalized.to = normalized.to
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean)
+      .join(",");
+  } else if (typeof normalized.to === "string") {
+    normalized.to = normalized.to.trim();
+  }
+
   if (message && typeof message === "object") {
     const { subject, text, html } = message;
 
@@ -715,7 +724,7 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
   try {
     const message = buildQuickSignupMailMessage({ name: nome, role });
     const mailPayload = sanitizeMailPayloadForFirestore({
-      to: [normalizedEmail],
+      to: normalizedEmail,
       from: SUPPORT_SENDER,
       message,
       metadata: {
