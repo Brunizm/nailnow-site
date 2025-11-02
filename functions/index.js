@@ -239,7 +239,7 @@ function buildAppointmentClientMailPayload({
   const subject = `Recebemos sua solicitação com ${safeProfessionalName}`;
 
   return {
-    to: [clientEmail],
+    to: clientEmail,
     from: SUPPORT_SENDER,
     message: {
       subject,
@@ -353,7 +353,7 @@ function buildAppointmentProfessionalMailPayload({
   const subject = `Nova solicitação de ${safeServiceName} - ${safeClientName}`;
 
   return {
-    to: [professionalEmail],
+    to: professionalEmail,
     from: SUPPORT_SENDER,
     message: {
       subject,
@@ -403,7 +403,7 @@ function buildConfirmationMailPayload({
   const confirmationKey = profilePath || (profileId ? `${role || ""}:${profileId}` : null);
 
   return {
-    to: [trimmedEmail],
+    to: trimmedEmail,
     from: SUPPORT_SENDER,
     message,
     metadata: {
@@ -543,13 +543,115 @@ async function upsertQuickLeadProfile({ role, nome, email, origem, referrer }) {
 
 const MAIL_SUCCESS_STATUSES = new Set([
   "queued",
+  "queuing",
   "sending",
   "processing",
   "sent",
   "delivered",
   "success",
   "queued-via-extension",
+  "accepted",
+  "already-queued",
 ]);
+
+const MAIL_FAILURE_STATUSES = new Set([
+  "failed",
+  "error",
+  "invalid",
+  "bounced",
+  "undeliverable",
+  "blocked",
+  "rejected",
+  "cancelled",
+  "canceled",
+  "suppressed",
+]);
+
+function extractMailDeliveryStatus(mailData) {
+  if (!mailData || typeof mailData !== "object") {
+    return "";
+  }
+
+  const delivery = mailData.delivery || {};
+  const metadata = mailData.metadata || {};
+
+  const candidates = [
+    delivery.status,
+    delivery.state,
+    delivery.result,
+    mailData.status,
+    mailData.mailStatus,
+    metadata.deliveryStatus,
+    metadata.status,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeLower(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return "";
+}
+
+function shouldReuseExistingMailDoc(mailData) {
+  const status = extractMailDeliveryStatus(mailData);
+
+  if (!status) {
+    return false;
+  }
+
+  if (MAIL_FAILURE_STATUSES.has(status)) {
+    return false;
+  }
+
+  return MAIL_SUCCESS_STATUSES.has(status);
+}
+
+function sanitizeMailPayloadForFirestore(payload) {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+
+  const normalized = { ...payload };
+  const message = normalized.message;
+
+  if (Array.isArray(normalized.to)) {
+    normalized.to = normalized.to
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean)
+      .join(",");
+  } else if (typeof normalized.to === "string") {
+    normalized.to = normalized.to.trim();
+  }
+
+  if (message && typeof message === "object") {
+    const { subject, text, html } = message;
+
+    if (subject && !normalized.subject) {
+      normalized.subject = subject;
+    }
+
+    if (text && !normalized.text) {
+      normalized.text = text;
+    }
+
+    if (html && !normalized.html) {
+      normalized.html = html;
+    }
+  }
+
+  return JSON.parse(
+    JSON.stringify(normalized, (key, value) => {
+      if (value === undefined) {
+        return null;
+      }
+
+      return value;
+    }),
+  );
+}
 
 async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
   const normalizedEmail = sanitizeEmail(email);
@@ -621,8 +723,8 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
 
   try {
     const message = buildQuickSignupMailMessage({ name: nome, role });
-    const mailDoc = await firestore.collection("mail").add({
-      to: [normalizedEmail],
+    const mailPayload = sanitizeMailPayloadForFirestore({
+      to: normalizedEmail,
       from: SUPPORT_SENDER,
       message,
       metadata: {
@@ -633,6 +735,7 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
         profilePath: profileRef.path,
       },
     });
+    const mailDoc = await firestore.collection("mail").add(mailPayload);
 
     mailId = mailDoc.id;
     mailStatus = "queued";
@@ -960,8 +1063,9 @@ async function queueConfirmationForSnapshot(
             sourcePath,
           },
         };
+        const firestorePayload = sanitizeMailPayloadForFirestore(payload);
 
-        const dedupKey = payload.metadata?.confirmationKey || null;
+        const dedupKey = firestorePayload.metadata?.confirmationKey || null;
         let reusedExistingMail = false;
 
         if (!force && dedupKey) {
@@ -977,42 +1081,55 @@ async function queueConfirmationForSnapshot(
             const existingMetadata = existingData.metadata || {};
             const existingToken = existingMetadata.confirmationToken || null;
             const existingUrl = existingMetadata.confirmationUrl || null;
+            const existingStatus = extractMailDeliveryStatus(existingData);
+            const canReuseExisting = shouldReuseExistingMailDoc(existingData);
 
-            reusedExistingMail = true;
-            mailId = existingDoc.id;
-            mailStatus = "already-queued";
-            confirmationUpdate.mailId = mailId;
-            confirmationUpdate.mailDocumentId = mailId;
-            confirmationUpdate.mailStatus = "already-queued";
-            confirmationUpdate.mailQueuedBy =
-              signupConfirmation.mailQueuedBy || existingMetadata.queuedBy || queuedBy;
-            if (signupConfirmation.mailQueuedAt) {
-              confirmationUpdate.mailQueuedAt = signupConfirmation.mailQueuedAt;
-            } else if (existingDoc.createTime) {
-              confirmationUpdate.mailQueuedAt = existingDoc.createTime;
+            if (canReuseExisting) {
+              reusedExistingMail = true;
+              mailId = existingDoc.id;
+              mailStatus = existingStatus || "already-queued";
+              confirmationUpdate.mailId = mailId;
+              confirmationUpdate.mailDocumentId = mailId;
+              confirmationUpdate.mailStatus = mailStatus || "already-queued";
+              confirmationUpdate.mailQueuedBy =
+                signupConfirmation.mailQueuedBy || existingMetadata.queuedBy || queuedBy;
+              if (signupConfirmation.mailQueuedAt) {
+                confirmationUpdate.mailQueuedAt = signupConfirmation.mailQueuedAt;
+              } else if (existingDoc.createTime) {
+                confirmationUpdate.mailQueuedAt = existingDoc.createTime;
+              }
+
+              if (existingUrl) {
+                confirmationUpdate.confirmationUrl = existingUrl;
+              }
+
+              if (existingToken && existingToken !== confirmationUpdate.token) {
+                confirmationUpdate.token = existingToken;
+                confirmationUpdate.confirmationUrl =
+                  existingUrl || buildConfirmationUrl(snap.ref.path, existingToken);
+              }
+
+              functions.logger.info("Email de confirmação reutilizado", {
+                role,
+                sourcePath,
+                queuedBy,
+                mailId,
+                status: mailStatus,
+              });
+            } else {
+              functions.logger.warn("Email de confirmação antigo será substituído", {
+                role,
+                sourcePath,
+                queuedBy,
+                existingMailId: existingDoc.id,
+                existingStatus: existingStatus || null,
+              });
             }
-
-            if (existingUrl) {
-              confirmationUpdate.confirmationUrl = existingUrl;
-            }
-
-            if (existingToken && existingToken !== confirmationUpdate.token) {
-              confirmationUpdate.token = existingToken;
-              confirmationUpdate.confirmationUrl =
-                existingUrl || buildConfirmationUrl(snap.ref.path, existingToken);
-            }
-
-            functions.logger.info("Email de confirmação reutilizado", {
-              role,
-              sourcePath,
-              queuedBy,
-              mailId,
-            });
           }
         }
 
         if (!reusedExistingMail) {
-          const mailRef = await firestore.collection("mail").add(payload);
+          const mailRef = await firestore.collection("mail").add(firestorePayload);
           mailId = mailRef.id;
           mailStatus = "queued";
           confirmationUpdate.mailId = mailId;
@@ -1788,49 +1905,91 @@ exports.registerClientAccount = functions
           functions.logger.error("Falha ao enfileirar confirmação do cliente", {
             profilePath: docRef.path,
             error: queueError?.message,
+            attempt: "initial",
           });
 
           try {
-            await scheduleConfirmationRetry(
+            confirmationResult = await queueConfirmationByRef(
               docRef,
+              "cliente",
+              `registerClientAccount:${docRef.path}`,
               REGISTER_CLIENT_SOURCE,
-              queueError,
+              { queueMail: true, force: true },
             );
-          } catch (retryError) {
+
+            functions.logger.warn("Confirmação reenfileirada após falha inicial", {
+              profilePath: docRef.path,
+              mailStatus: confirmationResult?.mailStatus || null,
+            });
+          } catch (forcedError) {
             functions.logger.error(
-              "Falha ao preparar retentativa automática da confirmação",
+              "Falha ao reenfileirar confirmação do cliente (forçado)",
               {
                 profilePath: docRef.path,
-                error: retryError?.message,
+                error: forcedError?.message,
               },
             );
-          }
 
-          confirmationResult = {
-            status: "requires-client-enqueue",
-            mailStatus: "requires-client-enqueue",
-            confirmationUrl: null,
-            mailId: null,
-          };
+            try {
+              await scheduleConfirmationRetry(
+                docRef,
+                REGISTER_CLIENT_SOURCE,
+                forcedError,
+              );
+            } catch (retryError) {
+              functions.logger.error(
+                "Falha ao preparar retentativa automática da confirmação",
+                {
+                  profilePath: docRef.path,
+                  error: retryError?.message,
+                },
+              );
+            }
+
+            confirmationResult = {
+              status: "requires-client-enqueue",
+              mailStatus: "requires-client-enqueue",
+              confirmationUrl: null,
+              mailId: null,
+              mailPayload: null,
+            };
+          }
         }
 
+        const confirmationPayload = confirmationResult
+          ? {
+              status: confirmationResult.status,
+              mailStatus: confirmationResult.mailStatus,
+              confirmationUrl: confirmationResult.confirmationUrl,
+              mailId: confirmationResult.mailId || null,
+              mailPayload: confirmationResult.mailPayload || null,
+              profilePath: confirmationResult.profilePath || docRef.path,
+            }
+          : {
+              status: "error",
+              mailStatus: "error",
+              confirmationUrl: null,
+              mailId: null,
+              mailPayload: null,
+              profilePath: docRef.path,
+            };
+
+        const normalizedMailStatus = (confirmationPayload.mailStatus || "")
+          .toString()
+          .toLowerCase();
+        const confirmationQueued = normalizedMailStatus
+          ? MAIL_SUCCESS_STATUSES.has(normalizedMailStatus)
+          : false;
+
         res.status(200).json({
+          ok: true,
           status: "pending",
           profilePath: docRef.path,
+          id: userRecord.uid,
           uid: userRecord.uid,
-          confirmation: confirmationResult
-            ? {
-                status: confirmationResult.status,
-                mailStatus: confirmationResult.mailStatus,
-                confirmationUrl: confirmationResult.confirmationUrl,
-                mailId: confirmationResult.mailId || null,
-              }
-            : {
-                status: "error",
-                mailStatus: "error",
-                confirmationUrl: null,
-                mailId: null,
-              },
+          confirmation: confirmationPayload,
+          emailSent: confirmationQueued,
+          emailStatus: normalizedMailStatus || null,
         });
       } catch (error) {
         functions.logger.error("Falha ao registrar cliente", {
@@ -1972,8 +2131,9 @@ exports.notifyAppointmentRequest = functions
     };
 
     if (clientMailPayload) {
+      const firestorePayload = sanitizeMailPayloadForFirestore(clientMailPayload);
       try {
-        const mailDoc = await firestore.collection("mail").add(clientMailPayload);
+        const mailDoc = await firestore.collection("mail").add(firestorePayload);
         notificationStatus.client.mailId = mailDoc.id;
         notificationStatus.client.queued = true;
         functions.logger.info("E-mail de solicitação enviado para cliente", {
@@ -1996,8 +2156,9 @@ exports.notifyAppointmentRequest = functions
     }
 
     if (professionalMailPayload) {
+      const firestorePayload = sanitizeMailPayloadForFirestore(professionalMailPayload);
       try {
-        const mailDoc = await firestore.collection("mail").add(professionalMailPayload);
+        const mailDoc = await firestore.collection("mail").add(firestorePayload);
         notificationStatus.professional.mailId = mailDoc.id;
         notificationStatus.professional.queued = true;
         functions.logger.info("E-mail de solicitação enviado para profissional", {
@@ -2140,8 +2301,9 @@ exports.requestSignupConfirmation = functions
       return;
     }
 
+    const docRef = firestore.collection(collection).doc(documentId);
+
     try {
-      const docRef = firestore.collection(collection).doc(documentId);
       const result = await queueConfirmationByRef(
         docRef,
         mapping.role,
@@ -2161,7 +2323,57 @@ exports.requestSignupConfirmation = functions
         mailPayload: result.mailPayload || null,
       });
     } catch (error) {
-      const errorCode = error?.code || error?.message;
+      let queueError = error;
+      let errorCode = queueError?.code || queueError?.message;
+
+      if (!forceRequest) {
+        functions.logger.error("Falha ao enfileirar confirmação via requestSignupConfirmation", {
+          profilePath,
+          error: queueError?.message,
+          attempt: "initial",
+        });
+
+        try {
+          const forcedResult = await queueConfirmationByRef(
+            docRef,
+            mapping.role,
+            `requestSignupConfirmation:${profilePath}`,
+            "requestSignupConfirmation",
+            {
+              queueMail: true,
+              force: true,
+            },
+          );
+
+          functions.logger.warn(
+            "Confirmação reenfileirada via requestSignupConfirmation após falha inicial",
+            {
+              profilePath,
+              mailStatus: forcedResult?.mailStatus || null,
+            },
+          );
+
+          res.status(200).json({
+            status: forcedResult.status,
+            confirmationUrl: forcedResult.confirmationUrl,
+            mailStatus: forcedResult.mailStatus,
+            mailId: forcedResult.mailId || null,
+            mailPayload: forcedResult.mailPayload || null,
+          });
+          return;
+        } catch (forcedError) {
+          functions.logger.error(
+            "Falha ao reenfileirar confirmação via requestSignupConfirmation (forçado)",
+            {
+              profilePath,
+              error: forcedError?.message,
+            },
+          );
+
+          queueError = forcedError;
+          errorCode = queueError?.code || queueError?.message;
+        }
+      }
 
       if (errorCode === "profile-not-found") {
         res.status(404).json({ error: "profile-not-found" });
@@ -2170,7 +2382,7 @@ exports.requestSignupConfirmation = functions
 
       functions.logger.error("Falha ao solicitar confirmação", {
         profilePath,
-        error: error?.message,
+        error: queueError?.message,
       });
 
       res.status(500).json({ error: "internal-error" });
