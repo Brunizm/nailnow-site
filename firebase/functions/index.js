@@ -1515,6 +1515,7 @@ exports.registerClientAccount = functions
             mailStatus: "requires-client-enqueue",
             confirmationUrl: null,
             mailId: null,
+            mailPayload: null,
           };
         }
 
@@ -1528,12 +1529,14 @@ exports.registerClientAccount = functions
                 mailStatus: confirmationResult.mailStatus,
                 confirmationUrl: confirmationResult.confirmationUrl,
                 mailId: confirmationResult.mailId || null,
+                mailPayload: confirmationResult.mailPayload || null,
               }
             : {
                 status: "error",
                 mailStatus: "error",
                 confirmationUrl: null,
                 mailId: null,
+                mailPayload: null,
               },
         });
       } catch (error) {
