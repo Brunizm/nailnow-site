@@ -95,6 +95,8 @@
       const FORM_ID = "cadastroClienteForm";
       const REGISTER_ENDPOINT =
         "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount";
+      const CONFIRMATION_ENDPOINT =
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
 
       const FEEDBACK_COLORS = {
         info: "#4527a0",
@@ -122,6 +124,29 @@
         if (!element) return;
         element.textContent = "";
         element.removeAttribute("style");
+      }
+
+      async function requestConfirmation(profilePath) {
+        if (!profilePath) {
+          throw new Error("missing-profile-path");
+        }
+
+        const response = await fetch(CONFIRMATION_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile: profilePath }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          const errorCode = payload?.error || `http-${response.status}`;
+          const httpError = new Error(errorCode);
+          httpError.code = errorCode;
+          throw httpError;
+        }
+
+        return payload;
       }
 
       async function cadastrarCliente(event) {
@@ -223,8 +248,25 @@
           }
 
           const confirmation = result.confirmation || {};
-          const mailStatus = (confirmation.mailStatus || "").toLowerCase();
-          const confirmationQueued = ["queued", "already-queued"].includes(mailStatus);
+          const profilePath = typeof result.profilePath === "string" ? result.profilePath : "";
+          let mailStatus = (confirmation.mailStatus || "").toLowerCase();
+
+          let confirmationQueued = ["queued", "already-queued"].includes(mailStatus);
+
+          if (profilePath && !confirmationQueued) {
+            try {
+              const manual = await requestConfirmation(profilePath);
+              const manualStatus = (manual?.mailStatus || "").toLowerCase();
+              if (manualStatus) {
+                mailStatus = manualStatus;
+              }
+              confirmationQueued = ["queued", "already-queued"].includes(
+                manualStatus || mailStatus,
+              );
+            } catch (manualError) {
+              console.warn("Não foi possível reenfileirar o e-mail de confirmação automaticamente", manualError);
+            }
+          }
 
           const successMessage = confirmationQueued
             ? "✅ Conta criada! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
@@ -234,7 +276,13 @@
                 ? "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação."
                 : "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
 
-          setFeedbackMessage(feedback, successMessage, "success");
+          const feedbackVariant = confirmationQueued
+            ? "success"
+            : mailStatus === "error"
+              ? "error"
+              : "info";
+
+          setFeedbackMessage(feedback, successMessage, feedbackVariant);
           form.reset();
           const termos = form.querySelector("[name='aceiteTermos']");
           if (termos) {
