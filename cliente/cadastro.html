@@ -272,7 +272,19 @@
 
           const legacyEmailSent =
             typeof result.emailSent === "boolean" ? result.emailSent : undefined;
-          let confirmationQueued = ["queued", "already-queued", "sent"].includes(mailStatus);
+          const mailSuccessStatuses = [
+            "queued",
+            "queuing",
+            "already-queued",
+            "sent",
+            "processing",
+            "sending",
+            "delivered",
+            "success",
+            "accepted",
+            "queued-via-extension",
+          ];
+          let confirmationQueued = mailSuccessStatuses.includes(mailStatus);
 
           if (!confirmationQueued && legacyEmailSent === true) {
             confirmationQueued = true;
@@ -285,9 +297,7 @@
               if (manualStatus) {
                 mailStatus = manualStatus;
               }
-              confirmationQueued = ["queued", "already-queued", "sent"].includes(
-                manualStatus || mailStatus,
-              );
+              confirmationQueued = mailSuccessStatuses.includes(manualStatus || mailStatus);
             } catch (manualError) {
               console.warn("Não foi possível reenfileirar o e-mail de confirmação automaticamente", manualError);
             }
