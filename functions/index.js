@@ -614,8 +614,27 @@ function sanitizeMailPayloadForFirestore(payload) {
     return payload;
   }
 
+  const normalized = { ...payload };
+  const message = normalized.message;
+
+  if (message && typeof message === "object") {
+    const { subject, text, html } = message;
+
+    if (subject && !normalized.subject) {
+      normalized.subject = subject;
+    }
+
+    if (text && !normalized.text) {
+      normalized.text = text;
+    }
+
+    if (html && !normalized.html) {
+      normalized.html = html;
+    }
+  }
+
   return JSON.parse(
-    JSON.stringify(payload, (key, value) => {
+    JSON.stringify(normalized, (key, value) => {
       if (value === undefined) {
         return null;
       }
@@ -695,7 +714,7 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
 
   try {
     const message = buildQuickSignupMailMessage({ name: nome, role });
-    const mailDoc = await firestore.collection("mail").add({
+    const mailPayload = sanitizeMailPayloadForFirestore({
       to: [normalizedEmail],
       from: SUPPORT_SENDER,
       message,
@@ -707,6 +726,7 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
         profilePath: profileRef.path,
       },
     });
+    const mailDoc = await firestore.collection("mail").add(mailPayload);
 
     mailId = mailDoc.id;
     mailStatus = "queued";
@@ -2102,8 +2122,9 @@ exports.notifyAppointmentRequest = functions
     };
 
     if (clientMailPayload) {
+      const firestorePayload = sanitizeMailPayloadForFirestore(clientMailPayload);
       try {
-        const mailDoc = await firestore.collection("mail").add(clientMailPayload);
+        const mailDoc = await firestore.collection("mail").add(firestorePayload);
         notificationStatus.client.mailId = mailDoc.id;
         notificationStatus.client.queued = true;
         functions.logger.info("E-mail de solicitação enviado para cliente", {
@@ -2126,8 +2147,9 @@ exports.notifyAppointmentRequest = functions
     }
 
     if (professionalMailPayload) {
+      const firestorePayload = sanitizeMailPayloadForFirestore(professionalMailPayload);
       try {
-        const mailDoc = await firestore.collection("mail").add(professionalMailPayload);
+        const mailDoc = await firestore.collection("mail").add(firestorePayload);
         notificationStatus.professional.mailId = mailDoc.id;
         notificationStatus.professional.queued = true;
         functions.logger.info("E-mail de solicitação enviado para profissional", {
