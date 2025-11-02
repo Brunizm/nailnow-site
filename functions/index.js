@@ -1811,26 +1811,44 @@ exports.registerClientAccount = functions
             mailStatus: "requires-client-enqueue",
             confirmationUrl: null,
             mailId: null,
+            mailPayload: null,
           };
         }
 
+        const confirmationPayload = confirmationResult
+          ? {
+              status: confirmationResult.status,
+              mailStatus: confirmationResult.mailStatus,
+              confirmationUrl: confirmationResult.confirmationUrl,
+              mailId: confirmationResult.mailId || null,
+              mailPayload: confirmationResult.mailPayload || null,
+              profilePath: confirmationResult.profilePath || docRef.path,
+            }
+          : {
+              status: "error",
+              mailStatus: "error",
+              confirmationUrl: null,
+              mailId: null,
+              mailPayload: null,
+              profilePath: docRef.path,
+            };
+
+        const normalizedMailStatus = (confirmationPayload.mailStatus || "")
+          .toString()
+          .toLowerCase();
+        const confirmationQueued = ["queued", "already-queued", "sent"].includes(
+          normalizedMailStatus,
+        );
+
         res.status(200).json({
+          ok: true,
           status: "pending",
           profilePath: docRef.path,
+          id: userRecord.uid,
           uid: userRecord.uid,
-          confirmation: confirmationResult
-            ? {
-                status: confirmationResult.status,
-                mailStatus: confirmationResult.mailStatus,
-                confirmationUrl: confirmationResult.confirmationUrl,
-                mailId: confirmationResult.mailId || null,
-              }
-            : {
-                status: "error",
-                mailStatus: "error",
-                confirmationUrl: null,
-                mailId: null,
-              },
+          confirmation: confirmationPayload,
+          emailSent: confirmationQueued,
+          emailStatus: normalizedMailStatus || null,
         });
       } catch (error) {
         functions.logger.error("Falha ao registrar cliente", {
