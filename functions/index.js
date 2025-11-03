@@ -2,6 +2,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors");
 const crypto = require("node:crypto");
+const sgMail = require("@sendgrid/mail");
 
 admin.initializeApp();
 
@@ -10,6 +11,311 @@ const FieldValue = admin.firestore.FieldValue;
 
 const APP_URL = "https://www.nailnow.app";
 const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+
+let configuredSendgridKey = null;
+
+function readFunctionsConfig() {
+  try {
+    return functions.config();
+  } catch (error) {
+    return {};
+  }
+}
+
+function resolveSendgridSettings(overrides = {}) {
+  const sendgridConfig = readFunctionsConfig().sendgrid || {};
+
+  return {
+    apiKey:
+      overrides.apiKey ||
+      process.env.SENDGRID_API_KEY ||
+      sendgridConfig.key ||
+      "",
+    sender:
+      overrides.sender ||
+      process.env.SENDGRID_SENDER ||
+      sendgridConfig.sender ||
+      SUPPORT_SENDER,
+    templateClient:
+      overrides.templateClient ||
+      process.env.SENDGRID_TEMPLATE_CLIENT ||
+      sendgridConfig.template_client ||
+      "",
+    templateProfessional:
+      overrides.templateProfessional ||
+      process.env.SENDGRID_TEMPLATE_PROFESSIONAL ||
+      sendgridConfig.template_professional ||
+      "",
+    templateProfessionalSignup:
+      overrides.templateProfessionalSignup ||
+      process.env.SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP ||
+      sendgridConfig.template_professional_signup ||
+      "",
+  };
+}
+
+function ensureSendgridClient(apiKey) {
+  if (!apiKey) {
+    return false;
+  }
+
+  if (configuredSendgridKey === apiKey) {
+    return true;
+  }
+
+  try {
+    sgMail.setApiKey(apiKey);
+    configuredSendgridKey = apiKey;
+    return true;
+  } catch (error) {
+    functions.logger.error("Falha ao configurar o cliente SendGrid", {
+      error: error?.message,
+    });
+    return false;
+  }
+}
+
+function normalizeRecipientList(value) {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(/[,;]/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function sanitizeCustomArgs(metadata) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const customArgs = {};
+
+  for (const [key, rawValue] of Object.entries(metadata)) {
+    if (!key) {
+      continue;
+    }
+
+    if (rawValue === undefined || rawValue === null) {
+      continue;
+    }
+
+    let value;
+
+    if (typeof rawValue === "string" || typeof rawValue === "number" || typeof rawValue === "boolean") {
+      value = String(rawValue);
+    } else {
+      try {
+        value = JSON.stringify(rawValue);
+      } catch (error) {
+        continue;
+      }
+    }
+
+    if (!value) {
+      continue;
+    }
+
+    customArgs[key] = value;
+  }
+
+  return Object.keys(customArgs).length ? customArgs : null;
+}
+
+async function sendMailViaSendgrid(payload, overrides = {}) {
+  const settings = resolveSendgridSettings(overrides);
+
+  if (!ensureSendgridClient(settings.apiKey)) {
+    functions.logger.error("SENDGRID_API_KEY não configurada; e-mail não será enviado.");
+    return { status: "skipped", reason: "missing-api-key" };
+  }
+
+  const recipients = normalizeRecipientList(payload.to || payload.message?.to);
+
+  if (!recipients.length) {
+    functions.logger.warn("E-mail ignorado por ausência de destinatários válidos.");
+    return { status: "skipped", reason: "missing-recipient" };
+  }
+
+  const cc = normalizeRecipientList(payload.cc || payload.message?.cc);
+  const bcc = normalizeRecipientList(payload.bcc || payload.message?.bcc);
+
+  const subject = payload.subject || payload.message?.subject || null;
+  const text = payload.text || payload.message?.text || null;
+  const html = payload.html || payload.message?.html || null;
+  const templateId = payload.templateId || payload.message?.templateId || null;
+  const dynamicTemplateData =
+    payload.dynamicTemplateData || payload.message?.dynamicTemplateData || null;
+  const replyTo = payload.replyTo || payload.message?.replyTo || null;
+
+  if (!templateId && !text && !html && !subject) {
+    functions.logger.warn("E-mail ignorado por não possuir conteúdo nem template configurado.");
+    return { status: "skipped", reason: "missing-content" };
+  }
+
+  const message = {
+    to: recipients.length === 1 ? recipients[0] : recipients,
+    from: payload.from || settings.sender,
+  };
+
+  if (cc.length) {
+    message.cc = cc.length === 1 ? cc[0] : cc;
+  }
+
+  if (bcc.length) {
+    message.bcc = bcc.length === 1 ? bcc[0] : bcc;
+  }
+
+  if (replyTo) {
+    message.replyTo = replyTo;
+  }
+
+  if (templateId) {
+    message.templateId = templateId;
+    if (dynamicTemplateData) {
+      message.dynamicTemplateData = dynamicTemplateData;
+    }
+  } else {
+    if (subject) {
+      message.subject = subject;
+    }
+
+    if (text) {
+      message.text = text;
+    }
+
+    if (html) {
+      message.html = html;
+    }
+  }
+
+  const categories = Array.isArray(payload.categories)
+    ? payload.categories
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean)
+    : [];
+
+  if (categories.length) {
+    message.categories = categories;
+  }
+
+  const customArgs = sanitizeCustomArgs(payload.metadata || payload.customArgs || null);
+  if (customArgs) {
+    message.customArgs = customArgs;
+  }
+
+  try {
+    const [response] = await sgMail.send(message);
+    const headers = response?.headers || {};
+    const messageId =
+      headers["x-message-id"] || headers["x-msg-id"] || headers["x-sg-id"] || null;
+
+    functions.logger.info("E-mail enviado via SendGrid", {
+      to: recipients,
+      templateId: message.templateId || null,
+      statusCode: response?.statusCode || null,
+    });
+
+    return {
+      status: "sent",
+      messageId,
+      response: {
+        statusCode: response?.statusCode || null,
+      },
+    };
+  } catch (error) {
+    const response = error?.response || {};
+    const statusCode = response?.statusCode || response?.status || null;
+
+    functions.logger.error("Falha ao enviar e-mail via SendGrid", {
+      to: recipients,
+      templateId: templateId || null,
+      statusCode,
+      error: error?.message,
+    });
+
+    return {
+      status: "error",
+      error: error?.message || "sendgrid-error",
+      errorCode: error?.code || null,
+      response: {
+        statusCode,
+        body: response?.body || null,
+      },
+    };
+  }
+}
+
+async function queueMailForDelivery(payload, options = {}) {
+  const firestorePayload = sanitizeMailPayloadForFirestore(payload);
+  const createdAt = FieldValue.serverTimestamp();
+
+  const mailDoc = await firestore.collection("mail").add({
+    ...firestorePayload,
+    status: firestorePayload.status || "queued",
+    queuedAt: createdAt,
+    createdAt,
+  });
+
+  const sendResult = await sendMailViaSendgrid(firestorePayload, options);
+
+  const statusBase = firestorePayload.status || "queued";
+  const statusUpdate = sendResult.status === "sent" ? "sent" : sendResult.status === "error" ? "error" : statusBase;
+  const attemptTimestamp = FieldValue.serverTimestamp();
+
+  const updatePayload = {
+    status: statusUpdate,
+    "delivery.provider": "sendgrid",
+    "delivery.status": sendResult.status,
+    "delivery.attempts": FieldValue.increment ? FieldValue.increment(1) : 1,
+    "delivery.lastAttemptAt": attemptTimestamp,
+  };
+
+  if (sendResult.status === "sent") {
+    updatePayload["delivery.sentAt"] = attemptTimestamp;
+    updatePayload["delivery.messageId"] = sendResult.messageId || null;
+    if (sendResult.response?.statusCode) {
+      updatePayload["delivery.responseStatusCode"] = sendResult.response.statusCode;
+    }
+    updatePayload["delivery.error"] = null;
+    updatePayload["delivery.errorCode"] = null;
+    updatePayload["delivery.reason"] = null;
+    updatePayload["delivery.responseBody"] = null;
+  } else if (sendResult.status === "skipped") {
+    updatePayload["delivery.reason"] = sendResult.reason || null;
+  } else if (sendResult.status === "error") {
+    updatePayload["delivery.error"] = sendResult.error || "sendgrid-error";
+    updatePayload["delivery.errorCode"] = sendResult.errorCode || null;
+    if (sendResult.response?.statusCode) {
+      updatePayload["delivery.responseStatusCode"] = sendResult.response.statusCode;
+    }
+    if (sendResult.response?.body) {
+      updatePayload["delivery.responseBody"] = sendResult.response.body;
+    }
+  }
+
+  await mailDoc.set(updatePayload, { merge: true });
+
+  return {
+    mailRef: mailDoc,
+    mailId: mailDoc.id,
+    firestorePayload,
+    sendResult,
+    status: statusUpdate,
+  };
+}
 
 const ROLE_LOGIN_PATH = {
   cliente: "/cliente/index.html",
@@ -357,6 +663,281 @@ function buildClientProfileData({
     profile.geo = geoPoint;
     profile.geoPoint = geoPoint;
     profile.coordenadas = geoPoint;
+  }
+
+  if (!profile.emails.length && normalizedEmail) {
+    profile.emails = [normalizedEmail];
+  }
+
+  return profile;
+}
+
+function buildProfessionalProfileData({
+  uid,
+  nome,
+  cpf,
+  email,
+  senha,
+  telefone,
+  endereco,
+  enderecoFormatado,
+  placeId,
+  lat,
+  lng,
+  bio,
+  servicos,
+  aceiteTermos,
+  existingData = {},
+}) {
+  const timestamp = FieldValue.serverTimestamp();
+  const normalizedEmail = sanitizeEmail(email);
+  const normalizedPhone = sanitizeString(telefone);
+  const safeName = sanitizeString(nome);
+  const safeCpf = sanitizeString(cpf).replace(/[^0-9]/g, "");
+  const safeBio = sanitizeString(bio);
+  const safeAddress = sanitizeString(endereco);
+  const safeFormattedAddress = sanitizeString(enderecoFormatado);
+  const safePlaceId = sanitizeString(placeId);
+  const latitude = parseCoordinate(lat);
+  const longitude = parseCoordinate(lng);
+  const existingStatus = existingData.status || "";
+  const normalizedStatus = normalizeLower(existingStatus);
+  const status =
+    normalizedStatus &&
+    !["lead", "novo", "new", "pendente", "pending"].includes(normalizedStatus)
+      ? existingData.status
+      : "pendente";
+  const createdAt =
+    existingData.criadoEm || existingData.createdAt || FieldValue.serverTimestamp();
+  const existingEmails = Array.isArray(existingData.emails)
+    ? existingData.emails.map((value) => sanitizeEmail(value)).filter(Boolean)
+    : [];
+  const emailHistory = Array.isArray(existingData.emailsHistorico)
+    ? existingData.emailsHistorico.map((value) => sanitizeEmail(value)).filter(Boolean)
+    : [];
+  const allEmails = mergeUniqueStrings(existingEmails, normalizedEmail);
+  const historicEmails = mergeUniqueStrings(emailHistory, normalizedEmail);
+  const roles = mergeUniqueStrings(existingData.roles || [], "profissional");
+
+  if (!roles.length) {
+    roles.push("profissional");
+  }
+
+  const existingServices = Array.isArray(existingData.servicos)
+    ? existingData.servicos.map((value) => sanitizeString(value)).filter(Boolean)
+    : [];
+  const incomingServices = Array.isArray(servicos)
+    ? servicos
+    : typeof servicos === "string"
+    ? servicos.split(/[,;\n]+/)
+    : [];
+  const normalizedServices = incomingServices
+    .map((value) => sanitizeString(value))
+    .filter(Boolean);
+  const allServices = mergeUniqueStrings(existingServices, normalizedServices);
+
+  const confirmation = existingData.signupConfirmation || {};
+  const confirmationStatus = normalizeLower(confirmation.status || "");
+  const confirmationStatusCode = normalizeLower(confirmation.statusCode || "");
+  const pendingStatuses = new Set(["pendente", "pending", "aguardando", "awaiting"]);
+  const pendingCodes = new Set(["pending", "awaiting", "waiting"]);
+
+  const profile = {
+    uid,
+    role: "profissional",
+    roles,
+    tipo: existingData.tipo || "profissional",
+    tipoConta: existingData.tipoConta || "profissional",
+    categoria: existingData.categoria || "profissional",
+    nome: safeName,
+    displayName: safeName,
+    nomeCompleto: safeName,
+    name: safeName,
+    email: normalizedEmail,
+    emailPrincipal: normalizedEmail,
+    emailLowercase: normalizedEmail,
+    email_lowercase: normalizedEmail,
+    emails: allEmails,
+    senha,
+    senhaAtualizadaEm: timestamp,
+    telefone: normalizedPhone,
+    telefonePrincipal: normalizedPhone,
+    phone: normalizedPhone,
+    phoneNumber: normalizedPhone,
+    telefone_lowercase: normalizedPhone,
+    endereco: safeAddress,
+    endereco_text: safeAddress,
+    address: safeAddress,
+    address_text: safeAddress,
+    endereco_formatado: safeFormattedAddress,
+    enderecoFormatado: safeFormattedAddress,
+    formattedAddress: safeFormattedAddress,
+    place_id: safePlaceId,
+    placeId: safePlaceId,
+    lat: latitude ?? sanitizeString(lat),
+    lng: longitude ?? sanitizeString(lng),
+    bio: safeBio || existingData.bio || "",
+    descricao: safeBio || existingData.descricao || "",
+    sobre: safeBio || existingData.sobre || "",
+    aceiteTermos: Boolean(aceiteTermos ?? existingData.aceiteTermos),
+    termosAceitos: Boolean(aceiteTermos ?? existingData.termosAceitos),
+    aceitouTermos: Boolean(aceiteTermos ?? existingData.aceitouTermos),
+    termosAceitosEm: timestamp,
+    acceptedTerms: Boolean(aceiteTermos ?? existingData.acceptedTerms),
+    acceptedTermsAt: timestamp,
+    termos: {
+      ...(existingData.termos || {}),
+      aceito: Boolean(aceiteTermos ?? existingData.termos?.aceito),
+      aceitoEm: timestamp,
+    },
+    status,
+    criadoEm: createdAt,
+    createdAt,
+    atualizadoEm: timestamp,
+    updatedAt: timestamp,
+    signupSource: REGISTER_PROFESSIONAL_SOURCE,
+    signup: {
+      ...(existingData.signup || {}),
+      source: REGISTER_PROFESSIONAL_SOURCE,
+      capturedAt: timestamp,
+    },
+    signupMetadata: {
+      ...(existingData.signupMetadata || {}),
+      source: REGISTER_PROFESSIONAL_SOURCE,
+      capturedAt: timestamp,
+    },
+    lastSignupSource: REGISTER_PROFESSIONAL_SOURCE,
+    profileType: "profissional",
+    accountType: "profissional",
+    portal: {
+      ...(existingData.portal || {}),
+      role: "profissional",
+      loginPath: ROLE_LOGIN_PATH.profissional,
+      portalPath: ROLE_PORTAL_PATH.profissional,
+      updatedAt: timestamp,
+    },
+    contato: {
+      ...(existingData.contato || {}),
+      email: normalizedEmail || existingData.contato?.email || null,
+      emailPrincipal:
+        normalizedEmail || existingData.contato?.emailPrincipal || null,
+      emailLowercase:
+        normalizedEmail || existingData.contato?.emailLowercase || null,
+      telefone: normalizedPhone || existingData.contato?.telefone || null,
+      telefonePrincipal:
+        normalizedPhone || existingData.contato?.telefonePrincipal || null,
+      atualizadoEm: timestamp,
+    },
+    contact: {
+      ...(existingData.contact || {}),
+      email: normalizedEmail || existingData.contact?.email || null,
+      emailPrincipal:
+        normalizedEmail || existingData.contact?.emailPrincipal || null,
+      emailLowercase:
+        normalizedEmail || existingData.contact?.emailLowercase || null,
+      phone: normalizedPhone || existingData.contact?.phone || null,
+      phoneNumber:
+        normalizedPhone || existingData.contact?.phoneNumber || null,
+      updatedAt: timestamp,
+    },
+    account: {
+      ...(existingData.account || {}),
+      email: normalizedEmail || existingData.account?.email || null,
+      emailLowercase:
+        normalizedEmail || existingData.account?.emailLowercase || null,
+      phone: normalizedPhone || existingData.account?.phone || null,
+      role: "profissional",
+      updatedAt: timestamp,
+    },
+    dadosContato: {
+      ...(existingData.dadosContato || {}),
+      email: normalizedEmail || existingData.dadosContato?.email || null,
+      telefone: normalizedPhone || existingData.dadosContato?.telefone || null,
+      atualizadoEm: timestamp,
+    },
+    dados: {
+      ...(existingData.dados || {}),
+      nome: safeName || existingData.dados?.nome || null,
+      email: normalizedEmail || existingData.dados?.email || null,
+      telefone: normalizedPhone || existingData.dados?.telefone || null,
+      endereco: safeAddress || existingData.dados?.endereco || null,
+      atualizadoEm: timestamp,
+    },
+    profile: {
+      ...(existingData.profile || {}),
+      nome: safeName || existingData.profile?.nome || null,
+      name: safeName || existingData.profile?.name || null,
+      displayName: safeName || existingData.profile?.displayName || null,
+      email: normalizedEmail || existingData.profile?.email || null,
+      telefone: normalizedPhone || existingData.profile?.telefone || null,
+      phone: normalizedPhone || existingData.profile?.phone || null,
+      endereco: safeAddress || existingData.profile?.endereco || null,
+      address: safeAddress || existingData.profile?.address || null,
+      bio: safeBio || existingData.profile?.bio || null,
+      sobre: safeBio || existingData.profile?.sobre || null,
+      servicos: allServices.length
+        ? allServices
+        : existingData.profile?.servicos || existingData.profile?.services || [],
+      services: allServices.length
+        ? allServices
+        : existingData.profile?.services || existingData.profile?.servicos || [],
+      role: "profissional",
+      tipo: "profissional",
+      status,
+      atualizadoEm: timestamp,
+    },
+    emailsHistorico: historicEmails,
+    signupConfirmation: {
+      ...confirmation,
+      status:
+        confirmationStatus && !pendingStatuses.has(confirmationStatus)
+          ? confirmation.status
+          : "pendente",
+      statusCode:
+        confirmationStatusCode && !pendingCodes.has(confirmationStatusCode)
+          ? confirmation.statusCode
+          : "pending",
+      role: confirmation.role || "profissional",
+      autoQueueOptOut:
+        confirmation.autoQueueOptOut === false ? false : true,
+      preparedBy: confirmation.preparedBy || REGISTER_PROFESSIONAL_SOURCE,
+      preparedAt: confirmation.preparedAt || timestamp,
+    },
+  };
+
+  if (safeCpf) {
+    profile.cpf = safeCpf;
+    profile.documento = safeCpf;
+    profile.documentId = safeCpf;
+    profile.documentNumber = safeCpf;
+    profile.taxId = safeCpf;
+    profile.cpfLimpo = safeCpf;
+  }
+
+  if (latitude !== null || longitude !== null) {
+    const location = {
+      lat: latitude ?? null,
+      lng: longitude ?? null,
+    };
+    profile.location = { ...(existingData.location || {}), ...location };
+    profile.localizacao = {
+      ...(existingData.localizacao || {}),
+      ...location,
+    };
+  }
+
+  if (latitude !== null && longitude !== null) {
+    const geoPoint = new admin.firestore.GeoPoint(latitude, longitude);
+    profile.geo = geoPoint;
+    profile.geoPoint = geoPoint;
+    profile.coordenadas = geoPoint;
+  }
+
+  if (allServices.length) {
+    profile.servicos = allServices;
+    profile.services = allServices;
+    profile.servicosOferecidos = allServices;
+    profile.servicesOffered = allServices;
   }
 
   if (!profile.emails.length && normalizedEmail) {
@@ -1109,7 +1690,7 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
 
   try {
     const message = buildQuickSignupMailMessage({ name: nome, role });
-    const mailPayload = sanitizeMailPayloadForFirestore({
+    const mailPayload = {
       to: normalizedEmail,
       from: SUPPORT_SENDER,
       message,
@@ -1120,11 +1701,11 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
         leadId: leadRef.id,
         profilePath: profileRef.path,
       },
-    });
-    const mailDoc = await firestore.collection("mail").add(mailPayload);
+    };
+    const queuedMail = await queueMailForDelivery(mailPayload);
 
-    mailId = mailDoc.id;
-    mailStatus = "queued";
+    mailId = queuedMail.mailId;
+    mailStatus = queuedMail.status || queuedMail.sendResult?.status || "queued";
 
     const mailUpdateTime = FieldValue.serverTimestamp();
 
@@ -1515,19 +2096,20 @@ async function queueConfirmationForSnapshot(
         }
 
         if (!reusedExistingMail) {
-          const mailRef = await firestore.collection("mail").add(firestorePayload);
-          mailId = mailRef.id;
-          mailStatus = "queued";
+          const queuedMail = await queueMailForDelivery(firestorePayload);
+          mailId = queuedMail.mailId;
+          mailStatus = queuedMail.status || queuedMail.sendResult?.status || "queued";
           confirmationUpdate.mailId = mailId;
           confirmationUpdate.mailDocumentId = mailId;
           confirmationUpdate.mailQueuedAt = FieldValue.serverTimestamp();
           confirmationUpdate.mailQueuedBy = queuedBy;
-          confirmationUpdate.mailStatus = "queued";
+          confirmationUpdate.mailStatus = mailStatus;
           functions.logger.info("Email de confirmação enfileirado", {
             role,
             sourcePath,
             queuedBy,
             mailId,
+            status: mailStatus,
           });
         }
       } else {
@@ -2123,6 +2705,7 @@ exports.verifySignupConfirmation = functions
   });
 
 const REGISTER_CLIENT_SOURCE = "registerClientAccount";
+const REGISTER_PROFESSIONAL_SOURCE = "registerProfessionalAccount";
 
 exports.registerClientAccount = functions
   .region("southamerica-east1")
@@ -2372,6 +2955,241 @@ exports.registerClientAccount = functions
     });
   });
 
+exports.registerProfessionalAccount = functions
+  .region("southamerica-east1")
+  .https.onRequest((req, res) => {
+    corsHandler(req, res, async () => {
+      applyCors(req, res);
+
+      if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+      }
+
+      if (req.method !== "POST") {
+        res.status(405).json({ error: "method-not-allowed" });
+        return;
+      }
+
+      const payload = readHttpPayload(req) || {};
+
+      const nome = sanitizeString(
+        payload.nome || payload.nomeCompleto || payload.name,
+      );
+      const cpf = sanitizeString(
+        payload.cpf || payload.documento || payload.documentId || "",
+      );
+      const email = sanitizeEmail(payload.email);
+      const senha = sanitizeString(payload.senha || payload.password);
+      const telefone = sanitizeString(
+        payload.telefone || payload.phone || payload.whatsapp,
+      );
+      const endereco = sanitizeString(
+        payload.endereco || payload.endereco_text || payload.address,
+      );
+      const enderecoFormatado = sanitizeString(
+        payload.endereco_formatado || payload.enderecoFormatado || "",
+      );
+      const placeId = sanitizeString(payload.place_id || payload.placeId || "");
+      const lat = sanitizeString(payload.lat || "");
+      const lng = sanitizeString(payload.lng || "");
+      const bio = sanitizeString(payload.bio || payload.descricao || payload.sobre || "");
+      const servicosRaw = Array.isArray(payload.servicos)
+        ? payload.servicos
+        : typeof payload.servicos === "string"
+        ? payload.servicos.split(/[,;\n]+/)
+        : [];
+      const servicos = servicosRaw
+        .map((value) => sanitizeString(value))
+        .filter(Boolean);
+      const aceiteTermos = Boolean(
+        payload.aceiteTermos ?? payload.aceitouTermos ?? payload.termos,
+      );
+
+      if (!nome || !cpf || !email || !senha || senha.length < 6 || !endereco) {
+        res.status(400).json({ error: "invalid-payload" });
+        return;
+      }
+
+      try {
+        const existingQuery = await firestore
+          .collection("profissionais")
+          .where("email", "==", email)
+          .limit(1)
+          .get();
+
+        if (!existingQuery.empty) {
+          const existingDoc = existingQuery.docs[0];
+          const existingData = existingDoc.data() || {};
+          res.status(409).json({
+            error: "email-already-in-use",
+            status: existingData.status || "pendente",
+          });
+          return;
+        }
+
+        let userRecord;
+        let isNewUser = false;
+
+        try {
+          userRecord = await admin.auth().getUserByEmail(email);
+        } catch (error) {
+          if (error?.code === "auth/user-not-found") {
+            userRecord = await admin.auth().createUser({
+              email,
+              password: senha,
+              displayName: nome,
+              emailVerified: false,
+              disabled: false,
+            });
+            isNewUser = true;
+          } else {
+            throw error;
+          }
+        }
+
+        if (!isNewUser) {
+          await admin.auth().updateUser(userRecord.uid, {
+            password: senha,
+            displayName: nome,
+            emailVerified: false,
+            disabled: false,
+          });
+        }
+
+        const docRef = firestore.collection("profissionais").doc(userRecord.uid);
+        const existingSnapshot = await docRef.get();
+        const existingData = existingSnapshot.exists ? existingSnapshot.data() || {} : {};
+        const baseData = buildProfessionalProfileData({
+          uid: userRecord.uid,
+          nome,
+          cpf,
+          email,
+          senha,
+          telefone,
+          endereco,
+          enderecoFormatado,
+          placeId,
+          lat,
+          lng,
+          bio,
+          servicos,
+          aceiteTermos,
+          existingData,
+        });
+
+        await docRef.set(baseData, { merge: true });
+
+        let confirmationResult = null;
+
+        try {
+          confirmationResult = await queueConfirmationByRef(
+            docRef,
+            "profissional",
+            `registerProfessionalAccount:${docRef.path}`,
+            REGISTER_PROFESSIONAL_SOURCE,
+            { queueMail: true, force: false },
+          );
+        } catch (queueError) {
+          functions.logger.error("Falha ao enfileirar confirmação do profissional", {
+            profilePath: docRef.path,
+            error: queueError?.message,
+            attempt: "initial",
+          });
+
+          try {
+            confirmationResult = await queueConfirmationByRef(
+              docRef,
+              "profissional",
+              `registerProfessionalAccount:${docRef.path}`,
+              REGISTER_PROFESSIONAL_SOURCE,
+              { queueMail: true, force: true },
+            );
+
+            functions.logger.warn("Confirmação de profissional reenfileirada após falha inicial", {
+              profilePath: docRef.path,
+              mailStatus: confirmationResult?.mailStatus || null,
+            });
+          } catch (forcedError) {
+            functions.logger.error(
+              "Falha ao reenfileirar confirmação do profissional (forçado)",
+              {
+                profilePath: docRef.path,
+                error: forcedError?.message,
+              },
+            );
+
+            try {
+              await scheduleConfirmationRetry(
+                docRef,
+                REGISTER_PROFESSIONAL_SOURCE,
+                forcedError,
+              );
+            } catch (retryError) {
+              functions.logger.error(
+                "Falha ao preparar retentativa automática da confirmação do profissional",
+                {
+                  profilePath: docRef.path,
+                  error: retryError?.message,
+                },
+              );
+            }
+
+            confirmationResult = {
+              status: "requires-client-enqueue",
+              mailStatus: "requires-client-enqueue",
+              confirmationUrl: null,
+              mailId: null,
+              mailPayload: null,
+            };
+          }
+        }
+
+        const confirmationPayload = confirmationResult
+          ? {
+              status: confirmationResult.status,
+              mailStatus: confirmationResult.mailStatus,
+              confirmationUrl: confirmationResult.confirmationUrl,
+              mailId: confirmationResult.mailId || null,
+              mailPayload: confirmationResult.mailPayload || null,
+              profilePath: confirmationResult.profilePath || docRef.path,
+            }
+          : {
+              status: "error",
+              mailStatus: "error",
+              confirmationUrl: null,
+              mailId: null,
+              mailPayload: null,
+              profilePath: docRef.path,
+            };
+
+        const normalizedMailStatus = (confirmationPayload.mailStatus || "")
+          .toString()
+          .toLowerCase();
+        const confirmationQueued = normalizedMailStatus
+          ? MAIL_SUCCESS_STATUSES.has(normalizedMailStatus)
+          : false;
+
+        res.status(200).json({
+          ok: true,
+          status: "pending",
+          profilePath: docRef.path,
+          id: userRecord.uid,
+          uid: userRecord.uid,
+          confirmation: confirmationPayload,
+          emailSent: confirmationQueued,
+          emailStatus: normalizedMailStatus || null,
+        });
+      } catch (error) {
+        functions.logger.error("Falha ao registrar profissional", {
+          email,
+          error: error?.message,
+        });
+        res.status(500).json({ error: "internal-error" });
+      }
+    });
+  });
+
 exports.notifyAppointmentRequest = functions
   .region("southamerica-east1")
   .firestore.document("profissionais/{professionalId}/solicitacoes/{appointmentId}")
@@ -2502,15 +3320,15 @@ exports.notifyAppointmentRequest = functions
     };
 
     if (clientMailPayload) {
-      const firestorePayload = sanitizeMailPayloadForFirestore(clientMailPayload);
       try {
-        const mailDoc = await firestore.collection("mail").add(firestorePayload);
-        notificationStatus.client.mailId = mailDoc.id;
+        const queuedMail = await queueMailForDelivery(clientMailPayload);
+        notificationStatus.client.mailId = queuedMail.mailId;
         notificationStatus.client.queued = true;
         functions.logger.info("E-mail de solicitação enviado para cliente", {
           appointmentId,
           professionalId,
-          mailId: mailDoc.id,
+          mailId: queuedMail.mailId,
+          status: queuedMail.status || queuedMail.sendResult?.status || "queued",
         });
       } catch (error) {
         notificationStatus.client.error = error?.message || "unknown-error";
@@ -2527,15 +3345,15 @@ exports.notifyAppointmentRequest = functions
     }
 
     if (professionalMailPayload) {
-      const firestorePayload = sanitizeMailPayloadForFirestore(professionalMailPayload);
       try {
-        const mailDoc = await firestore.collection("mail").add(firestorePayload);
-        notificationStatus.professional.mailId = mailDoc.id;
+        const queuedMail = await queueMailForDelivery(professionalMailPayload);
+        notificationStatus.professional.mailId = queuedMail.mailId;
         notificationStatus.professional.queued = true;
         functions.logger.info("E-mail de solicitação enviado para profissional", {
           appointmentId,
           professionalId,
-          mailId: mailDoc.id,
+          mailId: queuedMail.mailId,
+          status: queuedMail.status || queuedMail.sendResult?.status || "queued",
         });
       } catch (error) {
         notificationStatus.professional.error = error?.message || "unknown-error";
