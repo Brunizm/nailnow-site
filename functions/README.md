@@ -21,9 +21,13 @@ npm run login
 
 ## 2. Authenticate and select the project
 
-Log in with the account that owns the `nailnow-site` project:
+Log in with the account that owns the `nailnow-site` project. All of the
+package scripts live inside the `functions` workspace, so make sure you are in
+that folder (or use `npm --prefix functions run …` from the repository root)
+before running them:
 
 ```bash
+cd functions
 npm run login
 ```
 
@@ -50,9 +54,11 @@ You can confirm the values with `firebase functions:config:get`.
 
 ## 4. Deploy the functions
 
-Once the configuration is in place, deploy everything with a single command:
+Once the configuration is in place, deploy everything with a single command
+from inside the `functions` directory:
 
 ```bash
+cd functions
 npm run deploy
 ```
 
@@ -66,3 +72,25 @@ The application stores data in the `clientes`, `profissionais` e `mail`.
 Collections are created automatically when the first document is written, but
 you can add an empty placeholder document manually from the Firestore console
 if you want to visualize them immediately.
+
+## 6. Teste o fluxo completo de cadastro
+
+1. Inicie um servidor estático na raiz do repositório para abrir o site
+   localmente. Qualquer servidor funciona (`python -m http.server`, `npx serve`,
+   etc.); por exemplo:
+   ```bash
+   npx serve
+   ```
+2. Acesse `http://localhost:3000/profissional/cadastro.html` (ou o endereço
+   exibido no terminal) e preencha o formulário com um e-mail de teste que ainda
+   não exista no Firestore.
+3. Após o envio, confirme que um novo documento foi criado na coleção
+   `profissionais` com `status: "pending"` e que a coleção `mail` recebeu um
+   registro com `delivery.status: "sent"`. Esses dois sinais confirmam que a
+   função escreveu os dados e disparou o e-mail de confirmação via SendGrid.
+4. Verifique a caixa de entrada do e-mail informado ou o dashboard do SendGrid
+   para validar a entrega. Ao clicar no link do e-mail, o status do perfil muda
+   de `pending` para `confirmed`.
+
+Repita o mesmo fluxo em `http://localhost:3000/cliente/cadastro.html` para
+garantir que o cadastro de clientes também esteja operando.
