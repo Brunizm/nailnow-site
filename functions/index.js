@@ -2,6 +2,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors");
 const crypto = require("node:crypto");
+const sgMail = require("@sendgrid/mail");
 
 admin.initializeApp();
 
@@ -10,6 +11,311 @@ const FieldValue = admin.firestore.FieldValue;
 
 const APP_URL = "https://www.nailnow.app";
 const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+
+let configuredSendgridKey = null;
+
+function readFunctionsConfig() {
+  try {
+    return functions.config();
+  } catch (error) {
+    return {};
+  }
+}
+
+function resolveSendgridSettings(overrides = {}) {
+  const sendgridConfig = readFunctionsConfig().sendgrid || {};
+
+  return {
+    apiKey:
+      overrides.apiKey ||
+      process.env.SENDGRID_API_KEY ||
+      sendgridConfig.key ||
+      "",
+    sender:
+      overrides.sender ||
+      process.env.SENDGRID_SENDER ||
+      sendgridConfig.sender ||
+      SUPPORT_SENDER,
+    templateClient:
+      overrides.templateClient ||
+      process.env.SENDGRID_TEMPLATE_CLIENT ||
+      sendgridConfig.template_client ||
+      "",
+    templateProfessional:
+      overrides.templateProfessional ||
+      process.env.SENDGRID_TEMPLATE_PROFESSIONAL ||
+      sendgridConfig.template_professional ||
+      "",
+    templateProfessionalSignup:
+      overrides.templateProfessionalSignup ||
+      process.env.SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP ||
+      sendgridConfig.template_professional_signup ||
+      "",
+  };
+}
+
+function ensureSendgridClient(apiKey) {
+  if (!apiKey) {
+    return false;
+  }
+
+  if (configuredSendgridKey === apiKey) {
+    return true;
+  }
+
+  try {
+    sgMail.setApiKey(apiKey);
+    configuredSendgridKey = apiKey;
+    return true;
+  } catch (error) {
+    functions.logger.error("Falha ao configurar o cliente SendGrid", {
+      error: error?.message,
+    });
+    return false;
+  }
+}
+
+function normalizeRecipientList(value) {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(/[,;]/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function sanitizeCustomArgs(metadata) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const customArgs = {};
+
+  for (const [key, rawValue] of Object.entries(metadata)) {
+    if (!key) {
+      continue;
+    }
+
+    if (rawValue === undefined || rawValue === null) {
+      continue;
+    }
+
+    let value;
+
+    if (typeof rawValue === "string" || typeof rawValue === "number" || typeof rawValue === "boolean") {
+      value = String(rawValue);
+    } else {
+      try {
+        value = JSON.stringify(rawValue);
+      } catch (error) {
+        continue;
+      }
+    }
+
+    if (!value) {
+      continue;
+    }
+
+    customArgs[key] = value;
+  }
+
+  return Object.keys(customArgs).length ? customArgs : null;
+}
+
+async function sendMailViaSendgrid(payload, overrides = {}) {
+  const settings = resolveSendgridSettings(overrides);
+
+  if (!ensureSendgridClient(settings.apiKey)) {
+    functions.logger.error("SENDGRID_API_KEY não configurada; e-mail não será enviado.");
+    return { status: "skipped", reason: "missing-api-key" };
+  }
+
+  const recipients = normalizeRecipientList(payload.to || payload.message?.to);
+
+  if (!recipients.length) {
+    functions.logger.warn("E-mail ignorado por ausência de destinatários válidos.");
+    return { status: "skipped", reason: "missing-recipient" };
+  }
+
+  const cc = normalizeRecipientList(payload.cc || payload.message?.cc);
+  const bcc = normalizeRecipientList(payload.bcc || payload.message?.bcc);
+
+  const subject = payload.subject || payload.message?.subject || null;
+  const text = payload.text || payload.message?.text || null;
+  const html = payload.html || payload.message?.html || null;
+  const templateId = payload.templateId || payload.message?.templateId || null;
+  const dynamicTemplateData =
+    payload.dynamicTemplateData || payload.message?.dynamicTemplateData || null;
+  const replyTo = payload.replyTo || payload.message?.replyTo || null;
+
+  if (!templateId && !text && !html && !subject) {
+    functions.logger.warn("E-mail ignorado por não possuir conteúdo nem template configurado.");
+    return { status: "skipped", reason: "missing-content" };
+  }
+
+  const message = {
+    to: recipients.length === 1 ? recipients[0] : recipients,
+    from: payload.from || settings.sender,
+  };
+
+  if (cc.length) {
+    message.cc = cc.length === 1 ? cc[0] : cc;
+  }
+
+  if (bcc.length) {
+    message.bcc = bcc.length === 1 ? bcc[0] : bcc;
+  }
+
+  if (replyTo) {
+    message.replyTo = replyTo;
+  }
+
+  if (templateId) {
+    message.templateId = templateId;
+    if (dynamicTemplateData) {
+      message.dynamicTemplateData = dynamicTemplateData;
+    }
+  } else {
+    if (subject) {
+      message.subject = subject;
+    }
+
+    if (text) {
+      message.text = text;
+    }
+
+    if (html) {
+      message.html = html;
+    }
+  }
+
+  const categories = Array.isArray(payload.categories)
+    ? payload.categories
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean)
+    : [];
+
+  if (categories.length) {
+    message.categories = categories;
+  }
+
+  const customArgs = sanitizeCustomArgs(payload.metadata || payload.customArgs || null);
+  if (customArgs) {
+    message.customArgs = customArgs;
+  }
+
+  try {
+    const [response] = await sgMail.send(message);
+    const headers = response?.headers || {};
+    const messageId =
+      headers["x-message-id"] || headers["x-msg-id"] || headers["x-sg-id"] || null;
+
+    functions.logger.info("E-mail enviado via SendGrid", {
+      to: recipients,
+      templateId: message.templateId || null,
+      statusCode: response?.statusCode || null,
+    });
+
+    return {
+      status: "sent",
+      messageId,
+      response: {
+        statusCode: response?.statusCode || null,
+      },
+    };
+  } catch (error) {
+    const response = error?.response || {};
+    const statusCode = response?.statusCode || response?.status || null;
+
+    functions.logger.error("Falha ao enviar e-mail via SendGrid", {
+      to: recipients,
+      templateId: templateId || null,
+      statusCode,
+      error: error?.message,
+    });
+
+    return {
+      status: "error",
+      error: error?.message || "sendgrid-error",
+      errorCode: error?.code || null,
+      response: {
+        statusCode,
+        body: response?.body || null,
+      },
+    };
+  }
+}
+
+async function queueMailForDelivery(payload, options = {}) {
+  const firestorePayload = sanitizeMailPayloadForFirestore(payload);
+  const createdAt = FieldValue.serverTimestamp();
+
+  const mailDoc = await firestore.collection("mail").add({
+    ...firestorePayload,
+    status: firestorePayload.status || "queued",
+    queuedAt: createdAt,
+    createdAt,
+  });
+
+  const sendResult = await sendMailViaSendgrid(firestorePayload, options);
+
+  const statusBase = firestorePayload.status || "queued";
+  const statusUpdate = sendResult.status === "sent" ? "sent" : sendResult.status === "error" ? "error" : statusBase;
+  const attemptTimestamp = FieldValue.serverTimestamp();
+
+  const updatePayload = {
+    status: statusUpdate,
+    "delivery.provider": "sendgrid",
+    "delivery.status": sendResult.status,
+    "delivery.attempts": FieldValue.increment ? FieldValue.increment(1) : 1,
+    "delivery.lastAttemptAt": attemptTimestamp,
+  };
+
+  if (sendResult.status === "sent") {
+    updatePayload["delivery.sentAt"] = attemptTimestamp;
+    updatePayload["delivery.messageId"] = sendResult.messageId || null;
+    if (sendResult.response?.statusCode) {
+      updatePayload["delivery.responseStatusCode"] = sendResult.response.statusCode;
+    }
+    updatePayload["delivery.error"] = null;
+    updatePayload["delivery.errorCode"] = null;
+    updatePayload["delivery.reason"] = null;
+    updatePayload["delivery.responseBody"] = null;
+  } else if (sendResult.status === "skipped") {
+    updatePayload["delivery.reason"] = sendResult.reason || null;
+  } else if (sendResult.status === "error") {
+    updatePayload["delivery.error"] = sendResult.error || "sendgrid-error";
+    updatePayload["delivery.errorCode"] = sendResult.errorCode || null;
+    if (sendResult.response?.statusCode) {
+      updatePayload["delivery.responseStatusCode"] = sendResult.response.statusCode;
+    }
+    if (sendResult.response?.body) {
+      updatePayload["delivery.responseBody"] = sendResult.response.body;
+    }
+  }
+
+  await mailDoc.set(updatePayload, { merge: true });
+
+  return {
+    mailRef: mailDoc,
+    mailId: mailDoc.id,
+    firestorePayload,
+    sendResult,
+    status: statusUpdate,
+  };
+}
 
 const ROLE_LOGIN_PATH = {
   cliente: "/cliente/index.html",
@@ -1384,7 +1690,7 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
 
   try {
     const message = buildQuickSignupMailMessage({ name: nome, role });
-    const mailPayload = sanitizeMailPayloadForFirestore({
+    const mailPayload = {
       to: normalizedEmail,
       from: SUPPORT_SENDER,
       message,
@@ -1395,11 +1701,11 @@ async function createQuickSignupLead({ role, nome, email, origem, referrer }) {
         leadId: leadRef.id,
         profilePath: profileRef.path,
       },
-    });
-    const mailDoc = await firestore.collection("mail").add(mailPayload);
+    };
+    const queuedMail = await queueMailForDelivery(mailPayload);
 
-    mailId = mailDoc.id;
-    mailStatus = "queued";
+    mailId = queuedMail.mailId;
+    mailStatus = queuedMail.status || queuedMail.sendResult?.status || "queued";
 
     const mailUpdateTime = FieldValue.serverTimestamp();
 
@@ -1790,19 +2096,20 @@ async function queueConfirmationForSnapshot(
         }
 
         if (!reusedExistingMail) {
-          const mailRef = await firestore.collection("mail").add(firestorePayload);
-          mailId = mailRef.id;
-          mailStatus = "queued";
+          const queuedMail = await queueMailForDelivery(firestorePayload);
+          mailId = queuedMail.mailId;
+          mailStatus = queuedMail.status || queuedMail.sendResult?.status || "queued";
           confirmationUpdate.mailId = mailId;
           confirmationUpdate.mailDocumentId = mailId;
           confirmationUpdate.mailQueuedAt = FieldValue.serverTimestamp();
           confirmationUpdate.mailQueuedBy = queuedBy;
-          confirmationUpdate.mailStatus = "queued";
+          confirmationUpdate.mailStatus = mailStatus;
           functions.logger.info("Email de confirmação enfileirado", {
             role,
             sourcePath,
             queuedBy,
             mailId,
+            status: mailStatus,
           });
         }
       } else {
@@ -3013,15 +3320,15 @@ exports.notifyAppointmentRequest = functions
     };
 
     if (clientMailPayload) {
-      const firestorePayload = sanitizeMailPayloadForFirestore(clientMailPayload);
       try {
-        const mailDoc = await firestore.collection("mail").add(firestorePayload);
-        notificationStatus.client.mailId = mailDoc.id;
+        const queuedMail = await queueMailForDelivery(clientMailPayload);
+        notificationStatus.client.mailId = queuedMail.mailId;
         notificationStatus.client.queued = true;
         functions.logger.info("E-mail de solicitação enviado para cliente", {
           appointmentId,
           professionalId,
-          mailId: mailDoc.id,
+          mailId: queuedMail.mailId,
+          status: queuedMail.status || queuedMail.sendResult?.status || "queued",
         });
       } catch (error) {
         notificationStatus.client.error = error?.message || "unknown-error";
@@ -3038,15 +3345,15 @@ exports.notifyAppointmentRequest = functions
     }
 
     if (professionalMailPayload) {
-      const firestorePayload = sanitizeMailPayloadForFirestore(professionalMailPayload);
       try {
-        const mailDoc = await firestore.collection("mail").add(firestorePayload);
-        notificationStatus.professional.mailId = mailDoc.id;
+        const queuedMail = await queueMailForDelivery(professionalMailPayload);
+        notificationStatus.professional.mailId = queuedMail.mailId;
         notificationStatus.professional.queued = true;
         functions.logger.info("E-mail de solicitação enviado para profissional", {
           appointmentId,
           professionalId,
-          mailId: mailDoc.id,
+          mailId: queuedMail.mailId,
+          status: queuedMail.status || queuedMail.sendResult?.status || "queued",
         });
       } catch (error) {
         notificationStatus.professional.error = error?.message || "unknown-error";
