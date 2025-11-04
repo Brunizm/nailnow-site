@@ -31,7 +31,27 @@ Este pacote contém Cloud Functions que gerenciam o estado de confirmação de c
    - Como alternativa, você pode cadastrar um **Single Sender** diretamente no SendGrid. Esse fluxo envia um e-mail de confirmação para o endereço informado; só depois de confirmar o link o remetente fica verificado.
    - A extensão só consegue enviar mensagens depois que o status do remetente estiver como **Verified**; caso contrário, o log do Firebase exibirá o erro `The from address does not match a verified Sender Identity`.
 
-3. Faça o deploy das funções:
+3. Configure a API key e o remetente do SendGrid para que as funções consigam
+   enviar os e-mails diretamente. Rode o comando abaixo substituindo os valores
+   pelos dados reais do projeto (adicione os IDs dos templates apenas se já
+   estiverem disponíveis):
+
+   ```bash
+   cd firebase/functions
+   firebase functions:config:set \
+     sendgrid.key="<sua-chave>" \
+     sendgrid.sender="NailNow <suporte@nailnow.app>" \
+     sendgrid.template_client="<id-template-cliente>" \
+     sendgrid.template_professional="<id-template-profissional>" \
+     sendgrid.template_professional_signup="<id-template-cadastro>"
+   ```
+
+   Para confirmar que os valores foram aplicados corretamente, execute
+   `firebase functions:config:get sendgrid` e verifique se a chave exibida
+   corresponde à informada (o Firebase mascara parte do valor na saída por
+   segurança).
+
+4. Faça o deploy das funções:
 
    ```bash
    firebase deploy --only functions
@@ -44,6 +64,7 @@ Este pacote contém Cloud Functions que gerenciam o estado de confirmação de c
 1. Cadastre um cliente (ou profissional) pelo site de homologação/produção.
 2. No Firestore, confirme que o perfil foi criado com `status: "pendente"` e um objeto `signupConfirmation` contendo `token`.
 3. Ainda no Firestore, abra a coleção `mail` e verifique se existe um documento recém-criado com `metadata.emailType = "confirmation"` e `metadata.profilePath` apontando para o cadastro.
+   - Se o campo `delivery.status` aparecer como `"skipped"`, significa que a integração do SendGrid não está ativa (API key ou remetente ausente). Rode `firebase functions:config:get sendgrid` e atualize os valores com `firebase functions:config:set` antes de reenviar o cadastro.
    - Caso não exista, use o endpoint manual para reenfileirar o e-mail:
 
      ```bash

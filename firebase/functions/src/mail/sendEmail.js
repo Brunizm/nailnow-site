@@ -19,7 +19,7 @@ const mergeSettings = (overrides = {}) => {
       overrides.sender ??
       process.env.SENDGRID_SENDER ??
       sendgridConfig.sender ??
-      'contato@nailnow.app',
+      'NailNow <suporte@nailnow.app>',
     templateClient:
       overrides.templateClient ??
       process.env.SENDGRID_TEMPLATE_CLIENT ??
