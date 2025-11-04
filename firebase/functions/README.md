@@ -34,7 +34,10 @@ Este pacote contém Cloud Functions que gerenciam o estado de confirmação de c
 3. Configure a API key e o remetente do SendGrid para que as funções consigam
    enviar os e-mails diretamente. Rode o comando abaixo substituindo os valores
    pelos dados reais do projeto (adicione os IDs dos templates apenas se já
-   estiverem disponíveis):
+   estiverem disponíveis). O código agora reconhece diferentes variações de
+   nomes (`sendgrid.key`, `sendgrid.api_key`, `sendgrid.apiKey`, `SENDGRID_API_KEY`,
+   `SENDGRID_KEY`, `SENDGRID_APIKEY`, etc.), portanto utilize o padrão que já
+   estiver salvo no projeto:
 
    ```bash
    cd firebase/functions

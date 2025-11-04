@@ -10,31 +10,116 @@ const readFunctionsConfig = () => {
   }
 };
 
+const SENDGRID_API_KEY_ENV_VARS = [
+  'SENDGRID_API_KEY',
+  'SENDGRID_KEY',
+  'SENDGRID_APIKEY',
+  'SENDGRID_TOKEN',
+  'SENDGRID_SECRET',
+];
+
+const SENDGRID_SENDER_ENV_VARS = [
+  'SENDGRID_SENDER',
+  'SENDGRID_FROM',
+  'SENDGRID_SENDER_EMAIL',
+  'SENDGRID_FROM_EMAIL',
+];
+
+const SENDGRID_TEMPLATE_CLIENT_ENV_VARS = ['SENDGRID_TEMPLATE_CLIENT'];
+const SENDGRID_TEMPLATE_PROFESSIONAL_ENV_VARS = ['SENDGRID_TEMPLATE_PROFESSIONAL'];
+const SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP_ENV_VARS = [
+  'SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP',
+];
+
+const SENDGRID_API_KEY_CONFIG_KEYS = [
+  'key',
+  'api_key',
+  'apikey',
+  'apiKey',
+  'API_KEY',
+  'ApiKey',
+  'token',
+  'secret',
+];
+
+const SENDGRID_SENDER_CONFIG_KEYS = [
+  'sender',
+  'from',
+  'email',
+  'sender_email',
+  'from_email',
+];
+
+const SENDGRID_TEMPLATE_CLIENT_CONFIG_KEYS = [
+  'template_client',
+  'templateClient',
+  'templateClientId',
+];
+
+const SENDGRID_TEMPLATE_PROFESSIONAL_CONFIG_KEYS = [
+  'template_professional',
+  'templateProfessional',
+  'templateProfessionalId',
+];
+
+const SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP_CONFIG_KEYS = [
+  'template_professional_signup',
+  'templateProfessionalSignup',
+  'templateProfessionalSignupId',
+];
+
+const pickFirstString = (values, fallback = '') => {
+  for (const value of values) {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+  }
+  return fallback;
+};
+
 const mergeSettings = (overrides = {}) => {
   const sendgridConfig = readFunctionsConfig()?.sendgrid || {};
 
+  const apiKeyCandidates = [
+    overrides.apiKey,
+    ...SENDGRID_API_KEY_ENV_VARS.map((key) => process.env[key]),
+    ...SENDGRID_API_KEY_CONFIG_KEYS.map((key) => sendgridConfig[key]),
+  ];
+
+  const senderCandidates = [
+    overrides.sender,
+    ...SENDGRID_SENDER_ENV_VARS.map((key) => process.env[key]),
+    ...SENDGRID_SENDER_CONFIG_KEYS.map((key) => sendgridConfig[key]),
+    'NailNow <suporte@nailnow.app>',
+  ];
+
+  const templateClientCandidates = [
+    overrides.templateClient,
+    ...SENDGRID_TEMPLATE_CLIENT_ENV_VARS.map((key) => process.env[key]),
+    ...SENDGRID_TEMPLATE_CLIENT_CONFIG_KEYS.map((key) => sendgridConfig[key]),
+  ];
+
+  const templateProfessionalCandidates = [
+    overrides.templateProfessional,
+    ...SENDGRID_TEMPLATE_PROFESSIONAL_ENV_VARS.map((key) => process.env[key]),
+    ...SENDGRID_TEMPLATE_PROFESSIONAL_CONFIG_KEYS.map((key) => sendgridConfig[key]),
+  ];
+
+  const templateProfessionalSignupCandidates = [
+    overrides.templateProfessionalSignup,
+    ...SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP_ENV_VARS.map((key) => process.env[key]),
+    ...SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP_CONFIG_KEYS.map((key) => sendgridConfig[key]),
+  ];
+
   return {
-    apiKey: overrides.apiKey ?? process.env.SENDGRID_API_KEY ?? sendgridConfig.key ?? '',
-    sender:
-      overrides.sender ??
-      process.env.SENDGRID_SENDER ??
-      sendgridConfig.sender ??
-      'NailNow <suporte@nailnow.app>',
-    templateClient:
-      overrides.templateClient ??
-      process.env.SENDGRID_TEMPLATE_CLIENT ??
-      sendgridConfig.template_client ??
-      '',
-    templateProfessional:
-      overrides.templateProfessional ??
-      process.env.SENDGRID_TEMPLATE_PROFESSIONAL ??
-      sendgridConfig.template_professional ??
-      '',
-    templateProfessionalSignup:
-      overrides.templateProfessionalSignup ??
-      process.env.SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP ??
-      sendgridConfig.template_professional_signup ??
-      '',
+    apiKey: pickFirstString(apiKeyCandidates),
+    sender: pickFirstString(senderCandidates, 'NailNow <suporte@nailnow.app>'),
+    templateClient: pickFirstString(templateClientCandidates),
+    templateProfessional: pickFirstString(templateProfessionalCandidates),
+    templateProfessionalSignup: pickFirstString(templateProfessionalSignupCandidates),
   };
 };
 

@@ -38,7 +38,10 @@ prompted.
 
 Set the SendGrid API key and sender details so the confirmation e-mails can be
 delivered. The command reads the values from environment variables, keeping
-secrets out of source control:
+secrets out of source control. The backend now accepts a broader set of naming
+conventions (`sendgrid.key`, `sendgrid.api_key`, `sendgrid.apiKey`,
+`SENDGRID_API_KEY`, `SENDGRID_KEY`, `SENDGRID_APIKEY`, etc.), so use whichever
+matches your existing configuration:
 
 ```bash
 cd functions
@@ -61,7 +64,10 @@ You can confirm the values with `firebase functions:config:get`.
 > ```
 >
 > Substitute `<sua-chave>` with the real SendGrid API key provided for the
-> project. Repeat the command for any other keys you want to update.
+> project. Repeat the command for any other keys you want to update. If your
+> project already stores the value under `sendgrid.api_key`, `sendgrid.apiKey`
+> or another supported alias, repeat the command with that field name so the
+> Cloud Functions pick it up imediatamente.
 
 ## 4. Deploy the functions
 
