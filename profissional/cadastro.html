@@ -487,11 +487,13 @@
                 ? "⚠️ Cadastro recebido! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app."
                 : mailStatus === "error"
                   ? "⚠️ Cadastro recebido! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app."
-                  : "⚠️ Cadastro recebido! Assim que o e-mail de confirmação for enviado por suporte@nailnow.app, finalize o processo para liberar o acesso.";
+                  : mailStatus === "skipped"
+                    ? "⚠️ Cadastro recebido! A confirmação não foi enviada porque a integração de e-mail (SendGrid) não está ativa. Verifique a chave configurada ou fale com suporte@nailnow.app."
+                    : "⚠️ Cadastro recebido! Assim que o e-mail de confirmação for enviado por suporte@nailnow.app, finalize o processo para liberar o acesso.";
 
             const variant = confirmationQueued
               ? "success"
-              : mailStatus === "error"
+              : mailStatus === "error" || mailStatus === "skipped"
                 ? "error"
                 : "info";
 
@@ -528,9 +530,15 @@
 
             const successMessage = confirmationQueued
               ? "✅ Cadastro salvo! Enviamos (ou enviaremos em instantes) o e-mail de confirmação para liberar o acesso."
-              : "⚠️ Cadastro salvo! Assim que o e-mail de confirmação for disparado por suporte@nailnow.app, finalize o processo para liberar o acesso.";
+              : mailStatus === "skipped"
+                ? "⚠️ Cadastro salvo! A confirmação não foi enviada porque a integração de e-mail (SendGrid) não está ativa. Verifique a chave configurada ou fale com suporte@nailnow.app."
+                : "⚠️ Cadastro salvo! Assim que o e-mail de confirmação for disparado por suporte@nailnow.app, finalize o processo para liberar o acesso.";
 
-            const variant = confirmationQueued ? "success" : mailStatus === "error" ? "error" : "info";
+            const variant = confirmationQueued
+              ? "success"
+              : mailStatus === "error" || mailStatus === "skipped"
+                ? "error"
+                : "info";
 
             setFeedbackMessage(feedback, successMessage, variant);
             form.reset();

@@ -52,6 +52,17 @@ npm run setup:config
 
 You can confirm the values with `firebase functions:config:get`.
 
+> ℹ️ If you only need to update a single value (for example, rotating the
+> `sendgrid.key`), you can also run the Firebase CLI command directly:
+>
+> ```bash
+> cd functions
+> firebase functions:config:set sendgrid.key="<sua-chave>"
+> ```
+>
+> Substitute `<sua-chave>` with the real SendGrid API key provided for the
+> project. Repeat the command for any other keys you want to update.
+
 ## 4. Deploy the functions
 
 Once the configuration is in place, deploy everything with a single command
@@ -88,6 +99,10 @@ if you want to visualize them immediately.
    `profissionais` com `status: "pending"` e que a coleção `mail` recebeu um
    registro com `delivery.status: "sent"`. Esses dois sinais confirmam que a
    função escreveu os dados e disparou o e-mail de confirmação via SendGrid.
+   - Se o campo aparecer como `delivery.status: "skipped"`, a função não
+     enviou o e-mail porque a chave ou o remetente do SendGrid não estão
+     configurados. Rode `firebase functions:config:get sendgrid` para validar os
+     valores e repita o deploy após corrigir a integração.
 4. Verifique a caixa de entrada do e-mail informado ou o dashboard do SendGrid
    para validar a entrega. Ao clicar no link do e-mail, o status do perfil muda
    de `pending` para `confirmed`.

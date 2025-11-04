@@ -272,7 +272,20 @@ async function queueMailForDelivery(payload, options = {}) {
   const sendResult = await sendMailViaSendgrid(firestorePayload, options);
 
   const statusBase = firestorePayload.status || "queued";
-  const statusUpdate = sendResult.status === "sent" ? "sent" : sendResult.status === "error" ? "error" : statusBase;
+  let statusUpdate = statusBase;
+
+  if (sendResult && typeof sendResult.status === "string") {
+    const normalizedStatus = sendResult.status.trim().toLowerCase();
+    if (normalizedStatus === "sent") {
+      statusUpdate = "sent";
+    } else if (normalizedStatus === "error") {
+      statusUpdate = "error";
+    } else if (normalizedStatus === "skipped") {
+      statusUpdate = "skipped";
+    } else if (normalizedStatus) {
+      statusUpdate = normalizedStatus;
+    }
+  }
   const attemptTimestamp = FieldValue.serverTimestamp();
 
   const updatePayload = {
@@ -1532,6 +1545,7 @@ const MAIL_FAILURE_STATUSES = new Set([
   "cancelled",
   "canceled",
   "suppressed",
+  "skipped",
 ]);
 
 function extractMailDeliveryStatus(mailData) {
