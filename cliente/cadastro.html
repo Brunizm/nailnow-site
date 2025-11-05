@@ -91,12 +91,8 @@
       }
     </script>
 
-    <script type="module">
+    <script>
       const FORM_ID = "cadastroClienteForm";
-      const REGISTER_ENDPOINT =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount";
-      const CONFIRMATION_ENDPOINT =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
 
       const FEEDBACK_COLORS = {
         info: "#4527a0",
@@ -106,7 +102,7 @@
 
       function sanitize(value) {
         if (typeof value === "string") {
-          return value.replace(/\s+/g, " ").trim();
+          return value.replace(/\s+/g, " " ).trim();
         }
         if (value === null || value === undefined) {
           return "";
@@ -126,232 +122,75 @@
         element.removeAttribute("style");
       }
 
-      async function requestConfirmation(profilePath) {
-        if (!profilePath) {
-          throw new Error("missing-profile-path");
-        }
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById(FORM_ID);
+        if (!form) return;
 
-        const response = await fetch(CONFIRMATION_ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profile: profilePath }),
-        });
-
-        const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          const errorCode = payload?.error || `http-${response.status}`;
-          const httpError = new Error(errorCode);
-          httpError.code = errorCode;
-          throw httpError;
-        }
-
-        return payload;
-      }
-
-      async function cadastrarCliente(event) {
-        event.preventDefault();
-
-        const form = event.currentTarget;
-        const btn = form.querySelector("button[type='submit']");
         const feedback = document.getElementById("signup-feedback");
-        clearFeedback(feedback);
 
-        try {
-          const nome = sanitize(form.nome.value);
-          const email = sanitize(form.email.value).toLowerCase();
-          const senha = form.senha.value || "";
-          const confirmarSenha = form.confirmarSenha.value || "";
-          const telefone = sanitize(form.telefone.value);
-          const endereco = sanitize(form.endereco_text.value);
-          const complemento = sanitize(form.complemento.value);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          clearFeedback(feedback);
+
+          const nome = sanitize(form.nome?.value);
+          const email = sanitize(form.email?.value).toLowerCase();
+          const senha = form.senha?.value || "";
+          const confirmarSenha = form.confirmarSenha?.value || "";
+          const telefone = sanitize(form.telefone?.value);
+          const endereco = sanitize(form.endereco_text?.value);
           const aceiteTermos = Boolean(form.aceiteTermos?.checked);
 
-          const enderecoFormatado = sanitize(form.endereco_formatado.value);
-          const placeId = sanitize(form.place_id.value);
-          const lat = sanitize(form.lat.value);
-          const lng = sanitize(form.lng.value);
-
           if (!nome || !email || !senha || !confirmarSenha || !endereco) {
-            setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
+            setFeedbackMessage(
+              feedback,
+              "❌ Preencha os campos obrigatórios (*) antes de continuar.",
+              "error"
+            );
             return;
           }
 
           if (senha.length < 6) {
-            setFeedbackMessage(feedback, "❌ Use uma senha com pelo menos 6 caracteres.", "error");
-            form.senha.focus();
+            setFeedbackMessage(
+              feedback,
+              "❌ Use uma senha com pelo menos 6 caracteres.",
+              "error"
+            );
+            form.senha?.focus();
             return;
           }
 
           if (senha !== confirmarSenha) {
-            setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
-            form.confirmarSenha.focus();
+            setFeedbackMessage(
+              feedback,
+              "❌ Erro: as senhas não coincidem.",
+              "error"
+            );
+            form.confirmarSenha?.focus();
             return;
           }
 
           if (!aceiteTermos) {
-            setFeedbackMessage(feedback, "❌ É necessário aceitar os termos para continuar.", "error");
+            setFeedbackMessage(
+              feedback,
+              "❌ É necessário aceitar os termos para continuar.",
+              "error"
+            );
             return;
           }
 
-          if (btn) {
-            btn.disabled = true;
-            btn.setAttribute("aria-busy", "true");
-            btn.textContent = "Criando conta…";
-          }
-          setFeedbackMessage(feedback, "Validando seus dados…", "info");
-
-          const payload = {
-            nome,
-            email,
-            senha,
-            telefone,
-            endereco,
-            complemento,
-            endereco_formatado: enderecoFormatado,
-            place_id: placeId,
-            lat,
-            lng,
-            aceiteTermos,
-          };
-
-          const response = await fetch(REGISTER_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-
-          const result = await response.json().catch(() => ({}));
-
-          if (!response.ok) {
-            const errorCode = result?.error || `http-${response.status}`;
-            const mensagens = {
-              "invalid-payload": "❌ Verifique os dados informados e tente novamente.",
-            };
-
-            let friendly = mensagens[errorCode] || null;
-
-            if (errorCode === "email-already-in-use") {
-              const existingStatus = (result?.status || "").toLowerCase();
-              friendly =
-                existingStatus === "pendente"
-                  ? "⚠️ Já encontramos um cadastro pendente para este e-mail. Verifique seu e-mail de confirmação ou solicite um novo envio ao suporte."
-                  : "❌ Este e-mail já está cadastrado. Use outra conta ou acesse o portal para continuar.";
-            }
-
-            if (!friendly) {
-              friendly = "❌ Não foi possível concluir o cadastro agora.";
-            }
-
-            setFeedbackMessage(feedback, friendly, "error");
-            return;
-          }
-
-          const confirmation = result.confirmation || {};
-          const legacyProfileId = typeof result.id === "string" ? result.id.trim() : "";
-          const inferredProfilePath = (() => {
-            const directPath = typeof result.profilePath === "string" ? result.profilePath.trim() : "";
-            if (directPath) {
-              return directPath;
-            }
-            const confirmationPath =
-              typeof confirmation.profilePath === "string" ? confirmation.profilePath.trim() : "";
-            if (confirmationPath) {
-              return confirmationPath;
-            }
-            if (legacyProfileId) {
-              return `clientes/${legacyProfileId}`;
-            }
-            return "";
-          })();
-
-          let mailStatus = (confirmation.mailStatus || "").toLowerCase();
-          if (!mailStatus && typeof result.emailStatus === "string") {
-            mailStatus = result.emailStatus.toLowerCase();
-          }
-
-          const legacyEmailSent =
-            typeof result.emailSent === "boolean" ? result.emailSent : undefined;
-          const mailSuccessStatuses = [
-            "queued",
-            "queuing",
-            "already-queued",
-            "sent",
-            "processing",
-            "sending",
-            "delivered",
-            "success",
-            "accepted",
-            "queued-via-extension",
-          ];
-          let confirmationQueued = mailSuccessStatuses.includes(mailStatus);
-
-          if (!confirmationQueued && legacyEmailSent === true) {
-            confirmationQueued = true;
-          }
-
-          if (inferredProfilePath && !confirmationQueued) {
-            try {
-              const manual = await requestConfirmation(inferredProfilePath);
-              const manualStatus = (manual?.mailStatus || "").toLowerCase();
-              if (manualStatus) {
-                mailStatus = manualStatus;
-              }
-              confirmationQueued = mailSuccessStatuses.includes(manualStatus || mailStatus);
-            } catch (manualError) {
-              console.warn("Não foi possível reenfileirar o e-mail de confirmação automaticamente", manualError);
-            }
-          }
-
-          const successMessage = confirmationQueued
-            ? "✅ Conta criada! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
-            : mailStatus === "missing-email"
-              ? "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app."
-              : mailStatus === "error"
-                ? "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação."
-                : legacyEmailSent === false
-                  ? "⚠️ Cadastro enviado! Ainda não conseguimos enviar o e-mail automático. Verifique se os dados estão corretos e, se necessário, peça ajuda pelo suporte@nailnow.app."
-                  : "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
-
-          const feedbackVariant = confirmationQueued
-            ? "success"
-            : mailStatus === "error"
-              ? "error"
-              : "info";
-
-          setFeedbackMessage(feedback, successMessage, feedbackVariant);
-          form.reset();
-          const termos = form.querySelector("[name='aceiteTermos']");
-          if (termos) {
-            termos.checked = false;
-          }
-        } catch (error) {
-          console.error("Falha ao cadastrar cliente", error);
           setFeedbackMessage(
             feedback,
-            "❌ Erro: Não foi possível concluir o cadastro. Tente novamente em instantes.",
-            "error",
+            "Estamos migrando a plataforma. Envie seus dados para suporte@nailnow.app ou WhatsApp (11) 98860-5414 para concluir o cadastro.",
+            "info"
           );
-        } finally {
-          if (btn) {
-            btn.disabled = false;
-            btn.removeAttribute("aria-busy");
-            btn.textContent = "Criar conta cliente";
+          form.reset();
+          if (form.aceiteTermos) {
+            form.aceiteTermos.checked = false;
           }
-        }
-      }
+        });
 
-      document.addEventListener("DOMContentLoaded", () => {
-        const form = document.getElementById(FORM_ID);
-        if (!form) {
-          console.error("Formulário de cadastro de cliente não encontrado na página.");
-          return;
-        }
-
-        form.addEventListener("submit", cadastrarCliente);
         form.setAttribute("novalidate", "novalidate");
         form.setAttribute("action", "javascript:void(0);");
-        console.info("📄 Formulário de cadastro de cliente pronto para enviar dados ao NailNow.");
       });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
@@ -535,128 +374,6 @@
         </div>
       </section>
     </main>
-
-    <form id="cadastroFormCliente">
-      <input id="clientName" type="text" placeholder="Seu nome" required />
-      <input id="clientEmail" type="email" placeholder="Seu e-mail" required />
-      <button type="submit">Criar cadastro (Cliente)</button>
-    </form>
-
-    <script>
-      const CLIENT_QUICK_URL =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerQuickLead";
-      const CLIENT_FALLBACK_URL =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount";
-      const QUICK_CLIENT_ORIGIN = "cliente-landing-quick-form";
-
-      async function submitQuickLead(endpoints, payload) {
-        const errors = [];
-
-        for (const endpoint of endpoints) {
-          try {
-            const response = await fetch(endpoint, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify(payload),
-            });
-
-            const data = await response.json().catch(() => ({}));
-
-            if (!response.ok) {
-              errors.push({ endpoint, error: data?.error || `http-${response.status}` });
-              continue;
-            }
-
-            if (data?.ok) {
-              return { endpoint, data };
-            }
-
-            errors.push({ endpoint, error: data?.error || "unknown-response" });
-          } catch (err) {
-            errors.push({ endpoint, error: err?.message || "network-error" });
-          }
-        }
-
-        const lastError = errors.length ? errors[errors.length - 1] : null;
-        return { error: lastError || { error: "unknown" }, attempts: errors };
-      }
-
-      const cadastroClienteForm = document.getElementById("cadastroFormCliente");
-
-      if (cadastroClienteForm) {
-        cadastroClienteForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-
-          const nameInput = document.getElementById("clientName");
-          const emailInput = document.getElementById("clientEmail");
-          const submitButton = cadastroClienteForm.querySelector("button[type='submit']");
-
-          const name = (nameInput?.value || "").trim();
-          const email = (emailInput?.value || "").trim();
-
-          if (!name || !email) {
-            alert("Preencha nome e e-mail para continuar.");
-            return;
-          }
-
-          if (submitButton) {
-            submitButton.disabled = true;
-            submitButton.setAttribute("aria-busy", "true");
-          }
-
-          const payload = {
-            type: "client",
-            role: "cliente",
-            nome: name,
-            name,
-            email,
-            origem: QUICK_CLIENT_ORIGIN,
-            referrer: window.location.href,
-            pageUrl: window.location.href,
-          };
-
-          const endpoints = [CLIENT_QUICK_URL, CLIENT_FALLBACK_URL];
-
-          try {
-            const result = await submitQuickLead(endpoints, payload);
-
-            if (result?.data?.ok) {
-              const data = result.data;
-              const mailStatus = (data.mail?.status || "").toLowerCase();
-              const successMessage = ["queued", "already-queued"].includes(mailStatus)
-                ? "Recebemos seu cadastro! Enviamos um e-mail com os próximos passos."
-                : data.profilePath
-                  ? "Recebemos seu cadastro! Nossa equipe confirmará os dados e responderá pelo seu e-mail."
-                  : "Recebemos seu cadastro! Em breve nossa equipe entrará em contato.";
-
-              alert(successMessage);
-              console.info("Lead cliente registrado:", {
-                endpoint: result.endpoint,
-                leadId: data.leadId || data.lead?.id || null,
-                mailStatus: data.mail?.status || null,
-                profilePath: data.profilePath || data.lead?.profilePath || null,
-                alreadyQueued: data.alreadyQueued || false,
-              });
-              cadastroClienteForm.reset();
-              return;
-            }
-
-            console.warn("Falha ao registrar lead cliente", result);
-            alert(
-              "Não foi possível registrar seu interesse agora. Recarregue a página e tente novamente ou contate suporte@nailnow.app.",
-            );
-          } catch (err) {
-            console.error("Erro inesperado ao enviar lead cliente", err);
-            alert("Falha de conexão. Tente novamente.");
-          } finally {
-            if (submitButton) {
-              submitButton.disabled = false;
-              submitButton.removeAttribute("aria-busy");
-            }
-          }
-        });
-      }
-    </script>
 
     <footer class="site-footer">
       <div class="footer-inner">

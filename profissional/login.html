@@ -16,7 +16,7 @@
     <title>Login de Profissional | NailNow</title>
     <meta
       name="description"
-      content="Acesse sua conta profissional NailNow para gerenciar convites, agenda e suporte dedicado."
+      content="Estamos migrando o login profissional da NailNow. Veja como acompanhar seus atendimentos com o suporte."
     />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://www.nailnow.app/profissional/login.html" />
@@ -27,7 +27,7 @@
     <meta property="og:title" content="Login de Profissional | NailNow" />
     <meta
       property="og:description"
-      content="Acesse sua conta profissional NailNow para gerenciar convites, agenda e suporte dedicado."
+      content="Estamos migrando o login profissional da NailNow. Veja como acompanhar seus atendimentos com o suporte."
     />
     <meta property="og:url" content="https://www.nailnow.app/profissional/login.html" />
     <meta property="og:image" content="https://www.nailnow.app/assets/nail1.png" />
@@ -35,7 +35,7 @@
     <meta name="twitter:title" content="Login de Profissional | NailNow" />
     <meta
       name="twitter:description"
-      content="Acesse sua conta profissional NailNow para gerenciar convites, agenda e suporte dedicado."
+      content="Estamos migrando o login profissional da NailNow. Veja como acompanhar seus atendimentos com o suporte."
     />
     <meta name="twitter:image" content="https://www.nailnow.app/assets/nail1.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -88,93 +88,40 @@
         ]
       }
     </script>
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import {
-        getAuth,
-        signInWithEmailAndPassword,
-        sendPasswordResetEmail,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
-        authDomain: "nailnow-site.firebaseapp.com",
-        projectId: "nailnow-site",
-        storageBucket: "nailnow-site.appspot.com",
-        messagingSenderId: "726392294571",
-        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-
-      async function loginProfissional(event) {
-        event.preventDefault();
-        const form = event.target;
-        const feedback = document.getElementById("login-feedback");
-        const submitBtn = form.querySelector("button[type='submit']");
-        feedback.textContent = "";
-        feedback.style.color = "";
-
-        const email = form.email.value.trim().toLowerCase();
-        const senha = form.senha.value;
-
-        if (!email || !senha) {
-          feedback.textContent = "Informe e-mail e senha para entrar.";
-          feedback.style.color = "#c62828";
-          return;
-        }
-
-        try {
-          submitBtn.disabled = true;
-          submitBtn.textContent = "Entrando…";
-          await signInWithEmailAndPassword(auth, email, senha);
-          feedback.textContent = "Login realizado com sucesso! Redirecionando…";
-          feedback.style.color = "#2e7d32";
-          setTimeout(() => {
-            window.location.href = "/profissional/index.html";
-          }, 1200);
-        } catch (err) {
-          console.error(err);
-          feedback.textContent = `Erro ao entrar: ${err.code || "tente novamente"}`;
-          feedback.style.color = "#c62828";
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Entrar";
-        }
-      }
-
-      async function enviarReset(event) {
-        event.preventDefault();
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById("loginForm");
         const feedback = document.getElementById("login-feedback");
-        const resetBtn = document.getElementById("reset-btn");
-        const email = form.email.value.trim().toLowerCase();
+        const submitButton = form?.querySelector("button[type='submit']");
+        const resetButton = document.getElementById("reset-btn");
 
-        if (!email) {
-          feedback.textContent = "Informe seu e-mail para recuperar a senha.";
-          feedback.style.color = "#c62828";
-          return;
+        const showMigrationMessage = () => {
+          if (!feedback) return;
+          feedback.textContent = "Portal em migração. Entre em contato pelo suporte@nailnow.app ou WhatsApp (11) 98860-5414 para receber atualizações.";
+          feedback.style.color = "#4527a0";
+        };
+
+        if (form) {
+          form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            showMigrationMessage();
+          });
+          form.setAttribute("action", "javascript:void(0);");
         }
 
-        try {
-          resetBtn.disabled = true;
-          resetBtn.textContent = "Enviando…";
-          await sendPasswordResetEmail(auth, email);
-          feedback.textContent = "Enviamos instruções de redefinição para o seu e-mail.";
-          feedback.style.color = "#2e7d32";
-        } catch (err) {
-          console.error(err);
-          feedback.textContent = `Não foi possível enviar o e-mail: ${err.code || "verifique os dados"}`;
-          feedback.style.color = "#c62828";
-        } finally {
-          resetBtn.disabled = false;
-          resetBtn.textContent = "Esqueci minha senha";
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = "Portal em migração";
         }
-      }
 
-      window.loginProfissional = loginProfissional;
-      window.enviarReset = enviarReset;
+        if (resetButton) {
+          resetButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            showMigrationMessage();
+          });
+          resetButton.disabled = true;
+        }
+      });
     </script>
     <script src="/assets/js/menu-toggle.js" defer></script>
   </head>
@@ -228,20 +175,20 @@
       <section class="hero hero--professional" aria-labelledby="login-profissional">
         <div class="hero-copy">
           <span class="hero-label">Para profissionais</span>
-          <h1 id="login-profissional">Entre e acompanhe seus atendimentos</h1>
+          <h1 id="login-profissional">Portal profissional em migração</h1>
           <p>
-            Acesse convites, confirme horários e acompanhe seus recebimentos pelo painel exclusivo de profissionais NailNow.
+            O painel antigo dependia do Firebase e está temporariamente indisponível. Enquanto configuramos o novo ambiente, o suporte faz o acompanhamento manual dos atendimentos.
           </p>
           <ul class="pro-benefits">
-            <li>Confirmação de pedidos em tempo real pelo aplicativo.</li>
-            <li>Histórico de atendimentos e extrato financeiro sempre atualizados.</li>
-            <li>Suporte dedicado da equipe NailNow quando precisar.</li>
+            <li>Cadastros existentes seguem ativos e aguardando a migração.</li>
+            <li>Nosso time confirma convites e pagamentos junto com você.</li>
+            <li>Receba atualizações pelo e-mail suporte@nailnow.app ou WhatsApp (11) 98860-5414.</li>
           </ul>
         </div>
         <div class="hero-media hero-media--signup">
           <div class="pro-signup-card pro-auth-card">
-            <h2 class="pro-signup-card__title">Acessar conta profissional</h2>
-            <p class="pro-signup-card__subtitle">Use os dados cadastrados para entrar na plataforma.</p>
+            <h2 class="pro-signup-card__title">Acesso temporariamente suspenso</h2>
+            <p class="pro-signup-card__subtitle">Fale com o suporte para consultar seus atendimentos durante a migração.</p>
             <form id="loginForm" class="signup-form" onsubmit="loginProfissional(event)" autocomplete="on">
               <div class="signup-field">
                 <label for="email">E-mail</label>

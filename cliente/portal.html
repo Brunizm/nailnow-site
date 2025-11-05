@@ -1,21 +1,21 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
 
-  gtag('config', 'G-NKTL1PLZ2J');
-</script>
+      gtag('config', 'G-NKTL1PLZ2J');
+    </script>
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Portal da Cliente NailNow — acompanhe solicitações, confirmações e histórico de atendimentos com profissionais verificadas."
+      content="Portal da Cliente NailNow — consulte o status do seu cadastro e saiba como falar com o suporte durante a migração de plataforma."
     />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://www.nailnow.app/cliente/portal.html" />
@@ -26,7 +26,7 @@
     <meta property="og:title" content="Portal da Cliente | NailNow" />
     <meta
       property="og:description"
-      content="Portal da Cliente NailNow — acompanhe solicitações, confirmações e histórico de atendimentos com profissionais verificadas."
+      content="Estamos migrando o portal da cliente. Veja como acompanhar seus atendimentos com o suporte NailNow."
     />
     <meta property="og:url" content="https://www.nailnow.app/cliente/portal.html" />
     <meta property="og:image" content="https://www.nailnow.app/assets/nail1.png" />
@@ -34,10 +34,10 @@
     <meta name="twitter:title" content="Portal da Cliente | NailNow" />
     <meta
       name="twitter:description"
-      content="Portal da Cliente NailNow — acompanhe solicitações, confirmações e histórico de atendimentos com profissionais verificadas."
+      content="Estamos migrando o portal da cliente. Veja como acompanhar seus atendimentos com o suporte NailNow."
     />
     <meta name="twitter:image" content="https://www.nailnow.app/assets/nail1.png" />
-    <title>Cliente | NailNow</title>
+    <title>Portal da Cliente | NailNow</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -89,7 +89,7 @@
         ]
       }
     </script>
-<script src="/assets/js/menu-toggle.js" defer></script>
+    <script src="/assets/js/menu-toggle.js" defer></script>
   </head>
   <body class="portal portal--cliente">
     <header class="site-header">
@@ -98,12 +98,7 @@
           <img src="/assets/nailnow-logo.svg" alt="Logotipo da NailNow" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
-        <button
-          class="mobile-menu-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="site-navigation"
-        >
+        <button class="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="site-navigation">
           <span class="sr-only">Alternar menu</span>
           <span class="mobile-menu-toggle__bars" aria-hidden="true">
             <span class="mobile-menu-toggle__bar"></span>
@@ -139,284 +134,50 @@
     </header>
 
     <main class="page-content">
-      <div id="dashboard" class="dashboard" hidden aria-labelledby="cliente-dashboard-heading">
-        <section class="dashboard-hero portal-hero">
-          <div class="dashboard-hero__header portal-hero__headline">
-            <div class="portal-hero__intro">
-              <p class="dashboard-kicker">Portal da cliente</p>
-              <h1 id="cliente-dashboard-heading">Olá, <span data-profile-name>cliente</span>!</h1>
-              <p class="dashboard-intro">
-                Acompanhe solicitações enviadas às profissionais, confirme próximos serviços e consulte o histórico das suas experiências NailNow.
-              </p>
-              <button type="button" id="sign-out" class="dashboard-signout portal-hero__signout">Sair</button>
-            </div>
+      <section class="portal-offline" aria-labelledby="portal-offline-heading">
+        <div class="portal-offline__inner">
+          <p class="auth-kicker">Portal da cliente</p>
+          <h1 id="portal-offline-heading">Estamos migrando para uma nova plataforma</h1>
+          <p>
+            O painel antigo dependia do Firebase e foi desativado. Nossa equipe está configurando um novo ambiente para os
+            agendamentos das clientes.
+          </p>
+          <ul class="auth-benefits">
+            <li>Seus dados permanecem protegidos e aguardando a importação para o novo sistema.</li>
+            <li>Atendimentos em andamento continuam com acompanhamento humano do time NailNow.</li>
+            <li>Você pode solicitar atualizações a qualquer momento pelos canais oficiais.</li>
+          </ul>
+          <div class="auth-actions auth-actions--stacked">
+            <a class="auth-link-button auth-link-button--primary" href="mailto:suporte@nailnow.app">
+              Falar por e-mail
+            </a>
+            <a
+              class="auth-link-button"
+              href="https://wa.me/5511988605414"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Conversar no WhatsApp (11) 98860-5414
+            </a>
           </div>
-          <div id="dashboard-status" class="auth-status" role="status" aria-live="polite" hidden></div>
-          <div class="portal-hero__metrics" aria-label="Resumo dos agendamentos">
-            <div class="metric-card">
-              <span class="metric-label">Solicitações</span>
-              <span class="metric-value" id="metric-pending">0</span>
-              <span class="metric-footnote">aguardando retorno</span>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Confirmados</span>
-              <span class="metric-value" id="metric-confirmed">0</span>
-              <span class="metric-footnote">próximos serviços</span>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Cancelados</span>
-              <span class="metric-value" id="metric-cancelled">0</span>
-              <span class="metric-footnote">não realizados</span>
-            </div>
-          </div>
-        </section>
-
-        <div class="portal-columns">
-          <aside class="portal-section portal-profile" aria-labelledby="cliente-profile-heading">
-            <div class="portal-profile__grid">
-              <article class="profile-card" aria-labelledby="cliente-profile-heading">
-                <h2 id="cliente-profile-heading">Meus dados</h2>
-                <dl class="profile-details">
-                  <div class="profile-details__item">
-                    <dt>Nome</dt>
-                    <dd id="profile-display">—</dd>
-                  </div>
-                  <div class="profile-details__item">
-                    <dt>E-mail</dt>
-                    <dd id="profile-email">—</dd>
-                  </div>
-                  <div class="profile-details__item">
-                    <dt>Telefone</dt>
-                    <dd id="profile-phone">—</dd>
-                  </div>
-                  <div class="profile-details__item">
-                    <dt>Endereço</dt>
-                    <dd id="profile-address">—</dd>
-                  </div>
-                </dl>
-              </article>
-            </div>
-          </aside>
-
-          <section class="request-board portal-section portal-request" aria-labelledby="request-board-heading">
-            <div class="portal-request__header">
-              <div class="request-board__intro">
-                <h2 id="request-board-heading">Solicitar atendimento</h2>
-                <p>
-                  Envie uma solicitação rápida para manicures NailNow e acompanhe o retorno diretamente pelo portal.
-                </p>
-              </div>
-            </div>
-            <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
-              <div class="booking-card__layout">
-              <div class="booking-card__column booking-card__column--search">
-                <div class="booking-card__field booking-card__field--wide booking-card__field--location">
-                  <label class="booking-card__label" for="search-location">Onde você quer ser atendida?</label>
-                  <div class="booking-card__control booking-card__control--with-action">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
-                      <path
-                        d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
-                      />
-                    </svg>
-                    <input
-                      type="search"
-                      id="search-location"
-                      class="booking-card__input"
-                      placeholder="Digite o endereço do atendimento"
-                      autocomplete="street-address"
-                    />
-                    <button type="button" id="detect-location" class="booking-card__action">Usar localização</button>
-                  </div>
-                  <div class="booking-card__row booking-card__row--address-extras">
-                    <div class="booking-card__field booking-card__field--number">
-                      <label class="booking-card__label" for="search-location-number">Número</label>
-                      <input
-                        type="text"
-                        id="search-location-number"
-                        class="booking-card__input"
-                        inputmode="numeric"
-                        autocomplete="address-line2"
-                        placeholder="Ex: 123"
-                      />
-                    </div>
-                    <div class="booking-card__field booking-card__field--complement">
-                      <label class="booking-card__label" for="search-location-complement">Complemento</label>
-                      <input
-                        type="text"
-                        id="search-location-complement"
-                        class="booking-card__input"
-                        autocomplete="address-line3"
-                        placeholder="Apartamento, bloco, referência"
-                      />
-                    </div>
-                  </div>
-                  <p id="search-location-status" class="auth-status" role="status" aria-live="polite" hidden></p>
-                  <div
-                    id="search-progress"
-                    class="request-toolbar__status booking-card__status"
-                    role="status"
-                    aria-live="polite"
-                    hidden
-                  >
-                    <span class="request-toolbar__spinner" aria-hidden="true"></span>
-                    <span>Procurando manicures próximas...</span>
-                  </div>
-                </div>
-                <div class="booking-card__row booking-card__row--filters">
-                  <div class="booking-card__field">
-                    <label class="booking-card__label" for="search-radius">Buscar manicures em até</label>
-                    <div class="booking-card__control booking-card__control--compact">
-                      <select id="search-radius" class="booking-card__input booking-card__input--select">
-                        <option value="5">5 km</option>
-                        <option value="10" selected>10 km</option>
-                        <option value="15">15 km</option>
-                        <option value="20">20 km</option>
-                        <option value="30">30 km</option>
-                        <option value="50">50 km</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="booking-card__field">
-                    <label class="booking-card__label" for="search-service">Serviço desejado</label>
-                    <div class="booking-card__control booking-card__control--compact">
-                      <select id="search-service" class="booking-card__input booking-card__input--select">
-                        <option value="" selected>Todos os serviços</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div class="booking-card__field booking-card__field--wide booking-card__field--results">
-                  <h3 class="booking-card__heading">Manicures próximas</h3>
-                  <div id="professional-results" class="request-results request-results--inline" role="list"></div>
-                  <p id="professional-results-empty" class="request-results__empty" hidden>
-                    Informe seu endereço e ajuste os filtros acima para encontrar manicures próximas a você.
-                  </p>
-                </div>
-                <p id="request-form-empty" class="booking-card__hint">
-                  Defina sua localização, selecione uma manicure e complete os detalhes para enviar a solicitação.
-                </p>
-              </div>
-              <div class="booking-card__column booking-card__column--details">
-                <div class="booking-card__field" data-request-field="professional" hidden>
-                  <label class="booking-card__label" for="request-professional">Profissional selecionada</label>
-                  <input id="request-professional" type="text" class="booking-card__input" readonly />
-                </div>
-                <div class="booking-card__field" data-request-field="service" hidden>
-                  <label class="booking-card__label" for="request-service">Serviço</label>
-                  <div
-                    id="request-service-options"
-                    class="service-options"
-                    role="radiogroup"
-                    aria-label="Serviço desejado"
-                  ></div>
-                  <select id="request-service" class="booking-card__input booking-card__input--select"></select>
-                  <p id="request-service-empty" class="service-options__empty" hidden>
-                    Essa manicure confirma os serviços diretamente após receber sua solicitação.
-                  </p>
-                </div>
-                <div class="booking-card__field" data-request-field="price" hidden>
-                  <label class="booking-card__label" for="request-price">Valor</label>
-                  <input id="request-price" type="text" class="booking-card__input" readonly />
-                </div>
-                <div class="booking-card__row" data-request-field="schedule" hidden>
-                  <div class="booking-card__field">
-                    <label class="booking-card__label" for="request-date">Data desejada</label>
-                    <div class="booking-card__control booking-card__control--compact booking-card__control--with-action">
-                      <input type="date" id="request-date" class="booking-card__input" required />
-                      <button
-                        type="button"
-                        id="request-date-picker"
-                        class="booking-card__icon-button"
-                        aria-label="Abrir calendário"
-                      >
-                        <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
-                          <path
-                            d="M7 2.75a.75.75 0 0 1 .75.75V5h8.5V3.5a.75.75 0 0 1 1.5 0V5h.5A2.75 2.75 0 0 1 21 7.75v10.5A2.75 2.75 0 0 1 18.25 21H5.75A2.75 2.75 0 0 1 3 18.25V7.75A2.75 2.75 0 0 1 5.75 5h.5V3.5A.75.75 0 0 1 7 2.75ZM5.75 6.5A1.25 1.25 0 0 0 4.5 7.75v1.25h15V7.75A1.25 1.25 0 0 0 18.25 6.5Zm14.75 4.5h-15v7.25c0 .69.56 1.25 1.25 1.25h12.5c.69 0 1.25-.56 1.25-1.25Z"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="booking-card__field">
-                    <label class="booking-card__label" for="request-time">Horário</label>
-                    <div class="booking-card__control booking-card__control--compact booking-card__control--with-trailing-icon">
-                      <select id="request-time" class="booking-card__input booking-card__input--select" required>
-                        <option value="" disabled selected hidden>Selecione um horário</option>
-                      </select>
-                      <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
-                        <path
-                          d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                <div class="booking-card__field" data-request-field="notes" hidden>
-                  <label class="booking-card__label" for="request-notes">Observações para a profissional</label>
-                  <textarea
-                    id="request-notes"
-                    rows="3"
-                    class="booking-card__input booking-card__input--textarea"
-                    placeholder="Preferências, referências ou instruções adicionais"
-                  ></textarea>
-                </div>
-                <button type="submit" id="submit-request" class="booking-card__submit" disabled>Enviar solicitação</button>
-                <p id="request-feedback" class="booking-card__feedback auth-status" role="status" aria-live="polite" hidden></p>
-              </div>
-            </div>
-            </form>
-          </section>
         </div>
-
-        <section class="portal-section portal-schedule" aria-label="Solicitações registradas">
-          <div class="portal-section__header">
-            <p class="portal-section__description">
-              Confira o status das suas solicitações e acompanhe os próximos atendimentos.
-            </p>
-          </div>
-          <div class="schedule-grid">
-            <section class="schedule-section" aria-labelledby="cliente-pending-heading">
-              <div class="schedule-section__head">
-                <h3 id="cliente-pending-heading">Solicitações pendentes</h3>
-                <span class="schedule-count" id="badge-pending">0</span>
-              </div>
-              <div id="pending-list" class="schedule-list" role="list"></div>
-            </section>
-
-            <section class="schedule-section" aria-labelledby="cliente-confirmed-heading">
-              <div class="schedule-section__head">
-                <h3 id="cliente-confirmed-heading">Solicitações confirmadas</h3>
-                <span class="schedule-count" id="badge-confirmed">0</span>
-              </div>
-              <div id="confirmed-list" class="schedule-list" role="list"></div>
-            </section>
-
-            <section class="schedule-section" aria-labelledby="cliente-cancelled-heading">
-              <div class="schedule-section__head">
-                <h3 id="cliente-cancelled-heading">Solicitações canceladas</h3>
-                <span class="schedule-count" id="badge-cancelled">0</span>
-              </div>
-              <div id="cancelled-list" class="schedule-list" role="list"></div>
-            </section>
-          </div>
-        </section>
-      </div>
+      </section>
     </main>
 
-    <footer class="site-footer">
+    <footer class="site-footer" aria-label="Rodapé do site">
       <div class="footer-inner">
-        <div class="footer-column footer-column--brand">
-          <h2 class="footer-logo">NailNow</h2>
-          <p>Beleza na sua agenda com profissionais selecionadas, atendimento onde você estiver e suporte humanizado.</p>
+        <div class="footer-brand">
+          <img src="/assets/nailnow-logo.svg" alt="" class="footer-brand__logo" />
+          <p class="footer-brand__copy">Profissionais de beleza sob medida para seu dia com suporte NailNow.</p>
         </div>
         <div class="footer-column footer-links" aria-label="Links úteis">
-          <h3>FAQ</h3>
-          <a href="../faq.html">Perguntas frequentes</a>
-          <a href="../como-funciona.html">Como funciona</a>
-          <a href="../agendamentos.html">Agendamentos</a>
+          <h3>Links rápidos</h3>
+          <a href="/cliente/index.html">Acesso cliente</a>
+          <a href="/profissional/index.html">Acesso profissional</a>
+          <a href="/faq.html">Perguntas frequentes</a>
         </div>
-        <div class="footer-column footer-links" aria-label="Contato e suporte">
-          <h3>Contato & suporte</h3>
+        <div class="footer-column footer-links" aria-label="Contato">
+          <h3>Suporte NailNow</h3>
           <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
@@ -428,6 +189,5 @@
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
-    <script type="module" src="./portal.js"></script>
   </body>
 </html>

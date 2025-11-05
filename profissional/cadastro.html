@@ -91,29 +91,8 @@
       }
     </script>
 
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import {
-        getAuth,
-        createUserWithEmailAndPassword,
-        signInWithEmailAndPassword,
-        signOut,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-      import {
-        getFirestore,
-        doc,
-        setDoc,
-        serverTimestamp,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
-        authDomain: "nailnow-site.firebaseapp.com",
-        projectId: "nailnow-site",
-        storageBucket: "nailnow-site.appspot.com",
-        messagingSenderId: "726392294571",
-        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
-      };
+    <script>
+      const FORM_ID = "cadastroProfissionalForm";
 
       const FEEDBACK_COLORS = {
         info: "#4527a0",
@@ -121,67 +100,9 @@
         error: "#c62828",
       };
 
-      const MAIL_SOURCE = "web-professional-signup";
-      const CONFIRMATION_ENDPOINT =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
-
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
-
-      function setFeedbackMessage(element, message, variant = "info") {
-        if (!element) return;
-        const safeMessage = message || "";
-        element.textContent = safeMessage;
-        if (!safeMessage) {
-          element.style.removeProperty("color");
-          return;
-        }
-        const color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
-        element.style.color = color;
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-        element.focus?.();
-      }
-
-      function clearFeedback(element) {
-        if (!element) return;
-        element.textContent = "";
-        element.style.removeProperty("color");
-      }
-
-      async function ensureAuthAccount(email, senha) {
-        try {
-          const cred = await createUserWithEmailAndPassword(auth, email, senha);
-          return { user: cred.user, isNew: true };
-        } catch (error) {
-          if (error.code === "auth/email-already-in-use") {
-            const cred = await signInWithEmailAndPassword(auth, email, senha);
-            return { user: cred.user, isNew: false };
-          }
-          throw error;
-        }
-      }
-
-      async function safeSignOut() {
-        try {
-          if (auth.currentUser) {
-            await signOut(auth);
-          }
-        } catch (error) {
-          console.warn("Não foi possível encerrar a sessão após o cadastro", error);
-        }
-      }
-
-      function coletarServicos(form) {
-        return Array.from(
-          form.querySelectorAll("input[name='servicos']:checked"),
-          (el) => el.value,
-        );
-      }
-
       function sanitize(value) {
         if (typeof value === "string") {
-          return value.replace(/\s+/g, " ").trim();
+          return value.replace(/\s+/g, " " ).trim();
         }
         if (value === null || value === undefined) {
           return "";
@@ -189,205 +110,87 @@
         return `${value}`.trim();
       }
 
-      function gerarTokenConfirmacao() {
-        try {
-          if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-            return crypto.randomUUID().replace(/-/g, "");
-          }
-        } catch (error) {
-          console.warn("Falha ao gerar token com crypto.randomUUID", error);
-        }
-
-        return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`
-          .replace(/[^a-z0-9]/gi, "")
-          .padEnd(32, "0")
-          .slice(0, 32);
+      function setFeedbackMessage(element, message, variant = "info") {
+        if (!element) return;
+        element.textContent = message || "";
+        element.style.color = FEEDBACK_COLORS[variant] || FEEDBACK_COLORS.info;
       }
 
-      function construirUrlConfirmacao(profilePath, token) {
-        const params = new URLSearchParams({
-          profile: profilePath,
-          token,
-        });
-        return `https://www.nailnow.app/confirmar-cadastro.html?${params.toString()}`;
-      }
-
-      async function solicitarConfirmacao(profilePath) {
-        if (!profilePath) {
-          return { mailStatus: "missing-profile" };
-        }
-
-        try {
-          const response = await fetch(CONFIRMATION_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ profile: profilePath }),
-          });
-
-          if (!response.ok) {
-            const payload = await response.json().catch(() => ({}));
-            const errorCode = payload?.error || `http-${response.status}`;
-            return { mailStatus: errorCode };
-          }
-
-          const payload = await response.json().catch(() => ({}));
-          return {
-            mailStatus: payload?.mailStatus || "queued",
-            mailId: payload?.mailId || null,
-            confirmationUrl: payload?.confirmationUrl || null,
-          };
-        } catch (error) {
-          console.error("Falha ao solicitar confirmação", error);
-          return { mailStatus: "error" };
-        }
-      }
-
-      async function enviarCadastro(event) {
-        event.preventDefault();
-
-        const form = event.currentTarget;
-        const btn = form.querySelector("button[type='submit']");
-        const feedback = document.getElementById("signup-feedback");
-        clearFeedback(feedback);
-
-        try {
-          const nome = sanitize(form.nome.value);
-          const cpf = sanitize(form.cpf.value);
-          const email = sanitize(form.email.value).toLowerCase();
-          const senha = form.senha.value || "";
-          const confirmar = form.confirmarSenha.value || "";
-          const telefone = sanitize(form.telefone.value);
-          const endereco = sanitize(form.endereco_text.value);
-          const bio = sanitize(form.bio.value);
-          const servicos = coletarServicos(form);
-
-          const enderecoFormatado = sanitize(form.endereco_formatado.value);
-          const placeId = sanitize(form.place_id.value);
-          const lat = sanitize(form.lat.value);
-          const lng = sanitize(form.lng.value);
-
-          if (!nome || !cpf || !email || !senha || !confirmar) {
-            setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
-            return;
-          }
-
-          if (senha !== confirmar) {
-            setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
-            form.confirmarSenha.focus();
-            return;
-          }
-
-          if (btn) {
-            btn.disabled = true;
-            btn.setAttribute("aria-busy", "true");
-            btn.textContent = "Criando conta…";
-          }
-          setFeedbackMessage(feedback, "Validando seus dados…", "info");
-
-          const { user, isNew } = await ensureAuthAccount(email, senha);
-          const uid = user.uid;
-
-          if (btn) {
-            btn.textContent = "Salvando cadastro…";
-          }
-
-          const profilePath = `profissionais/${uid}`;
-          const payload = {
-            uid,
-            nome,
-            cpf,
-            email,
-            senha,
-            telefone,
-            endereco,
-            endereco_formatado: enderecoFormatado,
-            place_id: placeId,
-            lat,
-            lng,
-            bio,
-            servicos,
-            atualizadoEm: serverTimestamp(),
-          };
-
-          let confirmationToken = "";
-          let confirmationUrl = "";
-
-          if (isNew) {
-            payload.status = "pendente";
-            payload.criadoEm = serverTimestamp();
-            payload.emailVerificado = false;
-            confirmationToken = gerarTokenConfirmacao();
-            confirmationUrl = construirUrlConfirmacao(profilePath, confirmationToken);
-            payload.signupConfirmation = {
-              token: confirmationToken,
-              status: "pendente",
-              statusCode: "pending",
-              role: "profissional",
-              issuedAt: serverTimestamp(),
-              preparedBy: MAIL_SOURCE,
-              preparedAt: serverTimestamp(),
-              autoQueueOptOut: true,
-              confirmationUrl,
-              mailStatus: "pending",
-            };
-          }
-
-          await setDoc(doc(db, "profissionais", uid), payload, { merge: true });
-
-          let confirmationQueued = !isNew;
-
-          if (isNew && confirmationUrl) {
-            const confirmationResult = await solicitarConfirmacao(profilePath);
-            const mailStatus = (confirmationResult.mailStatus || "").toLowerCase();
-            confirmationQueued = ["queued", "already-queued"].includes(mailStatus);
-
-            if (confirmationResult.mailId) {
-              console.info("E-mail de confirmação profissional enfileirado", confirmationResult.mailId);
-            }
-          }
-
-          const successMessage = isNew
-            ? confirmationQueued
-              ? "✅ Cadastro enviado! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
-              : "✅ Cadastro enviado! Assim que possível enviaremos o e-mail de confirmação. Se não receber em alguns minutos, contate suporte@nailnow.app."
-            : "✅ Perfil profissional atualizado!";
-
-          setFeedbackMessage(feedback, successMessage, "success");
-          form.reset();
-        } catch (error) {
-          console.error("Falha ao cadastrar profissional", error);
-          const code = error?.code || "erro-desconhecido";
-          const mensagemPorCodigo = {
-            "auth/email-already-in-use": "❌ Erro: Já existe uma conta com este e-mail. Utilize a mesma senha cadastrada anteriormente.",
-            "auth/invalid-email": "❌ Erro: Informe um e-mail válido para continuar.",
-            "auth/weak-password": "❌ Erro: Use uma senha com pelo menos 6 caracteres.",
-            "auth/wrong-password": "❌ Erro: A senha informada não confere com a conta existente.",
-            "auth/invalid-login-credentials": "❌ Erro: Não foi possível confirmar seus dados de acesso.",
-          };
-
-          const friendly = mensagemPorCodigo[code] ?? "❌ Erro: Não foi possível concluir o cadastro. Tente novamente.";
-          setFeedbackMessage(feedback, friendly, "error");
-        } finally {
-          await safeSignOut();
-          if (btn) {
-            btn.disabled = false;
-            btn.removeAttribute("aria-busy");
-            btn.textContent = "Cadastrar profissional";
-          }
-        }
+      function clearFeedback(element) {
+        if (!element) return;
+        element.textContent = "";
+        element.removeAttribute("style");
       }
 
       document.addEventListener("DOMContentLoaded", () => {
-        const form = document.getElementById("cadastroForm");
-        if (!form) {
-          console.error("Formulário de cadastro profissional não encontrado na página.");
-          return;
-        }
+        const form = document.getElementById(FORM_ID);
+        if (!form) return;
 
-        form.addEventListener("submit", enviarCadastro);
+        const feedback = document.getElementById("signup-feedback");
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          clearFeedback(feedback);
+
+          const nome = sanitize(form.nome?.value);
+          const email = sanitize(form.email?.value).toLowerCase();
+          const senha = form.senha?.value || "";
+          const confirmarSenha = form.confirmarSenha?.value || "";
+          const telefone = sanitize(form.telefone?.value);
+          const cidadeAtendimento = sanitize(form.cidadeAtendimento?.value);
+          const aceiteTermos = Boolean(form.aceiteTermos?.checked);
+
+          if (!nome || !email || !senha || !confirmarSenha || !telefone || !cidadeAtendimento) {
+            setFeedbackMessage(
+              feedback,
+              "❌ Preencha os campos obrigatórios (*) antes de continuar.",
+              "error"
+            );
+            return;
+          }
+
+          if (senha.length < 6) {
+            setFeedbackMessage(
+              feedback,
+              "❌ Use uma senha com pelo menos 6 caracteres.",
+              "error"
+            );
+            form.senha?.focus();
+            return;
+          }
+
+          if (senha !== confirmarSenha) {
+            setFeedbackMessage(
+              feedback,
+              "❌ Erro: as senhas não coincidem.",
+              "error"
+            );
+            form.confirmarSenha?.focus();
+            return;
+          }
+
+          if (!aceiteTermos) {
+            setFeedbackMessage(
+              feedback,
+              "❌ É necessário aceitar os termos para continuar.",
+              "error"
+            );
+            return;
+          }
+
+          setFeedbackMessage(
+            feedback,
+            "Estamos migrando a plataforma. Compartilhe seus dados com suporte@nailnow.app ou WhatsApp (11) 98860-5414 para concluirmos a análise do cadastro.",
+            "info"
+          );
+          form.reset();
+          if (form.aceiteTermos) {
+            form.aceiteTermos.checked = false;
+          }
+        });
+
         form.setAttribute("novalidate", "novalidate");
         form.setAttribute("action", "javascript:void(0);");
-        console.info("📄 Formulário de cadastro profissional pronto para enviar dados ao Firebase.");
       });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
@@ -575,128 +378,6 @@
         </div>
       </section>
     </main>
-
-    <form id="cadastroFormPro">
-      <input id="proName" type="text" placeholder="Seu nome" required />
-      <input id="proEmail" type="email" placeholder="Seu e-mail" required />
-      <button type="submit">Criar cadastro (Profissional)</button>
-    </form>
-
-    <script>
-      const PRO_QUICK_URL =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerQuickLead";
-      const PRO_FALLBACK_URL =
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount";
-      const QUICK_PRO_ORIGIN = "profissional-landing-quick-form";
-
-      async function submitQuickLead(endpoints, payload) {
-        const errors = [];
-
-        for (const endpoint of endpoints) {
-          try {
-            const response = await fetch(endpoint, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify(payload),
-            });
-
-            const data = await response.json().catch(() => ({}));
-
-            if (!response.ok) {
-              errors.push({ endpoint, error: data?.error || `http-${response.status}` });
-              continue;
-            }
-
-            if (data?.ok) {
-              return { endpoint, data };
-            }
-
-            errors.push({ endpoint, error: data?.error || "unknown-response" });
-          } catch (err) {
-            errors.push({ endpoint, error: err?.message || "network-error" });
-          }
-        }
-
-        const lastError = errors.length ? errors[errors.length - 1] : null;
-        return { error: lastError || { error: "unknown" }, attempts: errors };
-      }
-
-      const cadastroProfissionalForm = document.getElementById("cadastroFormPro");
-
-      if (cadastroProfissionalForm) {
-        cadastroProfissionalForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-
-          const nameInput = document.getElementById("proName");
-          const emailInput = document.getElementById("proEmail");
-          const submitButton = cadastroProfissionalForm.querySelector("button[type='submit']");
-
-          const name = (nameInput?.value || "").trim();
-          const email = (emailInput?.value || "").trim();
-
-          if (!name || !email) {
-            alert("Preencha nome e e-mail para continuar.");
-            return;
-          }
-
-          if (submitButton) {
-            submitButton.disabled = true;
-            submitButton.setAttribute("aria-busy", "true");
-          }
-
-          const payload = {
-            type: "professional",
-            role: "profissional",
-            nome: name,
-            name,
-            email,
-            origem: QUICK_PRO_ORIGIN,
-            referrer: window.location.href,
-            pageUrl: window.location.href,
-          };
-
-          const endpoints = [PRO_QUICK_URL, PRO_FALLBACK_URL];
-
-          try {
-            const result = await submitQuickLead(endpoints, payload);
-
-            if (result?.data?.ok) {
-              const data = result.data;
-              const mailStatus = (data.mail?.status || "").toLowerCase();
-              const successMessage = ["queued", "already-queued"].includes(mailStatus)
-                ? "Recebemos seu cadastro profissional! Enviamos um e-mail com os próximos passos."
-                : data.profilePath
-                  ? "Recebemos seu cadastro profissional! Nossa equipe vai analisar os dados e retornar por e-mail."
-                  : "Recebemos seu cadastro profissional! Nossa equipe entrará em contato em breve.";
-
-              alert(successMessage);
-              console.info("Lead profissional registrado:", {
-                endpoint: result.endpoint,
-                leadId: data.leadId || data.lead?.id || null,
-                mailStatus: data.mail?.status || null,
-                profilePath: data.profilePath || data.lead?.profilePath || null,
-                alreadyQueued: data.alreadyQueued || false,
-              });
-              cadastroProfissionalForm.reset();
-              return;
-            }
-
-            console.warn("Falha ao registrar lead profissional", result);
-            alert(
-              "Não foi possível registrar seu interesse agora. Recarregue a página e tente novamente ou contate suporte@nailnow.app.",
-            );
-          } catch (err) {
-            console.error("Erro inesperado ao enviar lead profissional", err);
-            alert("Falha de conexão. Tente novamente.");
-          } finally {
-            if (submitButton) {
-              submitButton.disabled = false;
-              submitButton.removeAttribute("aria-busy");
-            }
-          }
-        });
-      }
-    </script>
 
     <footer class="site-footer">
       <div class="footer-inner">

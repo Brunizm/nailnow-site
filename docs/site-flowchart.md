@@ -1,6 +1,6 @@
 # Fluxograma do site NailNow
 
-O diagrama abaixo resume os principais caminhos de navegação e integrações que o visitante percorre ao utilizar o site NailNow.
+O diagrama abaixo resume os principais caminhos de navegação e as interações atuais do visitante com o site NailNow após a remoção da infraestrutura Firebase.
 
 ```mermaid
 flowchart TD
@@ -10,44 +10,39 @@ flowchart TD
 
   subgraph Cliente
     C --> C1[CTA "Criar conta"]
-    C1 --> C2[Formulário completo em cliente/cadastro.html]
+    C1 --> C2[Formulário em cliente/cadastro.html]
     C2 --> C3{Validações locais}
-    C3 -->|Campos obrigatórios ok| C4[Envio POST para registerClientAccount]
-    C4 --> C5{Resposta da Cloud Function}
-    C5 -->|Sucesso| C6[Mensagem de confirmação + fila de e-mail]
-    C6 --> C7[Link para confirmar cadastro]
-    C7 --> C8[confirmar-cadastro.html]
-    C8 --> C9{Token gerado com e-mail ou leadID}
-    C9 -->|Válido| C10[Redireciona para portal da cliente com login automático]
-    C5 -->|Falha| CF[Alerta de erro + instruções de correção]
+    C3 -->|Campos obrigatórios ok| C4[Mensagem de migração exibida]
+    C4 --> C5[Visitante direcionado ao suporte (WhatsApp/E-mail)]
+    C3 -->|Campos ausentes| CF[Feedback em tela]
   end
 
   subgraph Profissional
     H --> H1[CTA "Quero ser manicure"]
-    H1 --> H2[Formulário completo em profissional/cadastro.html]
+    H1 --> H2[Formulário em profissional/cadastro.html]
     H2 --> H3{Validações locais}
-    H3 -->|Ok| H4[Autenticação Firebase Auth]
-    H4 --> H5[Persistência em Firestore (coleção profissionais)]
-    H5 --> H6[Solicita confirmação em requestSignupConfirmation]
-    H6 --> H7[Notificação por e-mail]
-    H7 --> H8[Usuário abre confirmar-cadastro.html]
-    H8 --> H9{Token personalizado recebido}
-    H9 -->|Válido| H10[Redireciona para portal profissional autenticado]
+    H3 -->|Ok| H4[Mensagem de migração exibida]
+    H4 --> H5[Orientação para contato com suporte]
     H3 -->|Falha| HF[Feedback com erros do formulário]
-    H4 -->|Erro Auth| HE[Exibe mensagem e orienta tentar novamente]
+  end
+
+  subgraph Confirmação
+    H4 --> K[confirmar-cadastro.html]
+    C4 --> K
+    K --> K1[Informativo: confirmações automáticas desativadas]
   end
 
   subgraph Suporte e Conteúdo
     A --> S1[Páginas institucionais (serviços, FAQ, depoimentos)]
-    S1 --> S2[CTAs retornam para fluxos de cadastro]
+    S1 --> S2[CTAs retornam para formulários ou contato direto]
   end
 ```
 
 ## Detalhes importantes
 
-- **Validações locais**: cada formulário garante campos obrigatórios, tamanho mínimo de senha, aceite de termos e dados de endereço formatados antes de enviar ao backend.  
-- **Integração com Cloud Functions**: o endpoint `registerClientAccount` recebe os dados do cliente, cria o lead no Firestore e agenda o envio de confirmação. Profissionais utilizam `requestSignupConfirmation` após criar a conta via Firebase Auth.  
-- **Confirmação de cadastro**: ao clicar no e-mail, o usuário é direcionado para `confirmar-cadastro.html`, que tenta logar automaticamente no portal correspondente usando o token gerado pela função.  
-- **Páginas institucionais** mantêm o visitante informado e redirecionam para os fluxos de cadastro adequados.
+- **Validações locais**: os formulários verificam campos obrigatórios, tamanho mínimo de senha e aceite de termos antes de exibir a mensagem de migração.
+- **Processo manual**: após o envio, o visitante recebe instruções para concluir o cadastro diretamente com a equipe de suporte, sem integrações automáticas.
+- **Confirmação desativada**: a página `confirmar-cadastro.html` agora apenas informa que o fluxo automático está desativado até que uma nova plataforma seja configurada.
+- **Páginas institucionais** continuam disponíveis e direcionam o visitante para os pontos de contato corretos.
 
 Este fluxograma pode ser aberto em ferramentas compatíveis com Mermaid (por exemplo, VS Code com extensão Mermaid, Obsidian ou o próprio GitHub) para visualização gráfica.

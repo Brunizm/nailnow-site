@@ -1,21 +1,21 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
 
-  gtag('config', 'G-NKTL1PLZ2J');
-</script>
+      gtag('config', 'G-NKTL1PLZ2J');
+    </script>
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Portal da Manicure NailNow — autonomia, visibilidade e pagamentos seguros. Cadastre-se e conquiste clientes."
+      content="Portal da profissional NailNow — saiba como acompanhar convites e pagamentos enquanto migramos para a nova plataforma."
     />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://www.nailnow.app/profissional/portal.html" />
@@ -23,21 +23,21 @@
     <meta property="og:site_name" content="NailNow" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="pt_BR" />
-    <meta property="og:title" content="Portal da Manicure | NailNow" />
+    <meta property="og:title" content="Portal da Profissional | NailNow" />
     <meta
       property="og:description"
-      content="Portal da Manicure NailNow — autonomia, visibilidade e pagamentos seguros. Cadastre-se e conquiste clientes."
+      content="Estamos migrando o painel das profissionais NailNow. Veja como falar com o suporte enquanto o novo sistema é ativado."
     />
     <meta property="og:url" content="https://www.nailnow.app/profissional/portal.html" />
     <meta property="og:image" content="https://www.nailnow.app/assets/nail1.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Portal da Manicure | NailNow" />
+    <meta name="twitter:title" content="Portal da Profissional | NailNow" />
     <meta
       name="twitter:description"
-      content="Portal da Manicure NailNow — autonomia, visibilidade e pagamentos seguros. Cadastre-se e conquiste clientes."
+      content="Estamos migrando o painel das profissionais NailNow. Veja como falar com o suporte enquanto o novo sistema é ativado."
     />
     <meta name="twitter:image" content="https://www.nailnow.app/assets/nail1.png" />
-    <title>NailNow | Portal da Manicure</title>
+    <title>Portal da Profissional | NailNow</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -83,13 +83,13 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "NailNow",
+            "name": "Profissional",
             "item": "https://www.nailnow.app/profissional/portal.html"
           }
         ]
       }
     </script>
-<script src="/assets/js/menu-toggle.js" defer></script>
+    <script src="/assets/js/menu-toggle.js" defer></script>
   </head>
   <body class="portal portal--profissional">
     <header class="site-header">
@@ -98,12 +98,7 @@
           <img src="/assets/nailnow-logo.svg" alt="Logotipo da NailNow" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
-        <button
-          class="mobile-menu-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="site-navigation"
-        >
+        <button class="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="site-navigation">
           <span class="sr-only">Alternar menu</span>
           <span class="mobile-menu-toggle__bars" aria-hidden="true">
             <span class="mobile-menu-toggle__bar"></span>
@@ -119,7 +114,7 @@
           </nav>
           <div class="header-actions">
             <a href="../cliente/index.html" class="header-cta">Sou Cliente</a>
-            <a href="../profissional/index.html" class="header-cta">Sou Profissional</a>
+            <a href="../profissional/index.html" class="header-cta" aria-current="page">Sou Profissional</a>
             <a
               class="social-link social-link--instagram"
               href="https://www.instagram.com/nailnowbr/"
@@ -139,164 +134,49 @@
     </header>
 
     <main class="page-content">
-      <div id="dashboard" class="dashboard" hidden aria-labelledby="dashboard-heading">
-        <section class="dashboard-hero">
-          <div class="dashboard-hero__header">
-            <div>
-              <p class="dashboard-kicker">Painel NailNow</p>
-              <h1 id="dashboard-heading">Olá, <span data-profile-name>Nome da manicure</span>!</h1>
-              <p class="dashboard-intro">Gerencie sua agenda, acompanhe solicitações e mantenha o relacionamento com suas clientes em um só lugar.</p>
-            </div>
-            <button type="button" id="sign-out" class="dashboard-signout">Sair</button>
+      <section class="portal-offline" aria-labelledby="portal-profissional-heading">
+        <div class="portal-offline__inner">
+          <p class="auth-kicker">Portal da profissional</p>
+          <h1 id="portal-profissional-heading">Estamos atualizando o painel das parceiras</h1>
+          <p>
+            O portal conectado ao Firebase foi desligado. Estamos configurando um novo ambiente com integrações aprimoradas para os atendimentos.
+          </p>
+          <ul class="auth-benefits">
+            <li>Seus dados e avaliações existentes estão preservados para a migração.</li>
+            <li>Convites e pagamentos seguem acompanhados manualmente pela equipe NailNow.</li>
+            <li>Você pode solicitar suporte imediato por e-mail ou WhatsApp.</li>
+          </ul>
+          <div class="auth-actions auth-actions--stacked">
+            <a class="auth-link-button auth-link-button--primary" href="mailto:suporte@nailnow.app">
+              Falar por e-mail
+            </a>
+            <a
+              class="auth-link-button"
+              href="https://wa.me/5511988605414"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Conversar no WhatsApp (11) 98860-5414
+            </a>
           </div>
-          <div id="dashboard-status" class="auth-status" role="status" aria-live="polite" hidden></div>
-          <div class="dashboard-summary">
-            <div class="dashboard-metrics" aria-label="Resumo da agenda">
-              <div class="metric-card">
-                <span class="metric-label">Solicitações</span>
-                <span class="metric-value" id="metric-pending">0</span>
-                <span class="metric-footnote">aguardando resposta</span>
-              </div>
-              <div class="metric-card">
-                <span class="metric-label">Confirmados</span>
-                <span class="metric-value" id="metric-confirmed">0</span>
-                <span class="metric-footnote">para os próximos dias</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="availability-manager" aria-labelledby="availability-manager-heading">
-          <div class="availability-manager__intro">
-            <h2 id="availability-manager-heading">Minha disponibilidade</h2>
-            <p>
-              Atualize seus dados de atendimento, horários e serviços para que as clientes encontrem você com facilidade no
-              portal.
-            </p>
-          </div>
-          <form id="availability-form" class="availability-form" novalidate>
-            <div class="availability-form__layout">
-              <div class="availability-form__column availability-form__column--profile">
-                <fieldset class="availability-form__group">
-                  <legend class="availability-form__legend">Localização de atendimento</legend>
-                  <label class="availability-form__label" for="availability-address">Endereço principal</label>
-                  <div class="availability-form__row availability-form__row--with-action">
-                    <input
-                      id="availability-address"
-                      type="text"
-                      class="availability-form__input"
-                      placeholder="Rua, número e bairro"
-                      autocomplete="street-address"
-                    />
-                    <button type="button" id="availability-geocode" class="availability-form__action">Buscar</button>
-                  </div>
-                  <div class="availability-form__row availability-form__row--compact">
-                    <div class="availability-form__field">
-                      <label for="availability-city">Cidade</label>
-                      <select id="availability-city" class="availability-form__input">
-                        <option value="Porto Alegre" selected>Porto Alegre</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="availability-form__row availability-form__row--compact">
-                    <button
-                      type="button"
-                      id="availability-detect"
-                      class="availability-form__action availability-form__action--secondary"
-                    >
-                      Usar minha localização
-                    </button>
-                  </div>
-                  <div id="availability-map" class="availability-form__map" aria-hidden="true"></div>
-                  <p id="availability-location-status" class="availability-form__status auth-status" hidden></p>
-                </fieldset>
-
-                <fieldset class="availability-form__group">
-                  <legend class="availability-form__legend">Horários de atendimento</legend>
-                  <p class="availability-form__hint">
-                    Selecione os dias e horários em que você costuma atender e cadastre faixas para aparecer no mapa das clientes.
-                  </p>
-                  <div class="availability-days" id="availability-days">
-                    <label class="availability-day"><input type="checkbox" value="monday" /><span>Seg</span></label>
-                    <label class="availability-day"><input type="checkbox" value="tuesday" /><span>Ter</span></label>
-                    <label class="availability-day"><input type="checkbox" value="wednesday" /><span>Qua</span></label>
-                    <label class="availability-day"><input type="checkbox" value="thursday" /><span>Qui</span></label>
-                    <label class="availability-day"><input type="checkbox" value="friday" /><span>Sex</span></label>
-                    <label class="availability-day"><input type="checkbox" value="saturday" /><span>Sáb</span></label>
-                    <label class="availability-day"><input type="checkbox" value="sunday" /><span>Dom</span></label>
-                  </div>
-                  <div class="availability-form__row availability-form__row--compact">
-                    <div class="availability-form__field">
-                      <label for="availability-start">Horário inicial</label>
-                      <input id="availability-start" type="time" step="900" class="availability-form__input" />
-                    </div>
-                    <div class="availability-form__field">
-                      <label for="availability-end">Horário final</label>
-                      <input id="availability-end" type="time" step="900" class="availability-form__input" />
-                    </div>
-                    <button type="button" id="availability-add-slot" class="availability-form__action">Adicionar faixa</button>
-                  </div>
-                  <ul id="availability-slots" class="availability-slots" role="list"></ul>
-                  <p id="availability-slots-empty" class="availability-slots__empty">Nenhuma faixa cadastrada ainda.</p>
-                </fieldset>
-              </div>
-
-              <div class="availability-form__column availability-form__column--services">
-                <fieldset class="availability-form__group">
-                  <legend class="availability-form__legend">Serviços principais</legend>
-                  <div class="availability-services" id="availability-services">
-                    <div class="availability-services__header" aria-hidden="true">
-                      <span>Serviço</span>
-                      <span>Valor (R$)</span>
-                      <span>Duração</span>
-                    </div>
-                    <ol class="availability-services__list" id="availability-services-list" role="list"></ol>
-                  </div>
-                </fieldset>
-              </div>
-            </div>
-            <div class="availability-form__actions">
-              <button type="submit" class="availability-form__submit">Salvar atualizações</button>
-              <p id="availability-feedback" class="availability-form__status auth-status" hidden></p>
-            </div>
-          </form>
-        </section>
-
-        <div class="schedule-grid">
-          <section class="schedule-section" aria-labelledby="pending-heading">
-            <div class="schedule-section__head">
-              <h2 id="pending-heading">Solicitações pendentes</h2>
-              <span class="schedule-count" id="badge-pending">0</span>
-            </div>
-            <div id="pending-list" class="schedule-list" role="list"></div>
-          </section>
-
-          <section class="schedule-section" aria-labelledby="confirmed-heading">
-            <div class="schedule-section__head">
-              <h2 id="confirmed-heading">Solicitações confirmadas</h2>
-              <span class="schedule-count" id="badge-confirmed">0</span>
-            </div>
-            <div id="confirmed-list" class="schedule-list" role="list"></div>
-          </section>
-
         </div>
-      </div>
+      </section>
     </main>
 
-    <footer class="site-footer">
+    <footer class="site-footer" aria-label="Rodapé do site">
       <div class="footer-inner">
-        <div class="footer-column footer-column--brand">
-          <h2 class="footer-logo">NailNow</h2>
-          <p>Beleza na sua agenda com profissionais selecionadas, atendimento onde você estiver e suporte humanizado.</p>
+        <div class="footer-brand">
+          <img src="/assets/nailnow-logo.svg" alt="" class="footer-brand__logo" />
+          <p class="footer-brand__copy">Profissionais de beleza sob medida para seu dia com suporte NailNow.</p>
         </div>
         <div class="footer-column footer-links" aria-label="Links úteis">
-          <h3>FAQ</h3>
-          <a href="../faq.html">Perguntas frequentes</a>
-          <a href="../como-funciona.html">Como funciona</a>
-          <a href="../agendamentos.html">Agendamentos</a>
+          <h3>Links rápidos</h3>
+          <a href="/cliente/index.html">Acesso cliente</a>
+          <a href="/profissional/index.html">Acesso profissional</a>
+          <a href="/faq.html">Perguntas frequentes</a>
         </div>
-        <div class="footer-column footer-links" aria-label="Contato e suporte">
-          <h3>Contato & suporte</h3>
+        <div class="footer-column footer-links" aria-label="Contato">
+          <h3>Suporte NailNow</h3>
           <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
@@ -308,8 +188,5 @@
       </div>
       <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
     </footer>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
-    <script type="module" src="./portal.js"></script>
-
   </body>
 </html>

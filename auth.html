@@ -93,6 +93,12 @@
         transform: translateY(0);
         box-shadow: none;
       }
+      .feedback {
+        margin-top: 1rem;
+        font-size: 0.95rem;
+        color: #2f2d3d;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -112,67 +118,25 @@
         </label>
       </div>
       <button id="botaoCadastrar">Cadastrar</button>
+      <p id="auth-feedback" class="feedback" role="status" aria-live="polite">
+        Estamos migrando o sistema de autenticação. Preencha os campos para se
+        organizar, mas finalize o cadastro falando com o suporte.
+      </p>
     </main>
 
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import {
-        getAuth,
-        createUserWithEmailAndPassword,
-        signInWithEmailAndPassword,
-      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-      import {
-        getFirestore,
-        doc,
-        setDoc,
-        serverTimestamp,
-      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const button = document.getElementById("botaoCadastrar");
+        const feedback = document.getElementById("auth-feedback");
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
-        authDomain: "nailnow-site.firebaseapp.com",
-        projectId: "nailnow-site",
-        storageBucket: "nailnow-site.appspot.com",
-        messagingSenderId: "726392294571",
-        appId: "1:726392294571:web:a363a40231f7ac162e7bee",
-      };
+        if (!button || !feedback) return;
 
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
-
-      async function registrarUsuario(nome, email, senha, role) {
-        try {
-          const senhaLimpa = (senha ?? "").trim();
-          const cred = await createUserWithEmailAndPassword(auth, email, senhaLimpa);
-          const uid = cred.user.uid;
-
-          await setDoc(doc(db, role, uid), {
-            authUid: uid,
-            name: nome,
-            email,
-            senha: senhaLimpa,
-            senhaAtualizadaEm: serverTimestamp(),
-            role,
-            createdAt: serverTimestamp(),
-            status: "ativo",
-          });
-
-          alert("Usuário criado com sucesso!");
-        } catch (err) {
-          alert("Erro: " + err.message);
-        }
-      }
-
-      document
-        .getElementById("botaoCadastrar")
-        .addEventListener("click", async () => {
-          const nome = document.getElementById("nome").value;
-          const email = document.getElementById("email").value;
-          const senha = document.getElementById("senha").value;
-          const role = document.querySelector('input[name="tipo"]:checked').value;
-          await registrarUsuario(nome, email, senha, role);
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          feedback.textContent =
+            "Estamos migrando para uma nova plataforma. Entre em contato pelo suporte@nailnow.app ou WhatsApp (11) 98860-5414 para concluir seu cadastro.";
         });
+      });
     </script>
   </body>
 </html>
