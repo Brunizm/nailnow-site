@@ -1,2 +1,8 @@
 node_modules/
 **/node_modules/
+
+# Legacy Firebase workspaces were removed from the project. Ignore any
+# regenerated folders so local experiments do not accidentally resurrect
+# the deprecated backend in new commits.
+firebase/
+functions/
