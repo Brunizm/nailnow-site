@@ -309,13 +309,15 @@
               ? "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app."
               : mailStatus === "error"
                 ? "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação."
-                : legacyEmailSent === false
-                  ? "⚠️ Cadastro enviado! Ainda não conseguimos enviar o e-mail automático. Verifique se os dados estão corretos e, se necessário, peça ajuda pelo suporte@nailnow.app."
-                  : "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
+                : mailStatus === "skipped"
+                  ? "⚠️ Cadastro enviado! A confirmação não foi disparada porque a integração de e-mail (SendGrid) não está ativa. Verifique a chave configurada ou fale com suporte@nailnow.app."
+                  : legacyEmailSent === false
+                    ? "⚠️ Cadastro enviado! Ainda não conseguimos enviar o e-mail automático. Verifique se os dados estão corretos e, se necessário, peça ajuda pelo suporte@nailnow.app."
+                    : "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
 
           const feedbackVariant = confirmationQueued
             ? "success"
-            : mailStatus === "error"
+            : mailStatus === "error" || mailStatus === "skipped"
               ? "error"
               : "info";
 

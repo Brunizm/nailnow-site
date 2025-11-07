@@ -2,11 +2,22 @@
   "name": "nailnow-functions",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": "20" },
+  "engines": {
+    "node": "20"
+  },
   "main": "index.js",
+  "scripts": {
+    "login": "npx firebase login",
+    "setup:config": "npx firebase functions:config:set sendgrid.key=\"$SENDGRID_API_KEY\" sendgrid.sender=\"$SENDGRID_SENDER\" sendgrid.template_client=\"$SENDGRID_TEMPLATE_CLIENT\" sendgrid.template_professional=\"$SENDGRID_TEMPLATE_PROFESSIONAL\" sendgrid.template_professional_signup=\"$SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP\"",
+    "deploy": "npx firebase deploy --only functions"
+  },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "cors": "^2.8.5",
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^4.8.0"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.18.0"
   }
 }
