@@ -1,5 +1,9 @@
 # Resolvendo conflitos ao remover o Firebase
 
+> ℹ️ Está iniciando uma nova integração? Consulte também o guia
+> [`docs/firebase-reintegration.md`](firebase-reintegration.md) para restaurar a
+> estrutura do Firebase antes de abrir o Pull Request.
+
 Quando o projeto foi desconectado do Firebase, diversos arquivos e pastas
 foram excluídos de uma vez. O GitHub costuma exibir uma lista longa de
 conflitos ao tentar mesclar uma alteração desse tamanho diretamente pela
