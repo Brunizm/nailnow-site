@@ -5,7 +5,7 @@ dos arquivos `profissional/index.html` e `profissional/portal.js`. Com isso, tod
 
 Para excluir cadastros duplicados ou desativar um perfil manualmente:
 
-1. Acesse o [Console Firebase](https://console.firebase.google.com/) e abra o projeto `nailnow-site`.
+1. Acesse o [Console Firebase](https://console.firebase.google.com/) e abra o projeto `nailnow-7546c`.
 2. Entre em *Firestore Database*.
 3. Dentro da coleção `profissionais`, selecione o documento que deseja excluir.
 4. Clique em **Excluir documento** e confirme a remoção.

@@ -1,4 +1,15 @@
 {
+  "hosting": {
+    "site": "nailnow-7546c-e1672",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "firebase/**",
+      "functions/**"
+    ]
+  },
   "functions": {
     "source": "functions",
     "runtime": "nodejs20"

@@ -103,12 +103,13 @@
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
-      authDomain: "nailnow-site.firebaseapp.com",
-      projectId: "nailnow-site",
-      storageBucket: "nailnow-site.appspot.com",
-      messagingSenderId: "726392294571",
-      appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+      apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+      authDomain: "nailnow-7546c.firebaseapp.com",
+      projectId: "nailnow-7546c",
+      storageBucket: "nailnow-7546c.firebasestorage.app",
+      messagingSenderId: "413820353687",
+      appId: "1:413820353687:web:67845225aac5378e49fdd2",
+      measurementId: "G-7DQ0TV03VF",
     };
 
     const app = initializeApp(firebaseConfig);
@@ -117,7 +118,7 @@
     const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
     const storage = getStorage(app);
     const CONFIRMATION_ENDPOINT =
-      "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation";
+      "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/requestSignupConfirmation";
     const MAIL_COLLECTION = "mail";
     const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
     const MAIL_SOURCE = "legacy-professional-signup";
@@ -628,7 +629,7 @@ document.getElementById('cadastroForm').addEventListener('submit', async (e) => 
   const nome  = document.getElementById('nome').value.trim();
   const email = document.getElementById('email').value.trim();
 
-  const FN_URL = 'https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount';
+  const FN_URL = 'https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount';
 
   console.log(">>> ENVIANDO PARA CLOUD FUNCTION >>>", { nome, email });
 

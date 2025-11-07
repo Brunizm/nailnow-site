@@ -1845,8 +1845,8 @@ function readHttpPayload(req) {
 const ALLOWED_ORIGINS = new Set([
   "https://www.nailnow.app",
   "https://nailnow.app",
-  "https://nailnow-site.web.app",
-  "https://nailnow-site.firebaseapp.com",
+  "https://nailnow-7546c-e1672.web.app",
+  "https://nailnow-7546c.firebaseapp.com",
   "http://localhost:5000",
   "http://127.0.0.1:5000",
   "http://localhost:5173",
