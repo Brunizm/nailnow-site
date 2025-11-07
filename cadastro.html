@@ -1,58 +1,70 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cadastro | NailNow</title>
+    <meta
+      name="description"
+      content="Escolha o tipo de cadastro NailNow para clientes ou profissionais."
+    />
+    <meta http-equiv="refresh" content="5; url=/cliente/cadastro.html" />
+    <link rel="canonical" href="https://www.nailnow.app/cadastro.html" />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #f6f7fb;
+        color: #2f2d3d;
+        padding: 1.5rem;
+        text-align: center;
+      }
+      main {
+        max-width: 480px;
+        padding: 2rem 2.5rem;
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 12px 30px rgba(69, 39, 160, 0.12);
+      }
+      h1 {
+        margin-top: 0;
+        color: #4527a0;
+        font-size: 1.75rem;
+      }
+      p {
+        line-height: 1.6;
+        margin-bottom: 1.25rem;
+      }
+      a {
+        color: #4527a0;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+    <script>
+      (function () {
+        function resolveRole(search, hash) {
+          const params = new URLSearchParams(search);
+          const rawRole = [
+            params.get("role"),
+            params.get("tipo"),
+            params.get("perfil"),
+            hash ? hash.replace(/^#/, "") : "",
+          ]
+            .map((value) => (value ? value.toString().trim().toLowerCase() : ""))
+            .find((value) => value);
 
-  gtag('config', 'G-NKTL1PLZ2J');
-</script>
-
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta
-    name="description"
-    content="Cadastre-se como manicure na NailNow para receber clientes, gerenciar agendamentos e crescer com nosso suporte."
-  />
-  <meta name="robots" content="index, follow" />
-  <link rel="canonical" href="https://www.nailnow.app/cadastro.html" />
-    <link rel="alternate" hreflang="pt-BR" href="https://www.nailnow.app/cadastro.html" />
-  <meta property="og:site_name" content="NailNow" />
-  <meta property="og:type" content="website" />
-    <meta property="og:locale" content="pt_BR" />
-  <meta property="og:title" content="Cadastro de Manicure | NailNow" />
-  <meta
-    property="og:description"
-    content="Cadastre-se como manicure na NailNow para receber clientes, gerenciar agendamentos e crescer com nosso suporte."
-  />
-  <meta property="og:url" content="https://www.nailnow.app/cadastro.html" />
-  <meta property="og:image" content="https://www.nailnow.app/assets/nail1.png" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Cadastro de Manicure | NailNow" />
-  <meta
-    name="twitter:description"
-    content="Cadastre-se como manicure na NailNow para receber clientes, gerenciar agendamentos e crescer com nosso suporte."
-  />
-  <meta name="twitter:image" content="https://www.nailnow.app/assets/nail1.png" />
-  <title>Cadastro de Manicure | NailNow 💅</title>
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "NailNow",
-        "url": "https://www.nailnow.app/",
-        "logo": "https://www.nailnow.app/assets/nailnow-logo.svg",
-        "sameAs": ["https://www.instagram.com/nailnowbr/"],
-        "contactPoint": [
-          {
-            "@type": "ContactPoint",
-            "contactType": "customer support",
-            "email": "suporte@nailnow.app",
-            "availableLanguage": ["pt-BR"],
-            "areaServed": "BR"
+          if (!rawRole) {
+            return "cliente";
           }
         ],
         "areaServed": {
@@ -188,296 +200,33 @@
         throw new Error("missing-profile-path");
       }
 
-      const response = await fetch(CONFIRMATION_ENDPOINT, {
-        method: "POST",
-        mode: "cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile: profilePath }),
-      });
+          if (["profissional", "professional", "manicure", "manicures"].includes(rawRole)) {
+            return "profissional";
+          }
 
-      if (!response.ok) {
-        let errorCode = `http-${response.status}`;
+          return "cliente";
+        }
+
+        function buildRedirect(search, hash, role) {
+          const params = new URLSearchParams(search);
+          ["role", "tipo", "perfil"].forEach((key) => params.delete(key));
+          const cleanedQuery = params.toString();
+          const basePath = role === "profissional" ? "/profissional/cadastro.html" : "/cliente/cadastro.html";
+          const query = cleanedQuery ? `?${cleanedQuery}` : "";
+          const suffix = hash || "";
+          return `${basePath}${query}${suffix}`;
+        }
+
         try {
-          const payload = await response.json();
-          if (payload?.error) {
-            errorCode = payload.error;
+          const role = resolveRole(window.location.search, window.location.hash);
+          const target = buildRedirect(window.location.search, window.location.hash, role);
+
+          if (target !== window.location.pathname + window.location.search + window.location.hash) {
+            window.location.replace(target);
+            return;
           }
-        } catch (parseError) {
-          /* ignore parse error */
-        }
-        const httpError = new Error(errorCode);
-        httpError.code = errorCode;
-        throw httpError;
-      }
-
-      return response.json();
-    }
-
-    function sanitizeMailPayload(mailPayload, context = {}) {
-      if (!mailPayload || typeof mailPayload !== "object") {
-        return null;
-      }
-
-      const toRaw = Array.isArray(mailPayload.to) ? mailPayload.to : [];
-      const to = toRaw
-        .map((value) => (typeof value === "string" ? value.trim() : ""))
-        .filter((value) => value);
-
-      if (!to.length) {
-        return null;
-      }
-
-      const metadata = mailPayload.metadata || {};
-      const confirmationUrl = context.confirmationUrl || metadata.confirmationUrl || "";
-
-      const subjectFallback = "Confirme seu cadastro no NailNow 💅";
-      const textFallback = confirmationUrl
-        ? `Olá! Confirme seu cadastro acessando: ${confirmationUrl}`
-        : "Olá! Confirme seu cadastro no NailNow.";
-      const htmlFallback = confirmationUrl
-        ? `<p>Olá! 💖 Confirme seu cadastro clicando no botão abaixo:</p><p style="margin:24px 0;"><a href="${confirmationUrl}" style="background-color:#f55ba2;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600;">Confirmar cadastro</a></p><p>Se o botão não funcionar, copie e cole este link:<br /><span style=\"word-break:break-all;\">${confirmationUrl}</span></p>`
-        : "<p>Olá! 💖 Confirme seu cadastro no NailNow.</p>";
-
-      const message = {
-        subject: mailPayload.message?.subject || subjectFallback,
-        text: mailPayload.message?.text || textFallback,
-        html: mailPayload.message?.html || htmlFallback,
-      };
-
-      return {
-        to,
-        from: SUPPORT_SENDER,
-        message,
-        metadata: {
-          ...metadata,
-          role: context.role || metadata.role || "profissional",
-          queuedBy: context.queuedBy || metadata.queuedBy || MAIL_SOURCE,
-          profilePath: context.profilePath || metadata.profilePath || null,
-          confirmationKey:
-            context.confirmationKey ||
-            metadata.confirmationKey ||
-            context.profilePath ||
-            metadata.profilePath ||
-            null,
-          confirmationUrl: confirmationUrl || null,
-          emailType: metadata.emailType || "confirmation",
-        },
-      };
-    }
-
-    async function enqueueMailFallback(mailPayload, context = {}) {
-      const sanitized = sanitizeMailPayload(mailPayload, context);
-      if (!sanitized) {
-        return { mailId: null, mailStatus: "missing-email" };
-      }
-
-      const mailRef = await addDoc(collection(db, MAIL_COLLECTION), sanitized);
-      return { mailId: mailRef.id, mailStatus: "queued" };
-    }
-
-    async function persistConfirmationStatus(docRef, updates = {}) {
-      if (!docRef) return;
-
-      const payload = {};
-      const queuedBy = updates.queuedBy || MAIL_SOURCE;
-
-      payload["signupConfirmation.preparedBy"] = queuedBy;
-      payload["signupConfirmation.preparedAt"] = serverTimestamp();
-
-      if (updates.mailStatus) {
-        payload["signupConfirmation.mailStatus"] = updates.mailStatus;
-      }
-
-      if (updates.confirmationUrl) {
-        payload["signupConfirmation.confirmationUrl"] = updates.confirmationUrl;
-      }
-
-      if (updates.mailId) {
-        payload["signupConfirmation.mailId"] = updates.mailId;
-        payload["signupConfirmation.mailDocumentId"] = updates.mailId;
-        payload["signupConfirmation.mailQueuedBy"] = queuedBy;
-        payload["signupConfirmation.mailQueuedAt"] = serverTimestamp();
-      }
-
-      if (Object.keys(payload).length) {
-        await updateDoc(docRef, payload);
-      }
-    }
-
-    async function uploadPhotoIfNeeded(uid, file) {
-      if (!file) return "";
-      const filePath = `profissionais/${uid}/perfil_${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, filePath);
-      await uploadBytes(storageRef, file);
-      return getDownloadURL(storageRef);
-    }
-
-    let isProcessing = false;
-
-    async function handleSubmit(event) {
-      event.preventDefault();
-      if (isProcessing) {
-        return;
-      }
-
-      const form = document.getElementById(FORM_ID);
-      if (!form) {
-        alert("Formulário não encontrado.");
-        return;
-      }
-
-      isProcessing = true;
-      setFeedback("");
-      setSubmittingState(true);
-
-      try {
-        const formData = new FormData(form);
-        const nome = (formData.get("nome") || "").toString().trim();
-        const email = (formData.get("email") || "").toString().trim().toLowerCase();
-        const senha = (formData.get("senha") || "").toString();
-        const confirmarSenha = (formData.get("confirmarSenha") || "").toString();
-        const telefone = (formData.get("telefone") || "").toString().trim();
-        const bio = (formData.get("bio") || "").toString().trim();
-        const servicos = formData.getAll("servicos");
-        const fotoFile = form.querySelector("#foto")?.files?.[0] || null;
-
-        if (!nome || !email || !senha || !confirmarSenha) {
-          setFeedback("❌ Erro: Preencha os campos obrigatórios (*).", "error");
-          isProcessing = false;
-          setSubmittingState(false);
-          return;
-        }
-
-        if (senha !== confirmarSenha) {
-          setFeedback("❌ Erro: As senhas não coincidem.", "error");
-          form.querySelector("#confirmarSenha")?.focus();
-          isProcessing = false;
-          setSubmittingState(false);
-          return;
-        }
-
-        const { user, isNew } = await ensureAuthAccount(email, senha);
-        const uid = user.uid;
-
-        let fotoUrl = "";
-        if (fotoFile) {
-          setFeedback("Carregando foto…", "info");
-          fotoUrl = await uploadPhotoIfNeeded(uid, fotoFile);
-        }
-
-        setFeedback("Salvando cadastro…", "info");
-
-        const profilePath = `profissionais/${uid}`;
-        const payload = {
-          uid,
-          nome,
-          email,
-          telefone,
-          bio,
-          servicos,
-          atualizadoEm: serverTimestamp(),
-        };
-
-        if (fotoUrl) {
-          payload.fotoUrl = fotoUrl;
-        }
-
-        if (isNew) {
-          payload.createdAt = serverTimestamp();
-          payload.status = "pendente";
-          payload.emailVerificado = false;
-          payload.signupConfirmation = {
-            status: "pending",
-            role: "profissional",
-            preparedBy: "legacy-professional-signup",
-            preparedAt: serverTimestamp(),
-            autoQueueOptOut: true,
-          };
-        }
-
-        const docRef = doc(db, "profissionais", uid);
-        await setDoc(docRef, payload, { merge: true });
-
-        let confirmationQueued = false;
-        let confirmationError = null;
-        let confirmationMailStatus = "not-requested";
-        let confirmationMailId = null;
-
-        if (isNew) {
-          setFeedback("Solicitando e-mail de confirmação…", "info");
-          try {
-            const result = await requestConfirmation(profilePath);
-            const normalizedStatus = (result?.mailStatus || "").toLowerCase();
-            confirmationMailStatus = normalizedStatus || confirmationMailStatus;
-
-            if (["queued", "already-queued"].includes(normalizedStatus)) {
-              confirmationQueued = true;
-              if (result?.mailId) {
-                confirmationMailId = result.mailId;
-              }
-            } else if (result?.mailPayload) {
-              try {
-                const fallback = await enqueueMailFallback(result.mailPayload, {
-                  role: "profissional",
-                  queuedBy: MAIL_SOURCE,
-                  profilePath,
-                  confirmationUrl:
-                    result?.confirmationUrl || result?.mailPayload?.metadata?.confirmationUrl || "",
-                });
-                confirmationMailStatus = fallback.mailStatus || confirmationMailStatus;
-                if (fallback.mailId) {
-                  confirmationQueued = true;
-                  confirmationMailId = fallback.mailId;
-                  confirmationError = null;
-                }
-              } catch (fallbackError) {
-                confirmationMailStatus = "error";
-                confirmationError = fallbackError;
-              }
-            }
-
-            await persistConfirmationStatus(docRef, {
-              queuedBy: MAIL_SOURCE,
-              mailStatus: confirmationQueued
-                ? confirmationMailStatus || "queued"
-                : confirmationMailStatus || "requires-client-enqueue",
-              mailId: confirmationMailId || result?.mailId || null,
-              confirmationUrl:
-                result?.confirmationUrl || result?.mailPayload?.metadata?.confirmationUrl || null,
-            });
-          } catch (error) {
-            confirmationError = error;
-            confirmationMailStatus = "error";
-            try {
-              await persistConfirmationStatus(docRef, {
-                queuedBy: MAIL_SOURCE,
-                mailStatus: "error",
-              });
-            } catch (persistError) {
-              console.warn("Não foi possível registrar o status da confirmação (legado)", persistError);
-            }
-          }
-        }
-
-        let message;
-        let variant;
-        if (isNew) {
-          if (confirmationQueued) {
-            message = "✅ Cadastro enviado! Verifique seu e-mail (suporte@nailnow.app) para confirmar o acesso ao portal profissional.";
-            variant = "success";
-          } else if (confirmationError) {
-            message = "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação.";
-            variant = "error";
-          } else if (confirmationMailStatus === "missing-email") {
-            message = "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app.";
-            variant = "info";
-          } else {
-            message = "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
-            variant = "info";
-          }
-        } else {
-          message = "✅ Dados profissionais atualizados!";
-          variant = "success";
+        } catch (error) {
+          console.warn("Falha ao redirecionar cadastro", error);
         }
 
         setFeedback(message, variant);

@@ -366,6 +366,281 @@ function buildClientProfileData({
   return profile;
 }
 
+function buildProfessionalProfileData({
+  uid,
+  nome,
+  cpf,
+  email,
+  senha,
+  telefone,
+  endereco,
+  enderecoFormatado,
+  placeId,
+  lat,
+  lng,
+  bio,
+  servicos,
+  aceiteTermos,
+  existingData = {},
+}) {
+  const timestamp = FieldValue.serverTimestamp();
+  const normalizedEmail = sanitizeEmail(email);
+  const normalizedPhone = sanitizeString(telefone);
+  const safeName = sanitizeString(nome);
+  const safeCpf = sanitizeString(cpf).replace(/[^0-9]/g, "");
+  const safeBio = sanitizeString(bio);
+  const safeAddress = sanitizeString(endereco);
+  const safeFormattedAddress = sanitizeString(enderecoFormatado);
+  const safePlaceId = sanitizeString(placeId);
+  const latitude = parseCoordinate(lat);
+  const longitude = parseCoordinate(lng);
+  const existingStatus = existingData.status || "";
+  const normalizedStatus = normalizeLower(existingStatus);
+  const status =
+    normalizedStatus &&
+    !["lead", "novo", "new", "pendente", "pending"].includes(normalizedStatus)
+      ? existingData.status
+      : "pendente";
+  const createdAt =
+    existingData.criadoEm || existingData.createdAt || FieldValue.serverTimestamp();
+  const existingEmails = Array.isArray(existingData.emails)
+    ? existingData.emails.map((value) => sanitizeEmail(value)).filter(Boolean)
+    : [];
+  const emailHistory = Array.isArray(existingData.emailsHistorico)
+    ? existingData.emailsHistorico.map((value) => sanitizeEmail(value)).filter(Boolean)
+    : [];
+  const allEmails = mergeUniqueStrings(existingEmails, normalizedEmail);
+  const historicEmails = mergeUniqueStrings(emailHistory, normalizedEmail);
+  const roles = mergeUniqueStrings(existingData.roles || [], "profissional");
+
+  if (!roles.length) {
+    roles.push("profissional");
+  }
+
+  const existingServices = Array.isArray(existingData.servicos)
+    ? existingData.servicos.map((value) => sanitizeString(value)).filter(Boolean)
+    : [];
+  const incomingServices = Array.isArray(servicos)
+    ? servicos
+    : typeof servicos === "string"
+    ? servicos.split(/[,;\n]+/)
+    : [];
+  const normalizedServices = incomingServices
+    .map((value) => sanitizeString(value))
+    .filter(Boolean);
+  const allServices = mergeUniqueStrings(existingServices, normalizedServices);
+
+  const confirmation = existingData.signupConfirmation || {};
+  const confirmationStatus = normalizeLower(confirmation.status || "");
+  const confirmationStatusCode = normalizeLower(confirmation.statusCode || "");
+  const pendingStatuses = new Set(["pendente", "pending", "aguardando", "awaiting"]);
+  const pendingCodes = new Set(["pending", "awaiting", "waiting"]);
+
+  const profile = {
+    uid,
+    role: "profissional",
+    roles,
+    tipo: existingData.tipo || "profissional",
+    tipoConta: existingData.tipoConta || "profissional",
+    categoria: existingData.categoria || "profissional",
+    nome: safeName,
+    displayName: safeName,
+    nomeCompleto: safeName,
+    name: safeName,
+    email: normalizedEmail,
+    emailPrincipal: normalizedEmail,
+    emailLowercase: normalizedEmail,
+    email_lowercase: normalizedEmail,
+    emails: allEmails,
+    senha,
+    senhaAtualizadaEm: timestamp,
+    telefone: normalizedPhone,
+    telefonePrincipal: normalizedPhone,
+    phone: normalizedPhone,
+    phoneNumber: normalizedPhone,
+    telefone_lowercase: normalizedPhone,
+    endereco: safeAddress,
+    endereco_text: safeAddress,
+    address: safeAddress,
+    address_text: safeAddress,
+    endereco_formatado: safeFormattedAddress,
+    enderecoFormatado: safeFormattedAddress,
+    formattedAddress: safeFormattedAddress,
+    place_id: safePlaceId,
+    placeId: safePlaceId,
+    lat: latitude ?? sanitizeString(lat),
+    lng: longitude ?? sanitizeString(lng),
+    bio: safeBio || existingData.bio || "",
+    descricao: safeBio || existingData.descricao || "",
+    sobre: safeBio || existingData.sobre || "",
+    aceiteTermos: Boolean(aceiteTermos ?? existingData.aceiteTermos),
+    termosAceitos: Boolean(aceiteTermos ?? existingData.termosAceitos),
+    aceitouTermos: Boolean(aceiteTermos ?? existingData.aceitouTermos),
+    termosAceitosEm: timestamp,
+    acceptedTerms: Boolean(aceiteTermos ?? existingData.acceptedTerms),
+    acceptedTermsAt: timestamp,
+    termos: {
+      ...(existingData.termos || {}),
+      aceito: Boolean(aceiteTermos ?? existingData.termos?.aceito),
+      aceitoEm: timestamp,
+    },
+    status,
+    criadoEm: createdAt,
+    createdAt,
+    atualizadoEm: timestamp,
+    updatedAt: timestamp,
+    signupSource: REGISTER_PROFESSIONAL_SOURCE,
+    signup: {
+      ...(existingData.signup || {}),
+      source: REGISTER_PROFESSIONAL_SOURCE,
+      capturedAt: timestamp,
+    },
+    signupMetadata: {
+      ...(existingData.signupMetadata || {}),
+      source: REGISTER_PROFESSIONAL_SOURCE,
+      capturedAt: timestamp,
+    },
+    lastSignupSource: REGISTER_PROFESSIONAL_SOURCE,
+    profileType: "profissional",
+    accountType: "profissional",
+    portal: {
+      ...(existingData.portal || {}),
+      role: "profissional",
+      loginPath: ROLE_LOGIN_PATH.profissional,
+      portalPath: ROLE_PORTAL_PATH.profissional,
+      updatedAt: timestamp,
+    },
+    contato: {
+      ...(existingData.contato || {}),
+      email: normalizedEmail || existingData.contato?.email || null,
+      emailPrincipal:
+        normalizedEmail || existingData.contato?.emailPrincipal || null,
+      emailLowercase:
+        normalizedEmail || existingData.contato?.emailLowercase || null,
+      telefone: normalizedPhone || existingData.contato?.telefone || null,
+      telefonePrincipal:
+        normalizedPhone || existingData.contato?.telefonePrincipal || null,
+      atualizadoEm: timestamp,
+    },
+    contact: {
+      ...(existingData.contact || {}),
+      email: normalizedEmail || existingData.contact?.email || null,
+      emailPrincipal:
+        normalizedEmail || existingData.contact?.emailPrincipal || null,
+      emailLowercase:
+        normalizedEmail || existingData.contact?.emailLowercase || null,
+      phone: normalizedPhone || existingData.contact?.phone || null,
+      phoneNumber:
+        normalizedPhone || existingData.contact?.phoneNumber || null,
+      updatedAt: timestamp,
+    },
+    account: {
+      ...(existingData.account || {}),
+      email: normalizedEmail || existingData.account?.email || null,
+      emailLowercase:
+        normalizedEmail || existingData.account?.emailLowercase || null,
+      phone: normalizedPhone || existingData.account?.phone || null,
+      role: "profissional",
+      updatedAt: timestamp,
+    },
+    dadosContato: {
+      ...(existingData.dadosContato || {}),
+      email: normalizedEmail || existingData.dadosContato?.email || null,
+      telefone: normalizedPhone || existingData.dadosContato?.telefone || null,
+      atualizadoEm: timestamp,
+    },
+    dados: {
+      ...(existingData.dados || {}),
+      nome: safeName || existingData.dados?.nome || null,
+      email: normalizedEmail || existingData.dados?.email || null,
+      telefone: normalizedPhone || existingData.dados?.telefone || null,
+      endereco: safeAddress || existingData.dados?.endereco || null,
+      atualizadoEm: timestamp,
+    },
+    profile: {
+      ...(existingData.profile || {}),
+      nome: safeName || existingData.profile?.nome || null,
+      name: safeName || existingData.profile?.name || null,
+      displayName: safeName || existingData.profile?.displayName || null,
+      email: normalizedEmail || existingData.profile?.email || null,
+      telefone: normalizedPhone || existingData.profile?.telefone || null,
+      phone: normalizedPhone || existingData.profile?.phone || null,
+      endereco: safeAddress || existingData.profile?.endereco || null,
+      address: safeAddress || existingData.profile?.address || null,
+      bio: safeBio || existingData.profile?.bio || null,
+      sobre: safeBio || existingData.profile?.sobre || null,
+      servicos: allServices.length
+        ? allServices
+        : existingData.profile?.servicos || existingData.profile?.services || [],
+      services: allServices.length
+        ? allServices
+        : existingData.profile?.services || existingData.profile?.servicos || [],
+      role: "profissional",
+      tipo: "profissional",
+      status,
+      atualizadoEm: timestamp,
+    },
+    emailsHistorico: historicEmails,
+    signupConfirmation: {
+      ...confirmation,
+      status:
+        confirmationStatus && !pendingStatuses.has(confirmationStatus)
+          ? confirmation.status
+          : "pendente",
+      statusCode:
+        confirmationStatusCode && !pendingCodes.has(confirmationStatusCode)
+          ? confirmation.statusCode
+          : "pending",
+      role: confirmation.role || "profissional",
+      autoQueueOptOut:
+        confirmation.autoQueueOptOut === false ? false : true,
+      preparedBy: confirmation.preparedBy || REGISTER_PROFESSIONAL_SOURCE,
+      preparedAt: confirmation.preparedAt || timestamp,
+    },
+  };
+
+  if (safeCpf) {
+    profile.cpf = safeCpf;
+    profile.documento = safeCpf;
+    profile.documentId = safeCpf;
+    profile.documentNumber = safeCpf;
+    profile.taxId = safeCpf;
+    profile.cpfLimpo = safeCpf;
+  }
+
+  if (latitude !== null || longitude !== null) {
+    const location = {
+      lat: latitude ?? null,
+      lng: longitude ?? null,
+    };
+    profile.location = { ...(existingData.location || {}), ...location };
+    profile.localizacao = {
+      ...(existingData.localizacao || {}),
+      ...location,
+    };
+  }
+
+  if (latitude !== null && longitude !== null) {
+    const geoPoint = new admin.firestore.GeoPoint(latitude, longitude);
+    profile.geo = geoPoint;
+    profile.geoPoint = geoPoint;
+    profile.coordenadas = geoPoint;
+  }
+
+  if (allServices.length) {
+    profile.servicos = allServices;
+    profile.services = allServices;
+    profile.servicosOferecidos = allServices;
+    profile.servicesOffered = allServices;
+  }
+
+  if (!profile.emails.length && normalizedEmail) {
+    profile.emails = [normalizedEmail];
+  }
+
+  return profile;
+}
+
 function extractEmailFromData(data) {
   if (!data || typeof data !== "object") {
     return "";
@@ -1827,6 +2102,7 @@ exports.verifySignupConfirmation = functions
   });
 
 const REGISTER_CLIENT_SOURCE = "registerClientAccount";
+const REGISTER_PROFESSIONAL_SOURCE = "registerProfessionalAccount";
 
 exports.registerClientAccount = functions
   .region("southamerica-east1")
@@ -2068,6 +2344,241 @@ exports.registerClientAccount = functions
         });
       } catch (error) {
         functions.logger.error("Falha ao registrar cliente", {
+          email,
+          error: error?.message,
+        });
+        res.status(500).json({ error: "internal-error" });
+      }
+    });
+  });
+
+exports.registerProfessionalAccount = functions
+  .region("southamerica-east1")
+  .https.onRequest((req, res) => {
+    corsHandler(req, res, async () => {
+      applyCors(req, res);
+
+      if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+      }
+
+      if (req.method !== "POST") {
+        res.status(405).json({ error: "method-not-allowed" });
+        return;
+      }
+
+      const payload = readHttpPayload(req) || {};
+
+      const nome = sanitizeString(
+        payload.nome || payload.nomeCompleto || payload.name,
+      );
+      const cpf = sanitizeString(
+        payload.cpf || payload.documento || payload.documentId || "",
+      );
+      const email = sanitizeEmail(payload.email);
+      const senha = sanitizeString(payload.senha || payload.password);
+      const telefone = sanitizeString(
+        payload.telefone || payload.phone || payload.whatsapp,
+      );
+      const endereco = sanitizeString(
+        payload.endereco || payload.endereco_text || payload.address,
+      );
+      const enderecoFormatado = sanitizeString(
+        payload.endereco_formatado || payload.enderecoFormatado || "",
+      );
+      const placeId = sanitizeString(payload.place_id || payload.placeId || "");
+      const lat = sanitizeString(payload.lat || "");
+      const lng = sanitizeString(payload.lng || "");
+      const bio = sanitizeString(payload.bio || payload.descricao || payload.sobre || "");
+      const servicosRaw = Array.isArray(payload.servicos)
+        ? payload.servicos
+        : typeof payload.servicos === "string"
+        ? payload.servicos.split(/[,;\n]+/)
+        : [];
+      const servicos = servicosRaw
+        .map((value) => sanitizeString(value))
+        .filter(Boolean);
+      const aceiteTermos = Boolean(
+        payload.aceiteTermos ?? payload.aceitouTermos ?? payload.termos,
+      );
+
+      if (!nome || !cpf || !email || !senha || senha.length < 6 || !endereco) {
+        res.status(400).json({ error: "invalid-payload" });
+        return;
+      }
+
+      try {
+        const existingQuery = await firestore
+          .collection("profissionais")
+          .where("email", "==", email)
+          .limit(1)
+          .get();
+
+        if (!existingQuery.empty) {
+          const existingDoc = existingQuery.docs[0];
+          const existingData = existingDoc.data() || {};
+          res.status(409).json({
+            error: "email-already-in-use",
+            status: existingData.status || "pendente",
+          });
+          return;
+        }
+
+        let userRecord;
+        let isNewUser = false;
+
+        try {
+          userRecord = await admin.auth().getUserByEmail(email);
+        } catch (error) {
+          if (error?.code === "auth/user-not-found") {
+            userRecord = await admin.auth().createUser({
+              email,
+              password: senha,
+              displayName: nome,
+              emailVerified: false,
+              disabled: false,
+            });
+            isNewUser = true;
+          } else {
+            throw error;
+          }
+        }
+
+        if (!isNewUser) {
+          await admin.auth().updateUser(userRecord.uid, {
+            password: senha,
+            displayName: nome,
+            emailVerified: false,
+            disabled: false,
+          });
+        }
+
+        const docRef = firestore.collection("profissionais").doc(userRecord.uid);
+        const existingSnapshot = await docRef.get();
+        const existingData = existingSnapshot.exists ? existingSnapshot.data() || {} : {};
+        const baseData = buildProfessionalProfileData({
+          uid: userRecord.uid,
+          nome,
+          cpf,
+          email,
+          senha,
+          telefone,
+          endereco,
+          enderecoFormatado,
+          placeId,
+          lat,
+          lng,
+          bio,
+          servicos,
+          aceiteTermos,
+          existingData,
+        });
+
+        await docRef.set(baseData, { merge: true });
+
+        let confirmationResult = null;
+
+        try {
+          confirmationResult = await queueConfirmationByRef(
+            docRef,
+            "profissional",
+            `registerProfessionalAccount:${docRef.path}`,
+            REGISTER_PROFESSIONAL_SOURCE,
+            { queueMail: true, force: false },
+          );
+        } catch (queueError) {
+          functions.logger.error("Falha ao enfileirar confirmação do profissional", {
+            profilePath: docRef.path,
+            error: queueError?.message,
+            attempt: "initial",
+          });
+
+          try {
+            confirmationResult = await queueConfirmationByRef(
+              docRef,
+              "profissional",
+              `registerProfessionalAccount:${docRef.path}`,
+              REGISTER_PROFESSIONAL_SOURCE,
+              { queueMail: true, force: true },
+            );
+
+            functions.logger.warn("Confirmação de profissional reenfileirada após falha inicial", {
+              profilePath: docRef.path,
+              mailStatus: confirmationResult?.mailStatus || null,
+            });
+          } catch (forcedError) {
+            functions.logger.error(
+              "Falha ao reenfileirar confirmação do profissional (forçado)",
+              {
+                profilePath: docRef.path,
+                error: forcedError?.message,
+              },
+            );
+
+            try {
+              await scheduleConfirmationRetry(
+                docRef,
+                REGISTER_PROFESSIONAL_SOURCE,
+                forcedError,
+              );
+            } catch (retryError) {
+              functions.logger.error(
+                "Falha ao preparar retentativa automática da confirmação do profissional",
+                {
+                  profilePath: docRef.path,
+                  error: retryError?.message,
+                },
+              );
+            }
+
+            confirmationResult = {
+              status: "requires-client-enqueue",
+              mailStatus: "requires-client-enqueue",
+              confirmationUrl: null,
+              mailId: null,
+              mailPayload: null,
+            };
+          }
+        }
+
+        const confirmationPayload = confirmationResult
+          ? {
+              status: confirmationResult.status,
+              mailStatus: confirmationResult.mailStatus,
+              confirmationUrl: confirmationResult.confirmationUrl,
+              mailId: confirmationResult.mailId || null,
+              mailPayload: confirmationResult.mailPayload || null,
+              profilePath: confirmationResult.profilePath || docRef.path,
+            }
+          : {
+              status: "error",
+              mailStatus: "error",
+              confirmationUrl: null,
+              mailId: null,
+              mailPayload: null,
+              profilePath: docRef.path,
+            };
+
+        const normalizedMailStatus = (confirmationPayload.mailStatus || "")
+          .toString()
+          .toLowerCase();
+        const confirmationQueued = normalizedMailStatus
+          ? MAIL_SUCCESS_STATUSES.has(normalizedMailStatus)
+          : false;
+
+        res.status(200).json({
+          ok: true,
+          status: "pending",
+          profilePath: docRef.path,
+          id: userRecord.uid,
+          uid: userRecord.uid,
+          confirmation: confirmationPayload,
+          emailSent: confirmationQueued,
+          emailStatus: normalizedMailStatus || null,
+        });
+      } catch (error) {
+        functions.logger.error("Falha ao registrar profissional", {
           email,
           error: error?.message,
         });
