@@ -2,6 +2,8 @@
 
 Este pacote contém Cloud Functions que gerenciam o estado de confirmação de contas e preparam as mensagens que serão disparadas pela extensão **Trigger Email from Firestore**.
 
+> 📘 **Primeira configuração**: antes de publicar as funções, siga o passo a passo em [`docs/firebase-integration.md`](../../docs/firebase-integration.md) para ativar os métodos de login, criar o banco Firestore em modo de produção e conectar o projeto ao GitHub.
+
 ## Como funciona
 
 - Monitora criações **e atualizações** nas coleções `clientes`, `clients`, `profissionais`, `professionals` e `manicures` para garantir que todo perfil comece como `pendente` e receba um `signupConfirmation.token` único.
