@@ -66,6 +66,139 @@
           if (!rawRole) {
             return "cliente";
           }
+        ],
+        "areaServed": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": "https://www.nailnow.app/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Cadastro de Manicure",
+            "item": "https://www.nailnow.app/cadastro.html"
+          }
+        ]
+      }
+    </script>
+
+  <!-- Firebase + integração do formulário -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      updateDoc,
+      serverTimestamp,
+      collection,
+      addDoc,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+      authDomain: "nailnow-7546c.firebaseapp.com",
+      projectId: "nailnow-7546c",
+      storageBucket: "nailnow-7546c.firebasestorage.app",
+      messagingSenderId: "413820353687",
+      appId: "1:413820353687:web:67845225aac5378e49fdd2",
+      measurementId: "G-7DQ0TV03VF",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const SUPPORT_EMAIL = "NailNow <suporte@nailnow.app>";
+    const storage = getStorage(app);
+    const CONFIRMATION_ENDPOINT =
+      "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/requestSignupConfirmation";
+    const MAIL_COLLECTION = "mail";
+    const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
+    const MAIL_SOURCE = "legacy-professional-signup";
+
+    const FORM_ID = "cadastroForm";
+    const SUBMIT_ID = "signup-submit";
+
+    const FEEDBACK_COLORS = {
+      info: "#4527a0",
+      error: "#c62828",
+      success: "#2e7d32",
+    };
+
+    function setFeedback(message, variant = "info") {
+      const feedback = document.getElementById("form-feedback");
+      if (!feedback) return;
+      if (!message) {
+        feedback.textContent = "";
+        feedback.style.removeProperty("color");
+        feedback.removeAttribute("data-variant");
+        return;
+      }
+      feedback.textContent = message;
+      feedback.dataset.variant = variant;
+      feedback.style.color = FEEDBACK_COLORS[variant] ?? FEEDBACK_COLORS.info;
+      feedback.focus?.({ preventScroll: false });
+    }
+
+    function setSubmittingState(isSubmitting) {
+      const button = document.getElementById(SUBMIT_ID);
+      if (!button) return;
+      button.disabled = isSubmitting;
+      if (isSubmitting) {
+        button.setAttribute("aria-busy", "true");
+        button.textContent = "Enviando…";
+      } else {
+        button.removeAttribute("aria-busy");
+        button.textContent = "Cadastrar profissional";
+      }
+    }
+
+    async function ensureAuthAccount(email, senha) {
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, senha);
+        return { user: cred.user, isNew: true };
+      } catch (error) {
+        if (error.code === "auth/email-already-in-use") {
+          const cred = await signInWithEmailAndPassword(auth, email, senha);
+          return { user: cred.user, isNew: false };
+        }
+        throw error;
+      }
+    }
+
+    async function safeSignOut() {
+      try {
+        if (auth.currentUser) {
+          await signOut(auth);
+        }
+      } catch (error) {
+        console.warn("Não foi possível encerrar a sessão após o cadastro", error);
+      }
+    }
+
+    async function requestConfirmation(profilePath) {
+      if (!profilePath) {
+        throw new Error("missing-profile-path");
+      }
 
           if (["profissional", "professional", "manicure", "manicures"].includes(rawRole)) {
             return "profissional";
@@ -95,26 +228,183 @@
         } catch (error) {
           console.warn("Falha ao redirecionar cadastro", error);
         }
-      })();
-    </script>
-  </head>
-  <body>
-    <main>
-      <h1>Redirecionando seu cadastro…</h1>
-      <p>
-        Em instantes você será encaminhada para a página correta.<br />
-        Se nada acontecer, escolha uma das opções abaixo:
-      </p>
-      <p>
-        <a href="/cliente/cadastro.html">Cadastro para clientes</a><br />
-        <a href="/profissional/cadastro.html">Cadastro para profissionais</a>
-      </p>
-    </main>
-    <noscript>
-      <p style="margin-top: 1.5rem; font-size: 0.95rem">
-        Ative o JavaScript ou acesse diretamente
-        <a href="/cliente/cadastro.html">/cliente/cadastro.html</a>.
-      </p>
-    </noscript>
-  </body>
+
+        setFeedback(message, variant);
+        form.reset();
+      } catch (error) {
+        console.error("Cadastro falhou:", error);
+        const code = error?.code || "erro-desconhecido";
+        const friendly =
+          code === "auth/wrong-password"
+            ? "❌ Erro: A senha informada não confere com a conta existente."
+            : code === "auth/invalid-login-credentials"
+              ? "❌ Erro: Não foi possível confirmar seus dados de acesso."
+              : error?.message
+                ? `❌ Erro: ${error.message.replace(/^Firebase: /, "")}`
+                : `❌ Erro: ${code}`;
+        setFeedback(friendly, "error");
+      } finally {
+        await safeSignOut();
+        setSubmittingState(false);
+        isProcessing = false;
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById(FORM_ID);
+      const submitButton = document.getElementById(SUBMIT_ID);
+      if (!form || !submitButton) {
+        console.warn("Form #cadastroForm ou botão de envio não encontrado");
+        return;
+      }
+
+      form.setAttribute("novalidate", "novalidate");
+      form.setAttribute("action", "javascript:void(0);");
+      submitButton.type = "submit";
+      const feedback = document.createElement("p");
+      feedback.id = "form-feedback";
+      feedback.className = "hint";
+      feedback.setAttribute("role", "status");
+      feedback.setAttribute("tabindex", "-1");
+      submitButton.insertAdjacentElement("afterend", feedback);
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        handleSubmit(event);
+      });
+    });
+  </script>
+
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #fff; color: #333; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff0f6; border-radius: 20px; padding: 30px;
+                 box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h1 { text-align: center; color: #e91e63; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-top: 5px; }
+    button { background-color: #e91e63; color: white; border: none; padding: 12px 20px; border-radius: 10px;
+             cursor: pointer; font-size: 16px; margin-top: 15px; width: 100%; }
+    button:hover { background-color: #d81b60; }
+    .password-input-wrapper { position: relative; display: flex; align-items: center; }
+    .password-input-wrapper input { flex: 1; padding-right: 3rem; }
+    .password-toggle { position: absolute; right: 1rem; display: inline-flex; align-items: center; gap: 0.25rem; border: none; background: transparent; color: #777; cursor: pointer; font-size: 0.85rem; }
+    .password-toggle svg { width: 1.2rem; height: 1.2rem; fill: currentColor; }
+    .password-toggle:focus-visible { outline: 2px solid #e91e63; outline-offset: 2px; }
+    .password-toggle--visible { color: #e91e63; }
+    .servicos { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .hint { font-size: 12px; color: #777; margin-top: 4px; }
+  </style>
+    <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
+</head>
+<body>
+  <div class="container">
+    <h1>Cadastro de Profissional 💅</h1>
+
+    <form id="cadastroForm" method="post" action="javascript:void(0);" novalidate>
+      <label for="nome">Nome completo *</label>
+      <input id="nome" type="text" required />
+
+      <label for="email">E-mail *</label>
+      <input id="email" type="email" required />
+
+      <label for="senha">Senha *</label>
+      <div class="password-input-wrapper">
+        <input id="senha" type="password" required />
+        <button
+          type="button"
+          class="password-toggle"
+          data-password-target="senha"
+          aria-pressed="false"
+          aria-label="Mostrar senha"
+          title="Mostrar senha"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 5c-4.13 0-7.5 2.86-9.42 7 1.92 4.14 5.29 7 9.42 7s7.5-2.86 9.42-7C19.5 7.86 16.13 5 12 5Zm0 11c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <label for="confirmarSenha">Confirmar senha *</label>
+      <div class="password-input-wrapper">
+        <input id="confirmarSenha" type="password" required />
+        <button
+          type="button"
+          class="password-toggle"
+          data-password-target="confirmarSenha"
+          aria-pressed="false"
+          aria-label="Mostrar senha"
+          title="Mostrar senha"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 5c-4.13 0-7.5 2.86-9.42 7 1.92 4.14 5.29 7 9.42 7s7.5-2.86 9.42-7C19.5 7.86 16.13 5 12 5Zm0 11c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <label for="telefone">Telefone / WhatsApp</label>
+      <input id="telefone" type="text" />
+
+      <label>Serviços oferecidos:</label>
+      <div class="servicos">
+        <label><input type="checkbox" name="servicos" value="Manicure clássica" /> Manicure clássica</label>
+        <label><input type="checkbox" name="servicos" value="Pedicure" /> Pedicure</label>
+        <label><input type="checkbox" name="servicos" value="Alongamento em gel" /> Alongamento em gel</label>
+        <label><input type="checkbox" name="servicos" value="Esmaltação em gel" /> Esmaltação em gel</label>
+        <label><input type="checkbox" name="servicos" value="Spa das mãos" /> Spa das mãos</label>
+        <label><input type="checkbox" name="servicos" value="Spa dos pés" /> Spa dos pés</label>
+        <label><input type="checkbox" name="servicos" value="Nail art" /> Nail art</label>
+      </div>
+
+      <label for="bio">Sobre você</label>
+      <textarea id="bio" rows="3" placeholder="Ex: 5 anos de experiência, especializada em gel..."></textarea>
+
+      <label for="foto">Foto de perfil</label>
+      <input id="foto" type="file" accept="image/*" />
+      <div class="hint">Use uma imagem pequena (até 5 MB).
+      </div>
+
+      <button id="signup-submit" type="submit">Cadastrar profissional</button>
+    </form>
+  </div>
+  <script src="assets/js/password-toggle.js"></script>
+<script>
+document.getElementById('cadastroForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const nome  = document.getElementById('nome').value.trim();
+  const email = document.getElementById('email').value.trim();
+
+  const FN_URL = 'https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount';
+
+  console.log(">>> ENVIANDO PARA CLOUD FUNCTION >>>", { nome, email });
+
+  try {
+    const response = await fetch(FN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: nome,
+        email: email
+      })
+    });
+
+    const result = await response.text();
+    console.log(">>> RESPOSTA DA CLOUD FUNCTION >>>", response.status, result);
+
+    if (response.ok) {
+      alert("Cadastro enviado com sucesso!");
+    } else {
+      alert("Falha no envio: " + result);
+    }
+  } catch (err) {
+    console.error(">>> ERRO AO ENVIAR >>>", err);
+    alert("Erro de rede ao enviar");
+  }
+});
+</script>
+</body>
 </html>
