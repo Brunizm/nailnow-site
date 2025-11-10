@@ -93,10 +93,16 @@
 
     <script type="module">
       const FORM_ID = "cadastroClienteForm";
-      const REGISTER_ENDPOINT =
-        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount";
-      const CONFIRMATION_ENDPOINT =
-        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/requestSignupConfirmation";
+      const REGISTER_ENDPOINTS = [
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount",
+        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount",
+        "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/registerClientAccount",
+      ];
+      const CONFIRMATION_ENDPOINTS = [
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation",
+        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/requestSignupConfirmation",
+        "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/requestSignupConfirmation",
+      ];
 
       const FEEDBACK_COLORS = {
         info: "#4527a0",
@@ -126,27 +132,65 @@
         element.removeAttribute("style");
       }
 
+      async function postJsonWithFallback(endpoints, payload) {
+        const attempts = [];
+
+        for (const endpoint of endpoints) {
+          try {
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok) {
+              return { endpoint, response, data, ok: true };
+            }
+
+            attempts.push({
+              endpoint,
+              status: response.status,
+              error: data?.error || `http-${response.status}`,
+              data,
+            });
+
+            if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+              return { endpoint, response, data, ok: false, attempts };
+            }
+          } catch (error) {
+            attempts.push({
+              endpoint,
+              status: null,
+              error: error?.message || "network-error",
+              data: null,
+            });
+          }
+        }
+
+        const aggregateError = new Error("all-endpoints-failed");
+        aggregateError.attempts = attempts;
+        throw aggregateError;
+      }
+
       async function requestConfirmation(profilePath) {
         if (!profilePath) {
           throw new Error("missing-profile-path");
         }
 
-        const response = await fetch(CONFIRMATION_ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profile: profilePath }),
+        const result = await postJsonWithFallback(CONFIRMATION_ENDPOINTS, {
+          profile: profilePath,
         });
 
-        const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          const errorCode = payload?.error || `http-${response.status}`;
-          const httpError = new Error(errorCode);
-          httpError.code = errorCode;
-          throw httpError;
+        if (!result?.ok) {
+          const errorCode = result?.data?.error || "confirmation-error";
+          const error = new Error(errorCode);
+          error.code = errorCode;
+          throw error;
         }
 
-        return payload;
+        return result.data;
       }
 
       async function cadastrarCliente(event) {
@@ -215,16 +259,14 @@
             aceiteTermos,
           };
 
-          const response = await fetch(REGISTER_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
+          let registerResult;
 
-          const result = await response.json().catch(() => ({}));
-
-          if (!response.ok) {
-            const errorCode = result?.error || `http-${response.status}`;
+          try {
+            registerResult = await postJsonWithFallback(REGISTER_ENDPOINTS, payload);
+          } catch (error) {
+            const attempts = Array.isArray(error?.attempts) ? error.attempts : [];
+            const lastAttempt = attempts[attempts.length - 1] || {};
+            const errorCode = lastAttempt.error || "network-error";
             const mensagens = {
               "invalid-payload": "❌ Verifique os dados informados e tente novamente.",
             };
@@ -232,7 +274,7 @@
             let friendly = mensagens[errorCode] || null;
 
             if (errorCode === "email-already-in-use") {
-              const existingStatus = (result?.status || "").toLowerCase();
+              const existingStatus = (lastAttempt?.data?.status || "").toLowerCase();
               friendly =
                 existingStatus === "pendente"
                   ? "⚠️ Já encontramos um cadastro pendente para este e-mail. Verifique seu e-mail de confirmação ou solicite um novo envio ao suporte."
@@ -242,10 +284,38 @@
             if (!friendly) {
               friendly = "❌ Não foi possível concluir o cadastro agora.";
             }
+            setFeedbackMessage(feedback, friendly, "error");
+            return;
+          }
+
+          if (!registerResult?.ok) {
+            const resultData = registerResult?.data || {};
+            const errorCode = resultData.error || "internal-error";
+            const mensagens = {
+              "invalid-payload": "❌ Verifique os dados informados e tente novamente.",
+              "email-already-in-use":
+                "❌ Este e-mail já está cadastrado. Use outra conta ou acesse o portal para continuar.",
+            };
+
+            let friendly = mensagens[errorCode] || null;
+
+            if (errorCode === "email-already-in-use") {
+              const existingStatus = (resultData.status || "").toLowerCase();
+              friendly =
+                existingStatus === "pendente"
+                  ? "⚠️ Já encontramos um cadastro pendente para este e-mail. Verifique seu e-mail de confirmação ou solicite um novo envio ao suporte."
+                  : mensagens[errorCode];
+            }
+
+            if (!friendly) {
+              friendly = "❌ Não foi possível concluir o cadastro agora.";
+            }
 
             setFeedbackMessage(feedback, friendly, "error");
             return;
           }
+
+          const result = registerResult.data || {};
 
           const confirmation = result.confirmation || {};
           const legacyProfileId = typeof result.id === "string" ? result.id.trim() : "";
@@ -545,10 +615,16 @@
     </form>
 
     <script>
-      const CLIENT_QUICK_URL =
-        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerQuickLead";
-      const CLIENT_FALLBACK_URL =
-        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount";
+      const CLIENT_QUICK_ENDPOINTS = [
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerQuickLead",
+        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerQuickLead",
+        "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/registerQuickLead",
+      ];
+      const CLIENT_FULL_REGISTRATION_ENDPOINTS = [
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount",
+        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount",
+        "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/registerClientAccount",
+      ];
       const QUICK_CLIENT_ORIGIN = "cliente-landing-quick-form";
 
       async function submitQuickLead(endpoints, payload) {
@@ -566,6 +642,9 @@
 
             if (!response.ok) {
               errors.push({ endpoint, error: data?.error || `http-${response.status}` });
+              if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+                break;
+              }
               continue;
             }
 
@@ -617,7 +696,7 @@
             pageUrl: window.location.href,
           };
 
-          const endpoints = [CLIENT_QUICK_URL, CLIENT_FALLBACK_URL];
+          const endpoints = [...CLIENT_QUICK_ENDPOINTS, ...CLIENT_FULL_REGISTRATION_ENDPOINTS];
 
           try {
             const result = await submitQuickLead(endpoints, payload);
