@@ -208,8 +208,8 @@
         projectId: "nailnow-7546c",
         storageBucket: "nailnow-7546c.firebasestorage.app",
         messagingSenderId: "413820353687",
-        appId: "1:413820353687:web:67845225aac5378e49fdd2",
-        measurementId: "G-7DQ0TV03VF",
+        appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+        measurementId: "G-2YEGPEG0E1",
       };
 
       const firebaseApp = initializeApp(firebaseConfig);
@@ -222,7 +222,11 @@
       const profile = params.get("profile") || "";
       const token = params.get("token") || "";
       const APP_URL = "https://www.nailnow.app";
-      const FUNCTION_URL = "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/verifySignupConfirmation";
+      const FUNCTION_ENDPOINTS = [
+        "https://southamerica-east1-nailnow-site.cloudfunctions.net/verifySignupConfirmation",
+        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/verifySignupConfirmation",
+        "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/verifySignupConfirmation",
+      ];
 
       const ERROR_MESSAGES = {
         "missing-parameters": "O link de confirmação está incompleto. Solicite um novo e-mail de confirmação.",
@@ -309,6 +313,48 @@
         }
       };
 
+      const callFunctionWithFallback = async (endpoints, payload) => {
+        const attempts = [];
+
+        for (const endpoint of endpoints) {
+          try {
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok) {
+              return { endpoint, response, data };
+            }
+
+            attempts.push({
+              endpoint,
+              status: response.status,
+              error: data?.error || `http-${response.status}`,
+              data,
+            });
+
+            if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+              return { endpoint, response, data };
+            }
+          } catch (error) {
+            attempts.push({
+              endpoint,
+              status: null,
+              error: error?.message || "network-error",
+              data: null,
+            });
+          }
+        }
+
+        const aggregateError = new Error("all-endpoints-failed");
+        aggregateError.attempts = attempts;
+        throw aggregateError;
+      };
+
       const confirmSignup = async () => {
         if (!profile || !token) {
           setStatus("error", "Link de confirmação inválido. Solicite um novo e-mail ou fale com o suporte NailNow.");
@@ -320,15 +366,15 @@
         detailsEl.textContent = "Estamos validando o token enviado pelo seu e-mail.";
 
         try {
-          const response = await fetch(FUNCTION_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ profile, token }),
+          const functionResult = await callFunctionWithFallback(FUNCTION_ENDPOINTS, {
+            profile,
+            token,
           });
 
-          const payload = await response.json().catch(() => ({}));
+          const payload = functionResult?.data || {};
+          const success = functionResult?.response?.ok || payload?.ok;
 
-          if (response.ok) {
+          if (success) {
             const loginUrl =
               payload.loginUrl ||
               (payload.role === "profissional"

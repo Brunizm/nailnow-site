@@ -120,8 +120,8 @@
       projectId: "nailnow-7546c",
       storageBucket: "nailnow-7546c.firebasestorage.app",
       messagingSenderId: "413820353687",
-      appId: "1:413820353687:web:67845225aac5378e49fdd2",
-      measurementId: "G-7DQ0TV03VF",
+      appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+      measurementId: "G-2YEGPEG0E1",
     };
 
     const app = initializeApp(firebaseConfig);
@@ -372,37 +372,63 @@
   </div>
   <script src="assets/js/password-toggle.js"></script>
 <script>
+const FN_ENDPOINTS = [
+  'https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount',
+  'https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount',
+  'https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/registerClientAccount',
+];
+
+async function submitWithFallback(endpoints, payload) {
+  const attempts = [];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await response.text();
+
+      if (response.ok) {
+        return { endpoint, response, text };
+      }
+
+      attempts.push({ endpoint, status: response.status, body: text });
+
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        break;
+      }
+    } catch (error) {
+      attempts.push({ endpoint, error: error?.message || 'network-error' });
+    }
+  }
+
+  const error = new Error('all-endpoints-failed');
+  error.attempts = attempts;
+  throw error;
+}
+
 document.getElementById('cadastroForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const nome  = document.getElementById('nome').value.trim();
   const email = document.getElementById('email').value.trim();
 
-  const FN_URL = 'https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount';
-
-  console.log(">>> ENVIANDO PARA CLOUD FUNCTION >>>", { nome, email });
+  console.log('>>> ENVIANDO PARA CLOUD FUNCTION >>>', { nome, email });
 
   try {
-    const response = await fetch(FN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: nome,
-        email: email
-      })
-    });
-
-    const result = await response.text();
-    console.log(">>> RESPOSTA DA CLOUD FUNCTION >>>", response.status, result);
-
-    if (response.ok) {
-      alert("Cadastro enviado com sucesso!");
-    } else {
-      alert("Falha no envio: " + result);
-    }
+    const result = await submitWithFallback(FN_ENDPOINTS, { name: nome, email });
+    console.log('>>> RESPOSTA DA CLOUD FUNCTION >>>', result.response.status, result.text);
+    alert('Cadastro enviado com sucesso!');
   } catch (err) {
-    console.error(">>> ERRO AO ENVIAR >>>", err);
-    alert("Erro de rede ao enviar");
+    console.error('>>> ERRO AO ENVIAR >>>', err);
+    const lastAttempt = Array.isArray(err?.attempts) && err.attempts.length
+      ? err.attempts[err.attempts.length - 1]
+      : null;
+    const message = lastAttempt?.body || lastAttempt?.error || 'Erro de rede ao enviar';
+    alert(`Falha no envio: ${message}`);
   }
 });
 </script>
