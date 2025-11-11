@@ -216,7 +216,7 @@
           const lat = sanitize(form.lat.value);
           const lng = sanitize(form.lng.value);
 
-          if (!nome || !email || !senha || !confirmarSenha || !endereco) {
+          if (!nome || !email || !telefone || !senha || !confirmarSenha || !endereco) {
             setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
             return;
           }
@@ -496,8 +496,16 @@
               </div>
 
               <div class="signup-field">
-                <label for="telefone">Telefone / WhatsApp</label>
-                <input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-0000" />
+                <label for="telefone">Telefone / WhatsApp *</label>
+                <input
+                  id="telefone"
+                  name="telefone"
+                  type="tel"
+                  required
+                  autocomplete="tel"
+                  inputmode="tel"
+                  placeholder="(11) 99999-0000"
+                />
               </div>
 
               <div class="signup-field">
