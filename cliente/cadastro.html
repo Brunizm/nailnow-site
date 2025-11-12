@@ -433,131 +433,86 @@
 
     <script src="/assets/js/password-toggle.js"></script>
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import {
-        getFirestore,
-        collection,
-        addDoc,
-        serverTimestamp,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
-        authDomain: "nailnow-7546c.firebaseapp.com",
-        projectId: "nailnow-7546c",
-        storageBucket: "nailnow-7546c.firebasestorage.app",
-        messagingSenderId: "413820353687",
-        appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
-        measurementId: "G-2YEGPEG0E1",
-      };
+  const firebaseConfig = {
+    apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+    authDomain: "nailnow-7546c.firebaseapp.com",
+    projectId: "nailnow-7546c",
+    storageBucket: "nailnow-7546c.firebasestorage.app",
+    messagingSenderId: "413820353687",
+    appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+    measurementId: "G-2YEGPEG0E1"
+  };
 
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-      const form = document.getElementById("formCliente");
-      const btn = document.getElementById("btnSubmit");
-      const msg = document.createElement("p");
-      msg.style.marginTop = "10px";
-      msg.className = "signup-feedback";
-      msg.setAttribute("role", "status");
-      msg.setAttribute("aria-live", "polite");
-      form?.appendChild(msg);
+  const form = document.getElementById("formCliente");
+  const btn  = document.getElementById("btnSubmit");
+  let msg = document.getElementById("formMsg");
+  if (!msg) {
+    msg = document.createElement("p");
+    msg.id = "formMsg";
+    msg.style.marginTop = "10px";
+    form.appendChild(msg);
+  }
 
-      const withTimeout = (promise, ms = 12000) =>
-        Promise.race([
-          promise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
-        ]);
+  function setStatus(text, color="#555") {
+    msg.style.color = color;
+    msg.textContent = text;
+  }
 
-      const handleSubmit = async (e) => {
-        e.preventDefault();
-        e.stopImmediatePropagation();
+  // Garante um único listener
+  form.replaceWith(form.cloneNode(true));
+  const formFixed = document.getElementById("formCliente");
 
-        const rearm = () => form?.addEventListener("submit", handleSubmit, { once: true });
-        let success = false;
+  formFixed.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
 
-        const nome = document.getElementById("nomeCompleto")?.value?.trim() || "";
-        const email = document.getElementById("email")?.value?.trim() || "";
-        const telefone = document.getElementById("telefone")?.value?.trim() || "";
-        const senha = document.getElementById("senha")?.value || "";
-        const confirmarSenha = document.getElementById("confirmarSenha")?.value || "";
-        const endereco = document.getElementById("endereco")?.value?.trim() || "";
-        const complemento = document.getElementById("complemento")?.value?.trim() || "";
-        const termos = document.getElementById("termos")?.checked || false;
+    const nome = document.getElementById("nomeCompleto")?.value?.trim() || "";
+    const email = document.getElementById("email")?.value?.trim() || "";
+    const telefone = document.getElementById("telefone")?.value?.trim() || "";
+    const senha = document.getElementById("senha")?.value || "";
+    const confirmarSenha = document.getElementById("confirmarSenha")?.value || "";
+    const endereco = document.getElementById("endereco")?.value?.trim() || "";
+    const complemento = document.getElementById("complemento")?.value?.trim() || "";
+    const termos = document.getElementById("termos")?.checked || false;
 
-        if (!nome || !email || !telefone || !senha || !confirmarSenha || !endereco) {
-          msg.style.color = "red";
-          msg.textContent = "Preencha todos os campos obrigatórios.";
-          rearm();
-          return;
-        }
-        if (!termos) {
-          msg.style.color = "red";
-          msg.textContent = "Marque os Termos para continuar.";
-          rearm();
-          return;
-        }
-        if (senha !== confirmarSenha) {
-          msg.style.color = "red";
-          msg.textContent = "As senhas não coincidem.";
-          rearm();
-          return;
-        }
+    if (!termos) { setStatus("Marque os Termos para continuar.", "red"); return; }
+    if (senha !== confirmarSenha) { setStatus("As senhas não coincidem.", "red"); return; }
 
-        const originalText = btn?.textContent;
-        if (btn) {
-          btn.disabled = true;
-          btn.textContent = "Enviando dados...";
-        }
-        msg.style.color = "#555";
-        msg.textContent = "Salvando seu cadastro...";
+    const originalText = btn?.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = "Enviando dados..."; }
+    setStatus("Salvando seu cadastro...");
 
-        try {
-          const payload = {
-            nome,
-            email,
-            telefone,
-            senha,
-            confirmarSenha,
-            endereco,
-            complemento,
-            termos,
-            criadoEm: serverTimestamp(),
-          };
+    try {
+      const payload = { nome, email, telefone, senha, endereco, complemento, termos, criadoEm: serverTimestamp() };
+      console.log("[NailNow] addDoc → clientes", payload);
 
-          await withTimeout(addDoc(collection(db, "clientes"), payload));
+      const docRef = await addDoc(collection(db, "clientes"), payload);
+      console.log("[NailNow] gravado id:", docRef.id);
 
-          success = true;
-          msg.style.color = "green";
-          msg.textContent = "Cadastro salvo com sucesso!";
-          if (btn) {
-            btn.textContent = "✅ Enviado com sucesso!";
-          }
-          form?.reset();
-        } catch (err) {
-          msg.style.color = "red";
-          msg.textContent = err?.message === "timeout"
-            ? "Demorou para responder, tente novamente."
-            : "Não foi possível salvar agora. Tente novamente.";
-        } finally {
-          if (btn) {
-            btn.disabled = false;
-            if (success) {
-              setTimeout(() => {
-                if (btn.textContent === "✅ Enviado com sucesso!") {
-                  btn.textContent = originalText || "Criar conta cliente";
-                }
-              }, 3000);
-            } else {
-              btn.textContent = originalText || "Criar conta cliente";
-            }
-          }
-          rearm();
-        }
-      };
+      // Read-back para confirmar
+     const snap = await getDoc(doc(db, "clientes", docRef.id));
+      console.log("[NailNow] read-back ok:", snap.exists(), snap.data());
 
-      form?.addEventListener("submit", handleSubmit, { once: true });
-    </script>
+      setStatus("Cadastro salvo com sucesso!", "green");
+      if (btn) btn.textContent = "✅ Enviado com sucesso!";
+      formFixed.reset();
+    } catch (error) {
+      console.error("[NailNow] erro Firestore:", { code: error.code, message: error.message, stack: error.stack });
+      setStatus(error?.message || "Não foi possível salvar agora.", "red");
+      if (btn) btn.textContent = "Tentar novamente";
+    } finally {
+      setTimeout(() => {
+        if (btn) { btn.disabled = false; btn.textContent = originalText || "Criar conta cliente"; }
+      }, 3000);
+    }
+  });
+</script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script>
       window.initEnderecoAutocomplete = function () {
