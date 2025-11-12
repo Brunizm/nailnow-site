@@ -91,160 +91,6 @@
       }
     </script>
 
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import {
-        getFirestore,
-        collection,
-        addDoc,
-        serverTimestamp,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
-        authDomain: "nailnow-7546c.firebaseapp.com",
-        projectId: "nailnow-7546c",
-        storageBucket: "nailnow-7546c.firebasestorage.app",
-        messagingSenderId: "413820353687",
-        appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
-        measurementId: "G-2YEGPEG0E1",
-      };
-
-      const firebaseApp = initializeApp(firebaseConfig);
-      const firestore = getFirestore(firebaseApp);
-
-      const FORM_ID = "cadastroClienteForm";
-
-      const FEEDBACK_COLORS = {
-        info: "#4527a0",
-        success: "#2e7d32",
-        error: "#c62828",
-      };
-
-      function sanitize(value) {
-        if (typeof value === "string") {
-          return value.replace(/\s+/g, " ").trim();
-        }
-        if (value === null || value === undefined) {
-          return "";
-        }
-        return `${value}`.trim();
-      }
-
-      function setFeedbackMessage(element, message, variant = "info") {
-        if (!element) return;
-        element.textContent = message || "";
-        element.style.color = FEEDBACK_COLORS[variant] || FEEDBACK_COLORS.info;
-      }
-
-      async function cadastrarCliente(event) {
-        event.preventDefault();
-
-        const form = event.currentTarget;
-        const btn = form.querySelector("button[type='submit']");
-        const feedback = document.getElementById("signup-feedback");
-        if (feedback) {
-          feedback.textContent = "";
-          feedback.removeAttribute("style");
-        }
-
-        const nome = sanitize(form.nome.value);
-        const email = sanitize(form.email.value).toLowerCase();
-        const telefone = sanitize(form.telefone.value);
-        const senha = form.senha.value || "";
-        const confirmarSenha = form.confirmarSenha.value || "";
-        const endereco = sanitize(form.endereco_text.value);
-        const complemento = sanitize(form.complemento.value);
-        const aceiteTermos = Boolean(form.aceiteTermos?.checked);
-
-        if (!nome || !email || !telefone || !senha || !confirmarSenha || !endereco) {
-          setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
-          return;
-        }
-
-        if (senha.length < 6) {
-          setFeedbackMessage(feedback, "❌ Use uma senha com pelo menos 6 caracteres.", "error");
-          form.senha.focus();
-          return;
-        }
-
-        if (senha !== confirmarSenha) {
-          setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
-          form.confirmarSenha.focus();
-          return;
-        }
-
-        if (!aceiteTermos) {
-          setFeedbackMessage(feedback, "❌ É necessário aceitar os termos para continuar.", "error");
-          return;
-        }
-
-        if (btn) {
-          btn.disabled = true;
-          btn.setAttribute("aria-busy", "true");
-          btn.textContent = "Enviando dados…";
-        }
-        setFeedbackMessage(feedback, "Salvando seu cadastro…", "info");
-
-        const enderecoFormatado = sanitize(form.endereco_formatado.value);
-        const placeId = sanitize(form.place_id.value);
-        const lat = sanitize(form.lat.value);
-        const lng = sanitize(form.lng.value);
-
-        try {
-          await addDoc(collection(firestore, "clientes"), {
-            nome,
-            email,
-            telefone,
-            senha,
-            confirmarSenha,
-            endereco,
-            complemento,
-            aceiteTermos,
-            endereco_formatado: enderecoFormatado || null,
-            place_id: placeId || null,
-            lat: lat || null,
-            lng: lng || null,
-            origem: "cliente-cadastro-web",
-            criadoEm: serverTimestamp(),
-          });
-
-          setFeedbackMessage(
-            feedback,
-            "✅ Cadastro enviado! Nossa equipe confirmará os dados e entrará em contato pelo e-mail informado.",
-            "success",
-          );
-          form.reset();
-          const termos = form.querySelector("[name='aceiteTermos']");
-          if (termos) {
-            termos.checked = false;
-          }
-        } catch (error) {
-          setFeedbackMessage(
-            feedback,
-            "❌ Não foi possível salvar seu cadastro agora. Recarregue a página e tente novamente.",
-            "error",
-          );
-        } finally {
-          if (btn) {
-            btn.disabled = false;
-            btn.removeAttribute("aria-busy");
-            btn.textContent = "Criar conta cliente";
-          }
-        }
-      }
-
-      document.addEventListener("DOMContentLoaded", () => {
-        const form = document.getElementById(FORM_ID);
-        if (!form) {
-          return;
-        }
-
-        form.addEventListener("submit", cadastrarCliente);
-        form.setAttribute("novalidate", "novalidate");
-        form.setAttribute("action", "javascript:void(0);");
-      });
-    </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
   </head>
 
@@ -303,10 +149,10 @@
           <div class="client-signup-card">
             <h2 class="client-signup-card__title">Comece agora</h2>
             <p class="client-signup-card__subtitle">Preencha seus dados para desbloquear ofertas e agendar sem filas.</p>
-            <form id="cadastroClienteForm" class="signup-form" autocomplete="off">
+            <form id="formCliente" class="signup-form" autocomplete="off">
               <div class="signup-field">
-                <label for="nome">Nome completo *</label>
-                <input id="nome" name="nome" type="text" required />
+                <label for="nomeCompleto">Nome completo *</label>
+                <input id="nomeCompleto" name="nome" type="text" required />
               </div>
 
               <div class="signup-field">
@@ -396,14 +242,13 @@
               </div>
 
               <label class="signup-checkbox signup-checkbox--terms">
-                <input type="checkbox" name="aceiteTermos" required />
+                <input id="termos" type="checkbox" name="aceiteTermos" required />
                 <span class="signup-checkbox__text">
                   Li e aceito os <a href="#">Termos de uso</a> e a <a href="#">Política de privacidade</a> da NailNow.
                 </span>
               </label>
 
-              <button id="signup-submit" type="submit" class="signup-submit">Criar conta cliente</button>
-              <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
+              <button id="btnSubmit" type="submit" class="signup-submit">Criar conta cliente</button>
             </form>
           </div>
         </div>
@@ -587,6 +432,119 @@
     </nav>
 
     <script src="/assets/js/password-toggle.js"></script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        serverTimestamp,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+        authDomain: "nailnow-7546c.firebaseapp.com",
+        projectId: "nailnow-7546c",
+        storageBucket: "nailnow-7546c.firebasestorage.app",
+        messagingSenderId: "413820353687",
+        appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+        measurementId: "G-2YEGPEG0E1",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const form = document.getElementById("formCliente");
+      const btn = document.getElementById("btnSubmit");
+      const msg = document.createElement("p");
+      msg.style.marginTop = "10px";
+      msg.className = "signup-feedback";
+      msg.setAttribute("role", "status");
+      msg.setAttribute("aria-live", "polite");
+      form?.appendChild(msg);
+
+      const withTimeout = (promise, ms = 12000) =>
+        Promise.race([
+          promise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+        ]);
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        const rearm = () => form?.addEventListener("submit", handleSubmit, { once: true });
+
+        const nome = document.getElementById("nomeCompleto")?.value?.trim() || "";
+        const email = document.getElementById("email")?.value?.trim() || "";
+        const telefone = document.getElementById("telefone")?.value?.trim() || "";
+        const senha = document.getElementById("senha")?.value || "";
+        const confirmarSenha = document.getElementById("confirmarSenha")?.value || "";
+        const endereco = document.getElementById("endereco")?.value?.trim() || "";
+        const complemento = document.getElementById("complemento")?.value?.trim() || "";
+        const termos = document.getElementById("termos")?.checked || false;
+
+        if (!nome || !email || !telefone || !senha || !confirmarSenha || !endereco) {
+          msg.style.color = "red";
+          msg.textContent = "Preencha todos os campos obrigatórios.";
+          rearm();
+          return;
+        }
+        if (!termos) {
+          msg.style.color = "red";
+          msg.textContent = "Marque os Termos para continuar.";
+          rearm();
+          return;
+        }
+        if (senha !== confirmarSenha) {
+          msg.style.color = "red";
+          msg.textContent = "As senhas não coincidem.";
+          rearm();
+          return;
+        }
+
+        const originalText = btn?.textContent;
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Enviando dados...";
+        }
+        msg.style.color = "#555";
+        msg.textContent = "Salvando seu cadastro...";
+
+        try {
+          const payload = {
+            nome,
+            email,
+            telefone,
+            senha,
+            confirmarSenha,
+            endereco,
+            complemento,
+            termos,
+            criadoEm: serverTimestamp(),
+          };
+
+          await withTimeout(addDoc(collection(db, "clientes"), payload));
+
+          msg.style.color = "green";
+          msg.textContent = "Conta criada com sucesso!";
+          form?.reset();
+        } catch (err) {
+          msg.style.color = "red";
+          msg.textContent = err?.message === "timeout"
+            ? "Demorou para responder, tente novamente."
+            : "Não foi possível salvar agora. Tente novamente.";
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText || "Criar conta cliente";
+          }
+          rearm();
+        }
+      };
+
+      form?.addEventListener("submit", handleSubmit, { once: true });
+    </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script>
       window.initEnderecoAutocomplete = function () {
