@@ -91,341 +91,6 @@
       }
     </script>
 
-    <script type="module">
-      const FORM_ID = "cadastroClienteForm";
-      const REGISTER_ENDPOINTS = [
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount",
-        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount",
-        "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/registerClientAccount",
-      ];
-      const CONFIRMATION_ENDPOINTS = [
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/requestSignupConfirmation",
-        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/requestSignupConfirmation",
-        "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/requestSignupConfirmation",
-      ];
-
-      const FEEDBACK_COLORS = {
-        info: "#4527a0",
-        success: "#2e7d32",
-        error: "#c62828",
-      };
-
-      function sanitize(value) {
-        if (typeof value === "string") {
-          return value.replace(/\s+/g, " ").trim();
-        }
-        if (value === null || value === undefined) {
-          return "";
-        }
-        return `${value}`.trim();
-      }
-
-      function setFeedbackMessage(element, message, variant = "info") {
-        if (!element) return;
-        element.textContent = message || "";
-        element.style.color = FEEDBACK_COLORS[variant] || FEEDBACK_COLORS.info;
-      }
-
-      function clearFeedback(element) {
-        if (!element) return;
-        element.textContent = "";
-        element.removeAttribute("style");
-      }
-
-      async function postJsonWithFallback(endpoints, payload) {
-        const attempts = [];
-
-        for (const endpoint of endpoints) {
-          try {
-            const response = await fetch(endpoint, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
-
-            const data = await response.json().catch(() => ({}));
-
-            if (response.ok) {
-              return { endpoint, response, data, ok: true };
-            }
-
-            attempts.push({
-              endpoint,
-              status: response.status,
-              error: data?.error || `http-${response.status}`,
-              data,
-            });
-
-            if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-              return { endpoint, response, data, ok: false, attempts };
-            }
-          } catch (error) {
-            attempts.push({
-              endpoint,
-              status: null,
-              error: error?.message || "network-error",
-              data: null,
-            });
-          }
-        }
-
-        const aggregateError = new Error("all-endpoints-failed");
-        aggregateError.attempts = attempts;
-        throw aggregateError;
-      }
-
-      async function requestConfirmation(profilePath) {
-        if (!profilePath) {
-          throw new Error("missing-profile-path");
-        }
-
-        const result = await postJsonWithFallback(CONFIRMATION_ENDPOINTS, {
-          profile: profilePath,
-        });
-
-        if (!result?.ok) {
-          const errorCode = result?.data?.error || "confirmation-error";
-          const error = new Error(errorCode);
-          error.code = errorCode;
-          throw error;
-        }
-
-        return result.data;
-      }
-
-      async function cadastrarCliente(event) {
-        event.preventDefault();
-
-        const form = event.currentTarget;
-        const btn = form.querySelector("button[type='submit']");
-        const feedback = document.getElementById("signup-feedback");
-        clearFeedback(feedback);
-
-        try {
-          const nome = sanitize(form.nome.value);
-          const email = sanitize(form.email.value).toLowerCase();
-          const senha = form.senha.value || "";
-          const confirmarSenha = form.confirmarSenha.value || "";
-          const telefone = sanitize(form.telefone.value);
-          const endereco = sanitize(form.endereco_text.value);
-          const complemento = sanitize(form.complemento.value);
-          const aceiteTermos = Boolean(form.aceiteTermos?.checked);
-
-          const enderecoFormatado = sanitize(form.endereco_formatado.value);
-          const placeId = sanitize(form.place_id.value);
-          const lat = sanitize(form.lat.value);
-          const lng = sanitize(form.lng.value);
-
-          if (!nome || !email || !senha || !confirmarSenha || !endereco) {
-            setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
-            return;
-          }
-
-          if (senha.length < 6) {
-            setFeedbackMessage(feedback, "❌ Use uma senha com pelo menos 6 caracteres.", "error");
-            form.senha.focus();
-            return;
-          }
-
-          if (senha !== confirmarSenha) {
-            setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
-            form.confirmarSenha.focus();
-            return;
-          }
-
-          if (!aceiteTermos) {
-            setFeedbackMessage(feedback, "❌ É necessário aceitar os termos para continuar.", "error");
-            return;
-          }
-
-          if (btn) {
-            btn.disabled = true;
-            btn.setAttribute("aria-busy", "true");
-            btn.textContent = "Criando conta…";
-          }
-          setFeedbackMessage(feedback, "Validando seus dados…", "info");
-
-          const payload = {
-            nome,
-            email,
-            senha,
-            telefone,
-            endereco,
-            complemento,
-            endereco_formatado: enderecoFormatado,
-            place_id: placeId,
-            lat,
-            lng,
-            aceiteTermos,
-          };
-
-          let registerResult;
-
-          try {
-            registerResult = await postJsonWithFallback(REGISTER_ENDPOINTS, payload);
-          } catch (error) {
-            const attempts = Array.isArray(error?.attempts) ? error.attempts : [];
-            const lastAttempt = attempts[attempts.length - 1] || {};
-            const errorCode = lastAttempt.error || "network-error";
-            const mensagens = {
-              "invalid-payload": "❌ Verifique os dados informados e tente novamente.",
-            };
-
-            let friendly = mensagens[errorCode] || null;
-
-            if (errorCode === "email-already-in-use") {
-              const existingStatus = (lastAttempt?.data?.status || "").toLowerCase();
-              friendly =
-                existingStatus === "pendente"
-                  ? "⚠️ Já encontramos um cadastro pendente para este e-mail. Verifique seu e-mail de confirmação ou solicite um novo envio ao suporte."
-                  : "❌ Este e-mail já está cadastrado. Use outra conta ou acesse o portal para continuar.";
-            }
-
-            if (!friendly) {
-              friendly = "❌ Não foi possível concluir o cadastro agora.";
-            }
-            setFeedbackMessage(feedback, friendly, "error");
-            return;
-          }
-
-          if (!registerResult?.ok) {
-            const resultData = registerResult?.data || {};
-            const errorCode = resultData.error || "internal-error";
-            const mensagens = {
-              "invalid-payload": "❌ Verifique os dados informados e tente novamente.",
-              "email-already-in-use":
-                "❌ Este e-mail já está cadastrado. Use outra conta ou acesse o portal para continuar.",
-            };
-
-            let friendly = mensagens[errorCode] || null;
-
-            if (errorCode === "email-already-in-use") {
-              const existingStatus = (resultData.status || "").toLowerCase();
-              friendly =
-                existingStatus === "pendente"
-                  ? "⚠️ Já encontramos um cadastro pendente para este e-mail. Verifique seu e-mail de confirmação ou solicite um novo envio ao suporte."
-                  : mensagens[errorCode];
-            }
-
-            if (!friendly) {
-              friendly = "❌ Não foi possível concluir o cadastro agora.";
-            }
-
-            setFeedbackMessage(feedback, friendly, "error");
-            return;
-          }
-
-          const result = registerResult.data || {};
-
-          const confirmation = result.confirmation || {};
-          const legacyProfileId = typeof result.id === "string" ? result.id.trim() : "";
-          const inferredProfilePath = (() => {
-            const directPath = typeof result.profilePath === "string" ? result.profilePath.trim() : "";
-            if (directPath) {
-              return directPath;
-            }
-            const confirmationPath =
-              typeof confirmation.profilePath === "string" ? confirmation.profilePath.trim() : "";
-            if (confirmationPath) {
-              return confirmationPath;
-            }
-            if (legacyProfileId) {
-              return `clientes/${legacyProfileId}`;
-            }
-            return "";
-          })();
-
-          let mailStatus = (confirmation.mailStatus || "").toLowerCase();
-          if (!mailStatus && typeof result.emailStatus === "string") {
-            mailStatus = result.emailStatus.toLowerCase();
-          }
-
-          const legacyEmailSent =
-            typeof result.emailSent === "boolean" ? result.emailSent : undefined;
-          const mailSuccessStatuses = [
-            "queued",
-            "queuing",
-            "already-queued",
-            "sent",
-            "processing",
-            "sending",
-            "delivered",
-            "success",
-            "accepted",
-            "queued-via-extension",
-          ];
-          let confirmationQueued = mailSuccessStatuses.includes(mailStatus);
-
-          if (!confirmationQueued && legacyEmailSent === true) {
-            confirmationQueued = true;
-          }
-
-          if (inferredProfilePath && !confirmationQueued) {
-            try {
-              const manual = await requestConfirmation(inferredProfilePath);
-              const manualStatus = (manual?.mailStatus || "").toLowerCase();
-              if (manualStatus) {
-                mailStatus = manualStatus;
-              }
-              confirmationQueued = mailSuccessStatuses.includes(manualStatus || mailStatus);
-            } catch (manualError) {
-              console.warn("Não foi possível reenfileirar o e-mail de confirmação automaticamente", manualError);
-            }
-          }
-
-          const successMessage = confirmationQueued
-            ? "✅ Conta criada! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
-            : mailStatus === "missing-email"
-              ? "⚠️ Cadastro enviado! Precisamos de um e-mail válido para enviar a confirmação. Atualize seu cadastro ou contate suporte@nailnow.app."
-              : mailStatus === "error"
-                ? "⚠️ Cadastro enviado! Não conseguimos preparar o e-mail automático agora. Entre em contato pelo suporte@nailnow.app para concluir a ativação."
-                : mailStatus === "skipped"
-                  ? "⚠️ Cadastro enviado! A confirmação não foi disparada porque a integração de e-mail (SendGrid) não está ativa. Verifique a chave configurada ou fale com suporte@nailnow.app."
-                  : legacyEmailSent === false
-                    ? "⚠️ Cadastro enviado! Ainda não conseguimos enviar o e-mail automático. Verifique se os dados estão corretos e, se necessário, peça ajuda pelo suporte@nailnow.app."
-                    : "⚠️ Cadastro enviado! Assim que receber o e-mail de confirmação enviado por suporte@nailnow.app, finalize o processo para liberar o acesso. Caso não receba em alguns minutos, verifique o spam ou contate suporte@nailnow.app.";
-
-          const feedbackVariant = confirmationQueued
-            ? "success"
-            : mailStatus === "error" || mailStatus === "skipped"
-              ? "error"
-              : "info";
-
-          setFeedbackMessage(feedback, successMessage, feedbackVariant);
-          form.reset();
-          const termos = form.querySelector("[name='aceiteTermos']");
-          if (termos) {
-            termos.checked = false;
-          }
-        } catch (error) {
-          console.error("Falha ao cadastrar cliente", error);
-          setFeedbackMessage(
-            feedback,
-            "❌ Erro: Não foi possível concluir o cadastro. Tente novamente em instantes.",
-            "error",
-          );
-        } finally {
-          if (btn) {
-            btn.disabled = false;
-            btn.removeAttribute("aria-busy");
-            btn.textContent = "Criar conta cliente";
-          }
-        }
-      }
-
-      document.addEventListener("DOMContentLoaded", () => {
-        const form = document.getElementById(FORM_ID);
-        if (!form) {
-          console.error("Formulário de cadastro de cliente não encontrado na página.");
-          return;
-        }
-
-        form.addEventListener("submit", cadastrarCliente);
-        form.setAttribute("novalidate", "novalidate");
-        form.setAttribute("action", "javascript:void(0);");
-        console.info("📄 Formulário de cadastro de cliente pronto para enviar dados ao NailNow.");
-      });
-    </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
   </head>
 
@@ -484,10 +149,10 @@
           <div class="client-signup-card">
             <h2 class="client-signup-card__title">Comece agora</h2>
             <p class="client-signup-card__subtitle">Preencha seus dados para desbloquear ofertas e agendar sem filas.</p>
-            <form id="cadastroClienteForm" class="signup-form" autocomplete="off">
+            <form id="formCliente" class="signup-form" autocomplete="off">
               <div class="signup-field">
-                <label for="nome">Nome completo *</label>
-                <input id="nome" name="nome" type="text" required />
+                <label for="nomeCompleto">Nome completo *</label>
+                <input id="nomeCompleto" name="nome" type="text" required />
               </div>
 
               <div class="signup-field">
@@ -496,8 +161,16 @@
               </div>
 
               <div class="signup-field">
-                <label for="telefone">Telefone / WhatsApp</label>
-                <input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-0000" />
+                <label for="telefone">Telefone / WhatsApp *</label>
+                <input
+                  id="telefone"
+                  name="telefone"
+                  type="tel"
+                  required
+                  autocomplete="tel"
+                  inputmode="tel"
+                  placeholder="(11) 99999-0000"
+                />
               </div>
 
               <div class="signup-field">
@@ -569,14 +242,13 @@
               </div>
 
               <label class="signup-checkbox signup-checkbox--terms">
-                <input type="checkbox" name="aceiteTermos" required />
+                <input id="termos" type="checkbox" name="aceiteTermos" required />
                 <span class="signup-checkbox__text">
                   Li e aceito os <a href="#">Termos de uso</a> e a <a href="#">Política de privacidade</a> da NailNow.
                 </span>
               </label>
 
-              <button id="signup-submit" type="submit" class="signup-submit">Criar conta cliente</button>
-              <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
+              <button id="btnSubmit" type="submit" class="signup-submit">Criar conta cliente</button>
             </form>
           </div>
         </div>
@@ -619,11 +291,6 @@
         "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerQuickLead",
         "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerQuickLead",
         "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/registerQuickLead",
-      ];
-      const CLIENT_FULL_REGISTRATION_ENDPOINTS = [
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount",
-        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount",
-        "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/registerClientAccount",
       ];
       const QUICK_CLIENT_ORIGIN = "cliente-landing-quick-form";
 
@@ -696,7 +363,7 @@
             pageUrl: window.location.href,
           };
 
-          const endpoints = [...CLIENT_QUICK_ENDPOINTS, ...CLIENT_FULL_REGISTRATION_ENDPOINTS];
+          const endpoints = [...CLIENT_QUICK_ENDPOINTS];
 
           try {
             const result = await submitQuickLead(endpoints, payload);
@@ -711,18 +378,10 @@
                   : "Recebemos seu cadastro! Em breve nossa equipe entrará em contato.";
 
               alert(successMessage);
-              console.info("Lead cliente registrado:", {
-                endpoint: result.endpoint,
-                leadId: data.leadId || data.lead?.id || null,
-                mailStatus: data.mail?.status || null,
-                profilePath: data.profilePath || data.lead?.profilePath || null,
-                alreadyQueued: data.alreadyQueued || false,
-              });
               cadastroClienteForm.reset();
               return;
             }
 
-            console.warn("Falha ao registrar lead cliente", result);
             alert(
               "Não foi possível registrar seu interesse agora. Recarregue a página e tente novamente ou contate suporte@nailnow.app.",
             );
@@ -773,6 +432,86 @@
     </nav>
 
     <script src="/assets/js/password-toggle.js"></script>
+    <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+    authDomain: "nailnow-7546c.firebaseapp.com",
+    projectId: "nailnow-7546c",
+    storageBucket: "nailnow-7546c.firebasestorage.app",
+    messagingSenderId: "413820353687",
+    appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+    measurementId: "G-2YEGPEG0E1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Elements
+  const form = document.getElementById("formCliente");
+  const btn  = document.getElementById("btnSubmit");
+
+  let msg = document.getElementById("formMsg");
+  if (!msg) {
+    msg = document.createElement("p");
+    msg.id = "formMsg";
+    msg.style.marginTop = "10px";
+    form.appendChild(msg);
+  }
+  const setStatus = (t, c="#555") => { msg.textContent = t; msg.style.color = c; };
+
+  // Garante só um listener (caso a página já tenha outro)
+  form.replaceWith(form.cloneNode(true));
+  const formFixed = document.getElementById("formCliente");
+
+  formFixed.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    // Campos (ajuste IDs se necessário)
+    const nome          = document.getElementById("nomeCompleto")?.value?.trim() || "";
+    const email         = document.getElementById("email")?.value?.trim() || "";
+    const telefone      = document.getElementById("telefone")?.value?.trim() || "";
+    const senha         = document.getElementById("senha")?.value || "";
+    const confirmar     = document.getElementById("confirmarSenha")?.value || "";
+    const endereco      = document.getElementById("endereco")?.value?.trim() || "";
+    const complemento   = document.getElementById("complemento")?.value?.trim() || "";
+    const termos        = document.getElementById("termos")?.checked || false;
+
+    if (!termos) { setStatus("Marque os Termos para continuar.", "red"); return; }
+    if (senha !== confirmar) { setStatus("As senhas não coincidem.", "red"); return; }
+
+    const original = btn?.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = "Enviando dados..."; }
+    setStatus("Salvando seu cadastro...");
+
+    try {
+      const payload = { nome, email, telefone, senha, endereco, complemento, termos, criadoEm: serverTimestamp() };
+      console.log("[NailNow] addDoc → clientes", payload);
+
+      const docRef = await addDoc(collection(db, "clientes"), payload);
+      console.log("[NailNow] salvo id:", docRef.id);
+
+      // Read-back para confirmar
+      const snap = await getDoc(doc(db, "clientes", docRef.id));
+      console.log("[NailNow] read-back:", snap.exists(), snap.data());
+
+      setStatus("Cadastro salvo com sucesso!", "green");
+      if (btn) btn.textContent = "✅ Enviado com sucesso!";
+      formFixed.reset();
+    } catch (error) {
+      console.error("[NailNow] Erro Firestore:", error);
+      setStatus("Erro: " + (error?.message || "tente novamente."), "red");
+      if (btn) btn.textContent = "Tentar novamente";
+    } finally {
+      setTimeout(() => {
+        if (btn) { btn.disabled = false; btn.textContent = original || "Criar conta cliente"; }
+      }, 3000);
+    }
+  });
+</script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script>
       window.initEnderecoAutocomplete = function () {
@@ -792,7 +531,6 @@
           document.getElementById("place_id").value = place.place_id || "";
           document.getElementById("lat").value = loc?.lat() || "";
           document.getElementById("lng").value = loc?.lng() || "";
-          console.log("📍 Endereço salvo:", place.formatted_address);
         });
       };
 

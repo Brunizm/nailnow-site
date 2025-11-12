@@ -39530,6 +39530,26 @@ main {
   z-index: 1;
 }
 
+/* nada do hero deve bloquear clique no formulário */
+.hero-media--signup::before,
+.hero-media--signup::after,
+.hero--client::before,
+.hero--client::after {
+  pointer-events: none !important;
+}
+/* garante que o container do formulário fique acima de qualquer overlay */
+.signup,
+.hero-media--signup,
+.signup form,
+#btnSubmit {
+  position: relative;
+  z-index: 10;
+}
+/* só por segurança: botão sempre recebe cliques */
+#btnSubmit {
+  pointer-events: auto !important;
+}
+
 .pro-signup-card {
   width: min(100%, 540px);
   background: rgba(255, 255, 255, 0.96);
