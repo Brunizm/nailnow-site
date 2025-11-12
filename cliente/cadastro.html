@@ -450,7 +450,17 @@
   const db = getFirestore(app);
 
   const form = document.getElementById("formCliente");
-  const btn  = document.getElementById("btnSubmit");
+  if (!form) {
+    console.warn("[NailNow] formCliente não encontrado");
+    return;
+  }
+
+  if (form.dataset.bound === "true") {
+    console.log("[NailNow] listener já registrado no formCliente");
+    return;
+  }
+  form.dataset.bound = "true";
+
   let msg = document.getElementById("formMsg");
   if (!msg) {
     msg = document.createElement("p");
@@ -464,14 +474,13 @@
     msg.textContent = text;
   }
 
-  // Garante um único listener
-  form.replaceWith(form.cloneNode(true));
-  const formFixed = document.getElementById("formCliente");
-
-  formFixed.addEventListener("submit", async (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
 
+    console.log("[NailNow] submit:start");
+
+    const btn  = document.getElementById("btnSubmit");
     const nome = document.getElementById("nomeCompleto")?.value?.trim() || "";
     const email = document.getElementById("email")?.value?.trim() || "";
     const telefone = document.getElementById("telefone")?.value?.trim() || "";
@@ -496,12 +505,12 @@
       console.log("[NailNow] gravado id:", docRef.id);
 
       // Read-back para confirmar
-     const snap = await getDoc(doc(db, "clientes", docRef.id));
+      const snap = await getDoc(doc(db, "clientes", docRef.id));
       console.log("[NailNow] read-back ok:", snap.exists(), snap.data());
 
       setStatus("Cadastro salvo com sucesso!", "green");
       if (btn) btn.textContent = "✅ Enviado com sucesso!";
-      formFixed.reset();
+      form.reset();
     } catch (error) {
       console.error("[NailNow] erro Firestore:", { code: error.code, message: error.message, stack: error.stack });
       setStatus(error?.message || "Não foi possível salvar agora.", "red");
