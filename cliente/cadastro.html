@@ -137,99 +137,77 @@
         element.style.color = FEEDBACK_COLORS[variant] || FEEDBACK_COLORS.info;
       }
 
-      function clearFeedback(element) {
-        if (!element) return;
-        element.textContent = "";
-        element.removeAttribute("style");
-      }
-
-      async function salvarClienteNoFirestore(documento) {
-        if (!firestore) {
-          return { ok: false, reason: "firestore-unavailable" };
-        }
-
-        try {
-          const referencia = await addDoc(collection(firestore, "clientes"), documento);
-          return { ok: true, id: referencia.id };
-        } catch (firestoreError) {
-          console.error("Erro ao salvar cadastro no Firestore", firestoreError);
-          return { ok: false, reason: "firestore-error", error: firestoreError };
-        }
-      }
-
       async function cadastrarCliente(event) {
         event.preventDefault();
 
         const form = event.currentTarget;
         const btn = form.querySelector("button[type='submit']");
         const feedback = document.getElementById("signup-feedback");
-        clearFeedback(feedback);
+        if (feedback) {
+          feedback.textContent = "";
+          feedback.removeAttribute("style");
+        }
+
+        const nome = sanitize(form.nome.value);
+        const email = sanitize(form.email.value).toLowerCase();
+        const telefone = sanitize(form.telefone.value);
+        const senha = form.senha.value || "";
+        const confirmarSenha = form.confirmarSenha.value || "";
+        const endereco = sanitize(form.endereco_text.value);
+        const complemento = sanitize(form.complemento.value);
+        const aceiteTermos = Boolean(form.aceiteTermos?.checked);
+
+        if (!nome || !email || !telefone || !senha || !confirmarSenha || !endereco) {
+          setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
+          return;
+        }
+
+        if (senha.length < 6) {
+          setFeedbackMessage(feedback, "❌ Use uma senha com pelo menos 6 caracteres.", "error");
+          form.senha.focus();
+          return;
+        }
+
+        if (senha !== confirmarSenha) {
+          setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
+          form.confirmarSenha.focus();
+          return;
+        }
+
+        if (!aceiteTermos) {
+          setFeedbackMessage(feedback, "❌ É necessário aceitar os termos para continuar.", "error");
+          return;
+        }
+
+        if (btn) {
+          btn.disabled = true;
+          btn.setAttribute("aria-busy", "true");
+          btn.textContent = "Enviando dados…";
+        }
+        setFeedbackMessage(feedback, "Salvando seu cadastro…", "info");
+
+        const enderecoFormatado = sanitize(form.endereco_formatado.value);
+        const placeId = sanitize(form.place_id.value);
+        const lat = sanitize(form.lat.value);
+        const lng = sanitize(form.lng.value);
 
         try {
-          const nome = sanitize(form.nome.value);
-          const email = sanitize(form.email.value).toLowerCase();
-          const senha = form.senha.value || "";
-          const confirmarSenha = form.confirmarSenha.value || "";
-          const telefone = sanitize(form.telefone.value);
-          const endereco = sanitize(form.endereco_text.value);
-          const complemento = sanitize(form.complemento.value);
-          const aceiteTermos = Boolean(form.aceiteTermos?.checked);
-
-          const enderecoFormatado = sanitize(form.endereco_formatado.value);
-          const placeId = sanitize(form.place_id.value);
-          const lat = sanitize(form.lat.value);
-          const lng = sanitize(form.lng.value);
-
-          if (!nome || !email || !telefone || !senha || !confirmarSenha || !endereco) {
-            setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
-            return;
-          }
-
-          if (senha.length < 6) {
-            setFeedbackMessage(feedback, "❌ Use uma senha com pelo menos 6 caracteres.", "error");
-            form.senha.focus();
-            return;
-          }
-
-          if (senha !== confirmarSenha) {
-            setFeedbackMessage(feedback, "❌ Erro: As senhas não coincidem.", "error");
-            form.confirmarSenha.focus();
-            return;
-          }
-
-          if (!aceiteTermos) {
-            setFeedbackMessage(feedback, "❌ É necessário aceitar os termos para continuar.", "error");
-            return;
-          }
-
-          if (btn) {
-            btn.disabled = true;
-            btn.setAttribute("aria-busy", "true");
-            btn.textContent = "Enviando dados…";
-          }
-          setFeedbackMessage(feedback, "Salvando seu cadastro…", "info");
-
-          const firestorePayload = {
+          await addDoc(collection(firestore, "clientes"), {
             nome,
             email,
             telefone,
             senha,
+            confirmarSenha,
             endereco,
             complemento,
+            aceiteTermos,
             endereco_formatado: enderecoFormatado || null,
             place_id: placeId || null,
             lat: lat || null,
             lng: lng || null,
-            aceiteTermos,
             origem: "cliente-cadastro-web",
             criadoEm: serverTimestamp(),
-          };
-
-          const firestoreResult = await salvarClienteNoFirestore(firestorePayload);
-
-          if (!firestoreResult.ok) {
-            throw new Error(firestoreResult.reason || "firestore-error");
-          }
+          });
 
           setFeedbackMessage(
             feedback,
@@ -242,7 +220,6 @@
             termos.checked = false;
           }
         } catch (error) {
-          console.error("Falha ao cadastrar cliente", error);
           setFeedbackMessage(
             feedback,
             "❌ Não foi possível salvar seu cadastro agora. Recarregue a página e tente novamente.",
@@ -260,14 +237,12 @@
       document.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById(FORM_ID);
         if (!form) {
-          console.error("Formulário de cadastro de cliente não encontrado na página.");
           return;
         }
 
         form.addEventListener("submit", cadastrarCliente);
         form.setAttribute("novalidate", "novalidate");
         form.setAttribute("action", "javascript:void(0);");
-        console.info("📄 Formulário de cadastro de cliente pronto para enviar dados ao NailNow.");
       });
     </script>
     <link rel="icon" type="image/svg+xml" href="/assets/nailnow-logo.svg" />
@@ -558,18 +533,10 @@
                   : "Recebemos seu cadastro! Em breve nossa equipe entrará em contato.";
 
               alert(successMessage);
-              console.info("Lead cliente registrado:", {
-                endpoint: result.endpoint,
-                leadId: data.leadId || data.lead?.id || null,
-                mailStatus: data.mail?.status || null,
-                profilePath: data.profilePath || data.lead?.profilePath || null,
-                alreadyQueued: data.alreadyQueued || false,
-              });
               cadastroClienteForm.reset();
               return;
             }
 
-            console.warn("Falha ao registrar lead cliente", result);
             alert(
               "Não foi possível registrar seu interesse agora. Recarregue a página e tente novamente ou contate suporte@nailnow.app.",
             );
@@ -639,7 +606,6 @@
           document.getElementById("place_id").value = place.place_id || "";
           document.getElementById("lat").value = loc?.lat() || "";
           document.getElementById("lng").value = loc?.lng() || "";
-          console.log("📍 Endereço salvo:", place.formatted_address);
         });
       };
 
