@@ -92,6 +92,27 @@
     </script>
 
     <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        serverTimestamp,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+        authDomain: "nailnow-7546c.firebaseapp.com",
+        projectId: "nailnow-7546c",
+        storageBucket: "nailnow-7546c.firebasestorage.app",
+        messagingSenderId: "413820353687",
+        appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+        measurementId: "G-2YEGPEG0E1",
+      };
+
+      const firebaseApp = initializeApp(firebaseConfig);
+      const firestore = getFirestore(firebaseApp);
+
       const FORM_ID = "cadastroClienteForm";
       const REGISTER_ENDPOINTS = [
         "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount",
@@ -130,6 +151,20 @@
         if (!element) return;
         element.textContent = "";
         element.removeAttribute("style");
+      }
+
+      async function salvarClienteNoFirestore(documento) {
+        if (!firestore) {
+          return { ok: false, reason: "firestore-unavailable" };
+        }
+
+        try {
+          const referencia = await addDoc(collection(firestore, "clientes"), documento);
+          return { ok: true, id: referencia.id };
+        } catch (firestoreError) {
+          console.error("Erro ao salvar cadastro no Firestore", firestoreError);
+          return { ok: false, reason: "firestore-error", error: firestoreError };
+        }
       }
 
       async function postJsonWithFallback(endpoints, payload) {
@@ -216,7 +251,7 @@
           const lat = sanitize(form.lat.value);
           const lng = sanitize(form.lng.value);
 
-          if (!nome || !email || !senha || !confirmarSenha || !endereco) {
+          if (!nome || !email || !telefone || !senha || !confirmarSenha || !endereco) {
             setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
             return;
           }
@@ -373,6 +408,35 @@
             }
           }
 
+          const firestorePayload = {
+            nome,
+            email,
+            telefone,
+            senha,
+            endereco,
+            complemento,
+            endereco_formatado: enderecoFormatado || null,
+            place_id: placeId || null,
+            lat: lat || null,
+            lng: lng || null,
+            aceiteTermos,
+            origem: "cliente-cadastro-web",
+            registro: {
+              endpoint: registerResult?.endpoint || null,
+              profilePath: inferredProfilePath || null,
+              mailStatus: mailStatus || null,
+              confirmationQueued,
+              legacyProfileId: legacyProfileId || null,
+              legacyEmailSent: typeof legacyEmailSent === "boolean" ? legacyEmailSent : null,
+            },
+            criadoEm: serverTimestamp(),
+          };
+
+          const firestoreResult = await salvarClienteNoFirestore(firestorePayload);
+          if (!firestoreResult.ok) {
+            console.warn("Cadastro concluído, mas não foi possível gravar o backup no Firestore.", firestoreResult.reason);
+          }
+
           const successMessage = confirmationQueued
             ? "✅ Conta criada! Enviamos um e-mail com o link de confirmação. Verifique sua caixa de entrada para liberar o acesso."
             : mailStatus === "missing-email"
@@ -496,8 +560,16 @@
               </div>
 
               <div class="signup-field">
-                <label for="telefone">Telefone / WhatsApp</label>
-                <input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-0000" />
+                <label for="telefone">Telefone / WhatsApp *</label>
+                <input
+                  id="telefone"
+                  name="telefone"
+                  type="tel"
+                  required
+                  autocomplete="tel"
+                  inputmode="tel"
+                  placeholder="(11) 99999-0000"
+                />
               </div>
 
               <div class="signup-field">
