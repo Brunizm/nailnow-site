@@ -68,4 +68,14 @@ Este guia consolida os passos para colocar o projeto `nailnow-7546c` em funciona
 - Atualize as regras no arquivo `firestore.rules` antes de liberar acesso público. Enquanto as regras permanecerem como `allow read, write: if false`, somente as Cloud Functions com privilégio de administrador conseguirão modificar os dados.
 - Use o arquivo `functions/index.js` como base para expor endpoints HTTPS que continuem processando cadastros e confirmações mesmo com o Firestore bloqueado para o frontend.
 
+## 6. Checklist rápido ao exigir telefone no cadastro
+
+Quando o formulário público de clientes marcar o campo de telefone como obrigatório, faça este pequeno checklist após publicar o site:
+
+1. Rode `firebase deploy --only hosting` para enviar a nova versão estática.
+2. Garanta que as regras do Firestore permitem a escrita autenticada pelo site (ex.: whiteliste a origem ou mantenha o modo restrito enquanto desenvolve).
+3. Abra o console em **Firestore Database → clientes** e confirme se os novos cadastros aparecem com `telefone` preenchido e o campo `origem = "cliente-cadastro-web"`.
+
+Se todos os passos acima estiverem ok, não há nenhuma outra configuração necessária no Firebase para o novo requisito de telefone.
+
 Seguindo esse fluxo, o novo projeto Firebase ficará alinhado ao código versionado e poderá ser publicado ou restaurado rapidamente em qualquer ambiente.
