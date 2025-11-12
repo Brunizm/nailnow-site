@@ -474,6 +474,7 @@
         e.stopImmediatePropagation();
 
         const rearm = () => form?.addEventListener("submit", handleSubmit, { once: true });
+        let success = false;
 
         const nome = document.getElementById("nomeCompleto")?.value?.trim() || "";
         const email = document.getElementById("email")?.value?.trim() || "";
@@ -526,8 +527,12 @@
 
           await withTimeout(addDoc(collection(db, "clientes"), payload));
 
+          success = true;
           msg.style.color = "green";
-          msg.textContent = "Conta criada com sucesso!";
+          msg.textContent = "Cadastro salvo com sucesso!";
+          if (btn) {
+            btn.textContent = "✅ Enviado com sucesso!";
+          }
           form?.reset();
         } catch (err) {
           msg.style.color = "red";
@@ -537,7 +542,15 @@
         } finally {
           if (btn) {
             btn.disabled = false;
-            btn.textContent = originalText || "Criar conta cliente";
+            if (success) {
+              setTimeout(() => {
+                if (btn.textContent === "✅ Enviado com sucesso!") {
+                  btn.textContent = originalText || "Criar conta cliente";
+                }
+              }, 3000);
+            } else {
+              btn.textContent = originalText || "Criar conta cliente";
+            }
           }
           rearm();
         }
