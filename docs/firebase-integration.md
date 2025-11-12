@@ -73,8 +73,8 @@ Este guia consolida os passos para colocar o projeto `nailnow-7546c` em funciona
 Quando o formulário público de clientes marcar o campo de telefone como obrigatório, faça este pequeno checklist após publicar o site:
 
 1. Rode `firebase deploy --only hosting` para enviar a nova versão estática.
-2. Confirme que a função HTTPS `registerClientAccount` já está publicada (ela continua rejeitando payloads sem telefone, portanto não é preciso alterar regras ou coleções).
-3. Acesse o console em **Functions → registerClientAccount** e verifique se os logs mostram `telefone` preenchido nas requisições recentes.
+2. Garanta que as regras do Firestore permitem a escrita autenticada pelo site (ex.: whiteliste a origem ou mantenha o modo restrito enquanto desenvolve).
+3. Abra o console em **Firestore Database → clientes** e confirme se os novos cadastros aparecem com `telefone` preenchido e o campo `origem = "cliente-cadastro-web"`.
 
 Se todos os passos acima estiverem ok, não há nenhuma outra configuração necessária no Firebase para o novo requisito de telefone.
 
