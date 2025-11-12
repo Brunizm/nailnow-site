@@ -436,6 +436,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, collection, addDoc, serverTimestamp, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+  // Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
     authDomain: "nailnow-7546c.firebaseapp.com",
@@ -445,21 +446,12 @@
     appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
     measurementId: "G-2YEGPEG0E1"
   };
-
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
+  // Elements
   const form = document.getElementById("formCliente");
-  if (!form) {
-    console.warn("[NailNow] formCliente não encontrado");
-    return;
-  }
-
-  if (form.dataset.bound === "true") {
-    console.log("[NailNow] listener já registrado no formCliente");
-    return;
-  }
-  form.dataset.bound = "true";
+  const btn  = document.getElementById("btnSubmit");
 
   let msg = document.getElementById("formMsg");
   if (!msg) {
@@ -468,32 +460,30 @@
     msg.style.marginTop = "10px";
     form.appendChild(msg);
   }
+  const setStatus = (t, c="#555") => { msg.textContent = t; msg.style.color = c; };
 
-  function setStatus(text, color="#555") {
-    msg.style.color = color;
-    msg.textContent = text;
-  }
+  // Garante só um listener (caso a página já tenha outro)
+  form.replaceWith(form.cloneNode(true));
+  const formFixed = document.getElementById("formCliente");
 
-  form.addEventListener("submit", async (e) => {
+  formFixed.addEventListener("submit", async (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    console.log("[NailNow] submit:start");
-
-    const btn  = document.getElementById("btnSubmit");
-    const nome = document.getElementById("nomeCompleto")?.value?.trim() || "";
-    const email = document.getElementById("email")?.value?.trim() || "";
-    const telefone = document.getElementById("telefone")?.value?.trim() || "";
-    const senha = document.getElementById("senha")?.value || "";
-    const confirmarSenha = document.getElementById("confirmarSenha")?.value || "";
-    const endereco = document.getElementById("endereco")?.value?.trim() || "";
-    const complemento = document.getElementById("complemento")?.value?.trim() || "";
-    const termos = document.getElementById("termos")?.checked || false;
+    // Campos (ajuste IDs se necessário)
+    const nome          = document.getElementById("nomeCompleto")?.value?.trim() || "";
+    const email         = document.getElementById("email")?.value?.trim() || "";
+    const telefone      = document.getElementById("telefone")?.value?.trim() || "";
+    const senha         = document.getElementById("senha")?.value || "";
+    const confirmar     = document.getElementById("confirmarSenha")?.value || "";
+    const endereco      = document.getElementById("endereco")?.value?.trim() || "";
+    const complemento   = document.getElementById("complemento")?.value?.trim() || "";
+    const termos        = document.getElementById("termos")?.checked || false;
 
     if (!termos) { setStatus("Marque os Termos para continuar.", "red"); return; }
-    if (senha !== confirmarSenha) { setStatus("As senhas não coincidem.", "red"); return; }
+    if (senha !== confirmar) { setStatus("As senhas não coincidem.", "red"); return; }
 
-    const originalText = btn?.textContent;
+    const original = btn?.textContent;
     if (btn) { btn.disabled = true; btn.textContent = "Enviando dados..."; }
     setStatus("Salvando seu cadastro...");
 
@@ -502,22 +492,22 @@
       console.log("[NailNow] addDoc → clientes", payload);
 
       const docRef = await addDoc(collection(db, "clientes"), payload);
-      console.log("[NailNow] gravado id:", docRef.id);
+      console.log("[NailNow] salvo id:", docRef.id);
 
       // Read-back para confirmar
       const snap = await getDoc(doc(db, "clientes", docRef.id));
-      console.log("[NailNow] read-back ok:", snap.exists(), snap.data());
+      console.log("[NailNow] read-back:", snap.exists(), snap.data());
 
       setStatus("Cadastro salvo com sucesso!", "green");
       if (btn) btn.textContent = "✅ Enviado com sucesso!";
-      form.reset();
+      formFixed.reset();
     } catch (error) {
-      console.error("[NailNow] erro Firestore:", { code: error.code, message: error.message, stack: error.stack });
-      setStatus(error?.message || "Não foi possível salvar agora.", "red");
+      console.error("[NailNow] Erro Firestore:", error);
+      setStatus("Erro: " + (error?.message || "tente novamente."), "red");
       if (btn) btn.textContent = "Tentar novamente";
     } finally {
       setTimeout(() => {
-        if (btn) { btn.disabled = false; btn.textContent = originalText || "Criar conta cliente"; }
+        if (btn) { btn.disabled = false; btn.textContent = original || "Criar conta cliente"; }
       }, 3000);
     }
   });
