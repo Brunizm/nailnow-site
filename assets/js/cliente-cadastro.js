@@ -1,30 +1,8 @@
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
-    authDomain: "nailnow-7546c.firebaseapp.com",
-    projectId: "nailnow-7546c",
-    storageBucket: "nailnow-7546c.firebasestorage.app",
-    messagingSenderId: "413820353687",
-    appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
-    measurementId: "G-2YEGPEG0E1"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
 function setupClientRegistrationForm() {
     const form = document.getElementById("formCliente");
     if (!form) {
-        console.error("[NailNow] Client registration form not found.");
+        console.error("[NailNow] Registration form not found.");
         return;
-    }
-    if (form.dataset.listenerAttached === "true") {
-        return; 
     }
 
     const msg = document.getElementById("formMsg");
@@ -41,25 +19,34 @@ function setupClientRegistrationForm() {
         e.preventDefault();
         e.stopImmediatePropagation();
 
-        const nome = form.nome.value.trim();
-        const email = form.email.value.trim();
-        const telefone = form.telefone.value.trim();
-        const senha = form.senha.value;
-        const confirmar = form.confirmarSenha.value;
-        const endereco = form.endereco_text.value.trim();
-        const complemento = form.complemento.value.trim();
-        const termos = form.aceiteTermos.checked;
+        const formData = {
+            nome: form.nome.value.trim(),
+            email: form.email.value.trim(),
+            telefone: form.telefone.value.trim(),
+            senha: form.senha.value,
+            confirmarSenha: form.confirmarSenha.value,
+            endereco: form.endereco_text.value.trim(),
+            complemento: form.complemento.value.trim(),
+            aceiteTermos: form.aceiteTermos.checked,
+            // Hidden fields for Google Places
+            endereco_formatado: form.endereco_formatado.value,
+            place_id: form.place_id.value,
+            lat: form.lat.value,
+            lng: form.lng.value,
+            // Add origin to align with documentation
+            origem: "cliente-cadastro-web",
+        };
 
-        if (!nome || !email || !telefone || !senha || !endereco) {
+        if (!formData.nome || !formData.email || !formData.telefone || !formData.senha || !formData.endereco) {
             return setStatus("Preencha os campos obrigatórios (*).", "red");
         }
-        if (senha.length < 6) {
+        if (formData.senha.length < 6) {
             return setStatus("A senha precisa ter no mínimo 6 caracteres.", "red");
         }
-        if (senha !== confirmar) {
+        if (formData.senha !== formData.confirmarSenha) {
             return setStatus("As senhas não coincidem.", "red");
         }
-        if (!termos) {
+        if (!formData.aceiteTermos) {
             return setStatus("Você precisa aceitar os Termos de Uso para continuar.", "red");
         }
 
@@ -69,53 +56,43 @@ function setupClientRegistrationForm() {
         setStatus("Criando sua conta...", "#555");
 
         try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
-            const user = userCredential.user;
+            // The URL for the Cloud Function
+            const functionUrl = "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount";
 
-            setStatus("Salvando seu perfil...", "#555");
-            const profilePayload = {
-                uid: user.uid,
-                nome,
-                email,
-                telefone,
-                endereco,
-                complemento,
-                aceiteTermos: termos,
-                criadoEm: serverTimestamp(),
-                atualizadoEm: serverTimestamp(),
-                origem: "cliente-cadastro-web" // Added required field based on documentation
-            };
+            const response = await fetch(functionUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            });
 
-            await setDoc(doc(db, "clientes", user.uid), profilePayload);
+            const result = await response.json();
 
-            setStatus("Conta criada com sucesso! Você já pode fazer login.", "green");
+            if (!response.ok) {
+                let friendlyMessage = "Ocorreu um erro. Tente novamente.";
+                if (result.error === 'email-already-in-use') {
+                    friendlyMessage = "Este e-mail já está em uso. Tente fazer login.";
+                } else if (result.error === 'invalid-payload') {
+                    friendlyMessage = "Alguns dados estão faltando. Verifique o formulário.";
+                }
+                throw new Error(friendlyMessage);
+            }
+            
+            setStatus("Conta criada com sucesso! Verifique seu e-mail para confirmar.", "green");
             btn.textContent = "✅ Sucesso!";
             form.reset();
 
         } catch (error) {
             console.error("Error during sign-up:", error);
-            const errorCode = error.code;
-            let friendlyMessage = "Ocorreu um erro inesperado. Por favor, tente novamente.";
-            
-            if (errorCode === 'auth/email-already-in-use') {
-                friendlyMessage = "Este e-mail já está cadastrado. Tente fazer login.";
-            } else if (errorCode === 'auth/weak-password') {
-                friendlyMessage = "Sua senha é muito fraca. Por favor, use uma senha mais forte.";
-            } else if (errorCode === 'auth/invalid-email') {
-                friendlyMessage = "O e-mail informado não é válido.";
-            } else if (errorCode === 'permission-denied') {
-                friendlyMessage = "Erro de permissão ao salvar os dados. Verifique as regras do Firestore.";
-            }
-            
-            setStatus(friendlyMessage, "red");
+            setStatus(error.message || "Ocorreu um erro inesperado. Tente mais tarde.", "red");
             btn.disabled = false;
             btn.textContent = originalButtonText;
         }
     });
-
-    form.dataset.listenerAttached = "true";
 }
 
+// Wait for the DOM to be fully loaded before setting up the form
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupClientRegistrationForm);
 } else {
