@@ -1,4 +1,4 @@
-is it don<!doctype html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
 <!-- Google tag (gtag.js) -->
@@ -249,6 +249,7 @@ is it don<!doctype html>
               </label>
 
               <button id="btnSubmit" type="submit" class="signup-submit">Criar conta cliente</button>
+              <p id="formMsg" class="signup-feedback" role="status" aria-live="polite"></p>
             </form>
           </div>
         </div>
@@ -315,97 +316,121 @@ is it don<!doctype html>
 
     <script src="/assets/js/password-toggle.js"></script>
     <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, collection, addDoc, serverTimestamp, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  // Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
-    authDomain: "nailnow-7546c.firebaseapp.com",
-    projectId: "nailnow-7546c",
-    storageBucket: "nailnow-7546c.firebasestorage.app",
-    messagingSenderId: "413820353687",
-    appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
-    measurementId: "G-2YEGPEG0E1"
-  };
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+      const firebaseConfig = {
+        apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+        authDomain: "nailnow-7546c.firebaseapp.com",
+        projectId: "nailnow-7546c",
+        storageBucket: "nailnow-7546c.firebasestorage.app",
+        messagingSenderId: "413820353687",
+        appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+        measurementId: "G-2YEGPEG0E1"
+      };
 
-  const form = document.getElementById("formCliente");
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
 
-  if (!form) {
-    console.warn("[NailNow] Formulário de cliente não encontrado.");
-    return;
-  }
+      function setupForm() {
+        const form = document.getElementById("formCliente");
+        if (!form || form.dataset.listenerAttached === "true") return;
 
-  let msg = document.getElementById("formMsg");
-  if (!msg) {
-    msg = document.createElement("p");
-    msg.id = "formMsg";
-    msg.style.marginTop = "10px";
-    form.appendChild(msg);
-  }
-  const setStatus = (t, c="#555") => { msg.textContent = t; msg.style.color = c; };
+        const msg = document.getElementById("formMsg");
+        const setStatus = (text, color = "#555") => {
+          if (!msg) return;
+          msg.textContent = text;
+          msg.style.color = color;
+        };
+        
+        const btn = document.getElementById("btnSubmit");
 
-  const getSubmitButton = () => document.getElementById("btnSubmit");
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          e.stopImmediatePropagation();
 
-  // Evita múltiplos listeners no mesmo formulário
-  if (form.dataset.listenerAttached === "true") {
-    return;
-  }
-  form.dataset.listenerAttached = "true";
+          const nome = form.nome.value.trim();
+          const email = form.email.value.trim();
+          const telefone = form.telefone.value.trim();
+          const senha = form.senha.value;
+          const confirmar = form.confirmarSenha.value;
+          const endereco = form.endereco_text.value.trim();
+          const complemento = form.complemento.value.trim();
+          const termos = form.aceiteTermos.checked;
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
+          if (!nome || !email || !telefone || !senha || !endereco) {
+            return setStatus("Preencha os campos obrigatórios (*).", "red");
+          }
+          if (senha.length < 6) {
+            return setStatus("A senha precisa ter no mínimo 6 caracteres.", "red");
+          }
+          if (senha !== confirmar) {
+            return setStatus("As senhas não coincidem.", "red");
+          }
+          if (!termos) {
+            return setStatus("Você precisa aceitar os Termos de Uso para continuar.", "red");
+          }
 
-    // Campos (ajuste IDs se necessário)
-    const nome          = document.getElementById("nomeCompleto")?.value?.trim() || "";
-    const email         = document.getElementById("email")?.value?.trim() || "";
-    const telefone      = document.getElementById("telefone")?.value?.trim() || "";
-    const senha         = document.getElementById("senha")?.value || "";
-    const confirmar     = document.getElementById("confirmarSenha")?.value || "";
-    const endereco      = document.getElementById("endereco")?.value?.trim() || "";
-    const complemento   = document.getElementById("complemento")?.value?.trim() || "";
-    const termos        = document.getElementById("termos")?.checked || false;
+          const originalButtonText = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = "Enviando...";
+          setStatus("Criando sua conta...");
 
-    if (!termos) { setStatus("Marque os Termos para continuar.", "red"); return; }
-    if (senha !== confirmar) { setStatus("As senhas não coincidem.", "red"); return; }
+          try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+            const user = userCredential.user;
+            
+            const profilePayload = {
+              uid: user.uid,
+              nome,
+              email,
+              telefone,
+              endereco,
+              complemento,
+              aceiteTermos: termos,
+              criadoEm: serverTimestamp(),
+              atualizadoEm: serverTimestamp(),
+            };
 
-    const btn = getSubmitButton();
-    const original = btn?.textContent;
-    if (btn) { btn.disabled = true; btn.textContent = "Enviando dados..."; }
-    setStatus("Salvando seu cadastro...");
+            await setDoc(doc(db, "clientes", user.uid), profilePayload);
+            
+            setStatus("Conta criada com sucesso! Redirecionando...", "green");
+            btn.textContent = "✅ Sucesso!";
+            form.reset();
+            // Optional: redirect to a welcome or dashboard page
+            // window.location.href = '/cliente/dashboard.html'; 
 
-    try {
-      const payload = { nome, email, telefone, senha, endereco, complemento, termos, criadoEm: serverTimestamp() };
-      console.log("[NailNow] addDoc → clientes", payload);
+          } catch (error) {
+            console.error("Erro no cadastro:", error);
+            const errorCode = error.code;
+            let friendlyMessage = "Ocorreu um erro. Tente novamente.";
+            if (errorCode === 'auth/email-already-in-use') {
+              friendlyMessage = "Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.";
+            } else if (errorCode === 'auth/weak-password') {
+              friendlyMessage = "A senha é muito fraca. Tente uma mais forte.";
+            }
+            setStatus(friendlyMessage, "red");
+            btn.textContent = originalButtonText;
+          } finally {
+            setTimeout(() => {
+              btn.disabled = false;
+              btn.textContent = originalButtonText;
+            }, 3000);
+          }
+        });
+        
+        form.dataset.listenerAttached = "true";
+      }
 
-      const docRef = await addDoc(collection(db, "clientes"), payload);
-      console.log("[NailNow] salvo id:", docRef.id);
-
-      // Read-back para confirmar
-      const snap = await getDoc(doc(db, "clientes", docRef.id));
-      console.log("[NailNow] read-back:", snap.exists(), snap.data());
-
-      setStatus("Cadastro salvo com sucesso!", "green");
-      if (btn) btn.textContent = "✅ Enviado com sucesso!";
-      form.reset();
-    } catch (error) {
-      console.error("[NailNow] Erro Firestore:", error);
-      setStatus("Erro: " + (error?.message || "tente novamente."), "red");
-      if (btn) btn.textContent = "Tentar novamente";
-    } finally {
-      setTimeout(() => {
-        const submitBtn = getSubmitButton();
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = original || "Criar conta cliente";
-        }
-      }, 3000);
-    }
-  });
-</script>
+      // Ensure the DOM is fully loaded before setting up the form
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupForm);
+      } else {
+        setupForm();
+      }
+    </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script>
       window.initEnderecoAutocomplete = function () {
