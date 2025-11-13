@@ -50,7 +50,6 @@ function setupClientRegistrationForm() {
         const complemento = form.complemento.value.trim();
         const termos = form.aceiteTermos.checked;
 
-        // Basic Validations
         if (!nome || !email || !telefone || !senha || !endereco) {
             return setStatus("Preencha os campos obrigatórios (*).", "red");
         }
@@ -70,11 +69,10 @@ function setupClientRegistrationForm() {
         setStatus("Criando sua conta...", "#555");
 
         try {
-            // Step 1: Create Firebase Auth user
             const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
             const user = userCredential.user;
 
-            // Step 2: Create user profile in Firestore
+            setStatus("Salvando seu perfil...", "#555");
             const profilePayload = {
                 uid: user.uid,
                 nome,
@@ -85,15 +83,14 @@ function setupClientRegistrationForm() {
                 aceiteTermos: termos,
                 criadoEm: serverTimestamp(),
                 atualizadoEm: serverTimestamp(),
+                origem: "cliente-cadastro-web" // Added required field based on documentation
             };
+
             await setDoc(doc(db, "clientes", user.uid), profilePayload);
 
             setStatus("Conta criada com sucesso! Você já pode fazer login.", "green");
             btn.textContent = "✅ Sucesso!";
             form.reset();
-            
-            // Optional: Redirect after a short delay
-            // setTimeout(() => { window.location.href = '/cliente/dashboard.html'; }, 2000);
 
         } catch (error) {
             console.error("Error during sign-up:", error);
@@ -106,19 +103,19 @@ function setupClientRegistrationForm() {
                 friendlyMessage = "Sua senha é muito fraca. Por favor, use uma senha mais forte.";
             } else if (errorCode === 'auth/invalid-email') {
                 friendlyMessage = "O e-mail informado não é válido.";
+            } else if (errorCode === 'permission-denied') {
+                friendlyMessage = "Erro de permissão ao salvar os dados. Verifique as regras do Firestore.";
             }
             
             setStatus(friendlyMessage, "red");
             btn.disabled = false;
             btn.textContent = originalButtonText;
         }
-        // 'finally' is not used to re-enable the button, to prevent users from re-submitting a successful form.
     });
 
     form.dataset.listenerAttached = "true";
 }
 
-// Wait for the DOM to be fully loaded before setting up the form
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupClientRegistrationForm);
 } else {
