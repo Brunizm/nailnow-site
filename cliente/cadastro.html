@@ -449,9 +449,12 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  // Elements
   const form = document.getElementById("formCliente");
-  const btn  = document.getElementById("btnSubmit");
+
+  if (!form) {
+    console.warn("[NailNow] Formulário de cliente não encontrado.");
+    return;
+  }
 
   let msg = document.getElementById("formMsg");
   if (!msg) {
@@ -462,11 +465,15 @@
   }
   const setStatus = (t, c="#555") => { msg.textContent = t; msg.style.color = c; };
 
-  // Garante só um listener (caso a página já tenha outro)
-  form.replaceWith(form.cloneNode(true));
-  const formFixed = document.getElementById("formCliente");
+  const getSubmitButton = () => document.getElementById("btnSubmit");
 
-  formFixed.addEventListener("submit", async (e) => {
+  // Evita múltiplos listeners no mesmo formulário
+  if (form.dataset.listenerAttached === "true") {
+    return;
+  }
+  form.dataset.listenerAttached = "true";
+
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
 
@@ -483,6 +490,7 @@
     if (!termos) { setStatus("Marque os Termos para continuar.", "red"); return; }
     if (senha !== confirmar) { setStatus("As senhas não coincidem.", "red"); return; }
 
+    const btn = getSubmitButton();
     const original = btn?.textContent;
     if (btn) { btn.disabled = true; btn.textContent = "Enviando dados..."; }
     setStatus("Salvando seu cadastro...");
@@ -500,14 +508,18 @@
 
       setStatus("Cadastro salvo com sucesso!", "green");
       if (btn) btn.textContent = "✅ Enviado com sucesso!";
-      formFixed.reset();
+      form.reset();
     } catch (error) {
       console.error("[NailNow] Erro Firestore:", error);
       setStatus("Erro: " + (error?.message || "tente novamente."), "red");
       if (btn) btn.textContent = "Tentar novamente";
     } finally {
       setTimeout(() => {
-        if (btn) { btn.disabled = false; btn.textContent = original || "Criar conta cliente"; }
+        const submitBtn = getSubmitButton();
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = original || "Criar conta cliente";
+        }
       }, 3000);
     }
   });
