@@ -1,6 +1,6 @@
 /**
  * @fileoverview Lógica para o formulário de cadastro de clientes.
- * @version 2.1
+ * @version 2.2
  * @author Brunno Sena <contato@brunnoleitesena.com.br>
  *
  * @description
@@ -10,9 +10,10 @@
  * ocorram de forma segura no backend.
  *
  * @changelog
- * - 2.1: Corrige o bug em que `parseFloat` em um campo de endereço vazio
- *        resultava em `NaN`, causando falha na chamada da função.
- *        Agora, o valor é explicitamente convertido para `null` se estiver vazio.
+ * - 2.2: Garante que as coordenadas de geolocalização (latitude e longitude)
+ *        sejam incluídas no payload apenas se forem válidas e não-nulas.
+ *        Isso previne o envio de `NaN` ou `null` para o backend, que causava
+ *        uma falha silenciosa na criação da conta.
  */
 
 const form = document.getElementById("formCliente");
@@ -35,19 +36,30 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  // Constrói o objeto de endereço de forma segura
+  const enderecoPayload = {
+    texto: data.endereco_text || "",
+    formatado: data.endereco_formatado || "",
+    placeId: data.place_id || "",
+    complemento: data.complemento || "",
+  };
+
+  // Adiciona lat/lng apenas se forem valores válidos
+  if (data.lat && data.lng) {
+    const lat = parseFloat(data.lat);
+    const lng = parseFloat(data.lng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      enderecoPayload.lat = lat;
+      enderecoPayload.lng = lng;
+    }
+  }
+
   const payload = {
     nome: data.nome,
     email: data.email,
     telefone: data.telefone,
     senha: data.senha,
-    endereco: {
-      texto: data.endereco_text,
-      formatado: data.endereco_formatado,
-      placeId: data.place_id,
-      lat: data.lat ? parseFloat(data.lat) : null,
-      lng: data.lng ? parseFloat(data.lng) : null,
-      complemento: data.complemento,
-    },
+    endereco: enderecoPayload,
   };
 
   try {
@@ -71,8 +83,18 @@ form.addEventListener("submit", async (event) => {
     btnSubmit.textContent = "Sucesso!";
 
   } catch (error) {
-    console.error("Erro durante o cadastro:", error);
-    formMsg.textContent = error.message || "Ocorreu um erro. Tente novamente.";
+    console.error("Erro detalhado durante o cadastro:", error);
+    let errorMessage = "Ocorreu um erro inesperado. Tente novamente.";
+    // Tenta extrair a mensagem de erro específica, se disponível
+    if (error && typeof error.message === 'string') {
+        // Personaliza a mensagem para erros conhecidos
+        if (error.message.includes("auth/email-already-in-use")) {
+            errorMessage = "Este endereço de e-mail já está em uso.";
+        } else {
+            errorMessage = error.message;
+        }
+    }
+    formMsg.textContent = errorMessage;
     btnSubmit.disabled = false;
     btnSubmit.textContent = "Criar conta cliente";
   }
