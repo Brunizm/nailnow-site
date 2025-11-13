@@ -149,7 +149,7 @@
           <div class="client-signup-card">
             <h2 class="client-signup-card__title">Comece agora</h2>
             <p class="client-signup-card__subtitle">Preencha seus dados para desbloquear ofertas e agendar sem filas.</p>
-            <form id="formCliente" class="signup-form" autocomplete="off">
+            <form id="formCliente" class="signup-form" autocomplete="off" action="javascript:void(0);">
               <div class="signup-field">
                 <label for="nomeCompleto">Nome completo *</label>
                 <input id="nomeCompleto" name="nome" type="text" required />
@@ -279,124 +279,6 @@
         </div>
       </section>
     </main>
-
-    <form id="cadastroFormCliente">
-      <input id="clientName" type="text" placeholder="Seu nome" required />
-      <input id="clientEmail" type="email" placeholder="Seu e-mail" required />
-      <button type="submit">Criar cadastro (Cliente)</button>
-    </form>
-
-    <script>
-      const CLIENT_QUICK_ENDPOINTS = [
-        "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerQuickLead",
-        "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerQuickLead",
-        "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/registerQuickLead",
-      ];
-      const QUICK_CLIENT_ORIGIN = "cliente-landing-quick-form";
-
-      async function submitQuickLead(endpoints, payload) {
-        const errors = [];
-
-        for (const endpoint of endpoints) {
-          try {
-            const response = await fetch(endpoint, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify(payload),
-            });
-
-            const data = await response.json().catch(() => ({}));
-
-            if (!response.ok) {
-              errors.push({ endpoint, error: data?.error || `http-${response.status}` });
-              if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-                break;
-              }
-              continue;
-            }
-
-            if (data?.ok) {
-              return { endpoint, data };
-            }
-
-            errors.push({ endpoint, error: data?.error || "unknown-response" });
-          } catch (err) {
-            errors.push({ endpoint, error: err?.message || "network-error" });
-          }
-        }
-
-        const lastError = errors.length ? errors[errors.length - 1] : null;
-        return { error: lastError || { error: "unknown" }, attempts: errors };
-      }
-
-      const cadastroClienteForm = document.getElementById("cadastroFormCliente");
-
-      if (cadastroClienteForm) {
-        cadastroClienteForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-
-          const nameInput = document.getElementById("clientName");
-          const emailInput = document.getElementById("clientEmail");
-          const submitButton = cadastroClienteForm.querySelector("button[type='submit']");
-
-          const name = (nameInput?.value || "").trim();
-          const email = (emailInput?.value || "").trim();
-
-          if (!name || !email) {
-            alert("Preencha nome e e-mail para continuar.");
-            return;
-          }
-
-          if (submitButton) {
-            submitButton.disabled = true;
-            submitButton.setAttribute("aria-busy", "true");
-          }
-
-          const payload = {
-            type: "client",
-            role: "cliente",
-            nome: name,
-            name,
-            email,
-            origem: QUICK_CLIENT_ORIGIN,
-            referrer: window.location.href,
-            pageUrl: window.location.href,
-          };
-
-          const endpoints = [...CLIENT_QUICK_ENDPOINTS];
-
-          try {
-            const result = await submitQuickLead(endpoints, payload);
-
-            if (result?.data?.ok) {
-              const data = result.data;
-              const mailStatus = (data.mail?.status || "").toLowerCase();
-              const successMessage = ["queued", "already-queued"].includes(mailStatus)
-                ? "Recebemos seu cadastro! Enviamos um e-mail com os próximos passos."
-                : data.profilePath
-                  ? "Recebemos seu cadastro! Nossa equipe confirmará os dados e responderá pelo seu e-mail."
-                  : "Recebemos seu cadastro! Em breve nossa equipe entrará em contato.";
-
-              alert(successMessage);
-              cadastroClienteForm.reset();
-              return;
-            }
-
-            alert(
-              "Não foi possível registrar seu interesse agora. Recarregue a página e tente novamente ou contate suporte@nailnow.app.",
-            );
-          } catch (err) {
-            console.error("Erro inesperado ao enviar lead cliente", err);
-            alert("Falha de conexão. Tente novamente.");
-          } finally {
-            if (submitButton) {
-              submitButton.disabled = false;
-              submitButton.removeAttribute("aria-busy");
-            }
-          }
-        });
-      }
-    </script>
 
     <footer class="site-footer">
       <div class="footer-inner">
