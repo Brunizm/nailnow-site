@@ -1,100 +1,78 @@
-function setupClientRegistrationForm() {
-    const form = document.getElementById("formCliente");
-    if (!form) {
-        console.error("[NailNow] Registration form not found.");
-        return;
+'''
+ * @fileoverview Lógica para o formulário de cadastro de clientes.
+ * @version 2.0
+ * @author Brunno Sena <contato@brunnoleitesena.com.br>
+ * 
+ * @description
+ * Este arquivo contém a lógica para o formulário de cadastro de clientes,
+ * que agora invoca uma Cloud Function para registrar a conta, garantindo
+ * que as operações de autenticação e criação de perfil no Firestore
+ * ocorram de forma segura no backend.
+ '''
+
+const form = document.getElementById("formCliente");
+const btnSubmit = document.getElementById("btnSubmit");
+const formMsg = document.getElementById("formMsg");
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  btnSubmit.disabled = true;
+  btnSubmit.textContent = "Enviando...";
+  formMsg.textContent = "";
+
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData.entries());
+
+  if (data.senha !== data.confirmarSenha) {
+    formMsg.textContent = "As senhas não conferem.";
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = "Criar conta cliente";
+    return;
+  }
+
+  const payload = {
+    nome: data.nome,
+    email: data.email,
+    telefone: data.telefone,
+    senha: data.senha,
+    endereco: {
+      texto: data.endereco_text,
+      formatado: data.endereco_formatado,
+      placeId: data.place_id,
+      lat: parseFloat(data.lat),
+      lng: parseFloat(data.lng),
+      complemento: data.complemento,
+    },
+  };
+
+  try {
+    // A URL da sua Cloud Function implantada
+    const functionUrl = "https://us-central1-nailnow-3151a.cloudfunctions.net/registerClientAccount";
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ data: payload }), // O payload deve ser encapsulado em um objeto 'data'
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      // A função pode retornar mensagens de erro específicas
+      throw new Error(result.error || "Falha ao criar a conta.");
     }
 
-    const msg = document.getElementById("formMsg");
-    const btn = document.getElementById("btnSubmit");
+    formMsg.textContent = "Conta criada com sucesso! Verifique seu e-mail para confirmação.";
+    form.reset();
+    btnSubmit.textContent = "Sucesso!";
+    // Opcional: redirecionar para uma página de sucesso ou login
+    // window.location.href = '/cliente/login.html';
 
-    const setStatus = (text, color = "#555") => {
-        if (!msg) return;
-        msg.textContent = text;
-        msg.style.color = color;
-        msg.style.display = "block";
-    };
-
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-
-        const formData = {
-            nome: form.nome.value.trim(),
-            email: form.email.value.trim(),
-            telefone: form.telefone.value.trim(),
-            senha: form.senha.value,
-            confirmarSenha: form.confirmarSenha.value,
-            endereco: form.endereco_text.value.trim(),
-            complemento: form.complemento.value.trim(),
-            aceiteTermos: form.aceiteTermos.checked,
-            // Hidden fields for Google Places
-            endereco_formatado: form.endereco_formatado.value,
-            place_id: form.place_id.value,
-            lat: form.lat.value,
-            lng: form.lng.value,
-            // Add origin to align with documentation
-            origem: "cliente-cadastro-web",
-        };
-
-        if (!formData.nome || !formData.email || !formData.telefone || !formData.senha || !formData.endereco) {
-            return setStatus("Preencha os campos obrigatórios (*).", "red");
-        }
-        if (formData.senha.length < 6) {
-            return setStatus("A senha precisa ter no mínimo 6 caracteres.", "red");
-        }
-        if (formData.senha !== formData.confirmarSenha) {
-            return setStatus("As senhas não coincidem.", "red");
-        }
-        if (!formData.aceiteTermos) {
-            return setStatus("Você precisa aceitar os Termos de Uso para continuar.", "red");
-        }
-
-        const originalButtonText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = "Enviando...";
-        setStatus("Criando sua conta...", "#555");
-
-        try {
-            // The URL for the Cloud Function
-            const functionUrl = "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount";
-
-            const response = await fetch(functionUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(formData),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                let friendlyMessage = "Ocorreu um erro. Tente novamente.";
-                if (result.error === 'email-already-in-use') {
-                    friendlyMessage = "Este e-mail já está em uso. Tente fazer login.";
-                } else if (result.error === 'invalid-payload') {
-                    friendlyMessage = "Alguns dados estão faltando. Verifique o formulário.";
-                }
-                throw new Error(friendlyMessage);
-            }
-            
-            setStatus("Conta criada com sucesso! Verifique seu e-mail para confirmar.", "green");
-            btn.textContent = "✅ Sucesso!";
-            form.reset();
-
-        } catch (error) {
-            console.error("Error during sign-up:", error);
-            setStatus(error.message || "Ocorreu um erro inesperado. Tente mais tarde.", "red");
-            btn.disabled = false;
-            btn.textContent = originalButtonText;
-        }
-    });
-}
-
-// Wait for the DOM to be fully loaded before setting up the form
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupClientRegistrationForm);
-} else {
-    setupClientRegistrationForm();
-}
+  } catch (error) {
+    console.error("Erro durante o cadastro:", error);
+    formMsg.textContent = error.message || "Ocorreu um erro. Tente novamente.";
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = "Criar conta cliente";
+  }
+});
