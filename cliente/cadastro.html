@@ -336,16 +336,18 @@
 
       function setupForm() {
         const form = document.getElementById("formCliente");
-        if (!form || form.dataset.listenerAttached === "true") return;
+        if (!form || form.dataset.listenerAttached === "true") {
+          return;
+        }
 
         const msg = document.getElementById("formMsg");
+        const btn = document.getElementById("btnSubmit");
+
         const setStatus = (text, color = "#555") => {
           if (!msg) return;
           msg.textContent = text;
           msg.style.color = color;
         };
-        
-        const btn = document.getElementById("btnSubmit");
 
         form.addEventListener("submit", async (e) => {
           e.preventDefault();
@@ -412,19 +414,20 @@
               friendlyMessage = "A senha é muito fraca. Tente uma mais forte.";
             }
             setStatus(friendlyMessage, "red");
-            btn.textContent = originalButtonText;
           } finally {
-            setTimeout(() => {
-              btn.disabled = false;
-              btn.textContent = originalButtonText;
-            }, 3000);
+            // Re-enable button after a delay, but only if there was an error
+            if (!btn.textContent.includes("Sucesso")) {
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = originalButtonText;
+                }, 3000);
+            }
           }
         });
         
         form.dataset.listenerAttached = "true";
       }
 
-      // Ensure the DOM is fully loaded before setting up the form
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', setupForm);
       } else {
