@@ -95,10 +95,10 @@ button {
 }
 
 main {
-  padding: 0 clamp(1.5rem, 6vw, 3.75rem) clamp(6rem, 10vw, 7.5rem);
+  padding: 0 clamp(1.25rem, 5vw, 2.75rem) clamp(4rem, 8vw, 5.5rem);
   display: flex;
   flex-direction: column;
-  gap: clamp(2.5rem, 6vw, 4rem);
+  gap: clamp(2rem, 5vw, 3rem);
 }
 
 .auth-layout {
@@ -40137,19 +40137,58 @@ main {
   margin: 0 0 2.4rem;
 }
 
+.home-hero-stack {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: clamp(1.75rem, 6vw, 2.5rem) auto 0;
+  padding: 0 clamp(1.25rem, 5vw, 2rem);
+  display: grid;
+  gap: clamp(1.25rem, 4vw, 1.85rem);
+  justify-items: center;
+}
+
+.home-hero-banner {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 640px;
+  border-radius: var(--radius-medium);
+  overflow: hidden;
+  box-shadow: 0 22px 48px -28px rgba(244, 92, 162, 0.35);
+}
+
+.home-hero-banner img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: inherit;
+}
+
+.hero--home {
+  margin: 0;
+  max-width: 100%;
+  padding: clamp(2.25rem, 5vw, 3.25rem);
+  background: linear-gradient(180deg, rgba(255, 236, 246, 0.9), rgba(255, 255, 255, 0.96));
+  border: 1px solid rgba(244, 92, 162, 0.14);
+  box-shadow: 0 26px 52px -30px rgba(244, 92, 162, 0.4);
+  gap: clamp(1.75rem, 5vw, 2.75rem);
+}
+
 .hero--home .hero-copy {
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
+  gap: clamp(1rem, 3vw, 1.5rem);
 }
 
 .hero--home .hero-label {
   margin: 0;
-  align-self: center;
+  align-self: flex-start;
+  letter-spacing: 0.22em;
+  padding: 0.45rem 1.5rem;
 }
 
 .hero--home h1 {
-  margin: 0 auto 1.5rem;
-  text-align: center;
+  margin: 0 0 clamp(1rem, 3vw, 1.5rem);
+  text-align: left;
   white-space: normal;
 }
 
@@ -40163,9 +40202,25 @@ main {
 }
 
 .hero--home p {
-  margin: 0 auto 2.4rem;
-  max-width: 48ch;
-  text-align: center;
+  margin: 0 0 clamp(1.25rem, 3vw, 1.75rem);
+  max-width: 44ch;
+  text-align: left;
+}
+
+.hero--home .booking-card {
+  margin: clamp(1rem, 3vw, 1.5rem) 0 0;
+  background: linear-gradient(180deg, rgba(255, 228, 242, 0.92), rgba(255, 255, 255, 0.98));
+  box-shadow: 0 18px 44px -28px rgba(244, 92, 162, 0.42);
+}
+
+.hero--home .hero-media {
+  justify-content: center;
+}
+
+.hero--home .hero-media__image {
+  width: min(100%, 360px);
+  border-radius: 28px;
+  box-shadow: 0 24px 44px -30px rgba(244, 92, 162, 0.4);
 }
 
 .hero--client .hero-copy__description {
@@ -40200,6 +40255,33 @@ main {
 
   .hero p {
     margin: 0 0 1.85rem;
+  }
+
+  .hero--home {
+    padding: clamp(2.25rem, 8vw, 3.25rem);
+  }
+
+  .hero--home .hero-copy {
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero--home .hero-label {
+    align-self: center;
+  }
+
+  .hero--home h1 {
+    margin: 0 auto clamp(1rem, 4vw, 1.5rem);
+    text-align: center;
+  }
+
+  .hero--home p {
+    margin: 0 auto clamp(1rem, 4vw, 1.6rem);
+    text-align: center;
+  }
+
+  .hero--home .booking-card {
+    margin: clamp(1rem, 4vw, 1.5rem) auto 0;
   }
 
   .hero-media__image {
@@ -41326,17 +41408,17 @@ main {
 .cta-profissional {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: clamp(2.5rem, 6vw, 3.75rem) clamp(1.5rem, 6vw, 3.5rem);
-  background: var(--surface-alt);
+  padding: clamp(2rem, 5vw, 3.25rem) clamp(1.5rem, 5vw, 3rem);
+  background: linear-gradient(180deg, rgba(255, 240, 248, 0.82), rgba(255, 255, 255, 0.96));
   border-radius: var(--radius-large);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: clamp(1.5rem, 4vw, 3rem);
+  gap: clamp(1.25rem, 4vw, 2.5rem);
   color: var(--text-main);
   flex-wrap: wrap;
-  border: 1px solid rgba(244, 92, 162, 0.2);
-  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(244, 92, 162, 0.18);
+  box-shadow: 0 22px 46px -30px rgba(244, 92, 162, 0.35);
   position: relative;
   overflow: hidden;
 }
@@ -41350,7 +41432,7 @@ main {
 }
 
 .cta-content {
-  max-width: 520px;
+  max-width: 480px;
   position: relative;
   z-index: 1;
 }
@@ -41361,13 +41443,13 @@ main {
 }
 
 .match-results {
-  padding: clamp(2.5rem, 6vw, 4rem) 0 clamp(3.5rem, 7vw, 5rem);
+  padding: clamp(2rem, 5vw, 3.25rem) 0 clamp(3rem, 6vw, 4.5rem);
 }
 
 .match-results__inner {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: clamp(2.75rem, 6vw, 3.75rem);
+  padding: clamp(2.25rem, 5vw, 3.25rem);
   border-radius: var(--radius-large);
   border: 1px solid rgba(244, 92, 162, 0.18);
   background: linear-gradient(135deg, rgba(255, 243, 249, 0.95), rgba(255, 255, 255, 0.96));
