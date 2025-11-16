@@ -20,6 +20,76 @@ const form = document.getElementById("formCliente");
 const btnSubmit = document.getElementById("btnSubmit");
 const formMsg = document.getElementById("formMsg");
 
+const FUNCTION_ENDPOINTS = [
+  "https://southamerica-east1-nailnow-site.cloudfunctions.net/registerClientAccount",
+  "https://southamerica-east1-nailnow-7546c.cloudfunctions.net/registerClientAccount",
+  "https://southamerica-east1-nailnow-7546c-53f84.cloudfunctions.net/registerClientAccount",
+  "https://southamerica-east1-nailnow-3151a.cloudfunctions.net/registerClientAccount",
+];
+
+async function submitToRegisterFunction(payload) {
+  const attempts = [];
+
+  for (const endpoint of FUNCTION_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await response.text();
+      let parsedBody = null;
+
+      if (text) {
+        try {
+          parsedBody = JSON.parse(text);
+        } catch (parseError) {
+          parsedBody = { raw: text };
+        }
+      }
+
+      if (response.ok) {
+        return {
+          endpoint,
+          body: parsedBody || {},
+          response,
+        };
+      }
+
+      attempts.push({
+        endpoint,
+        status: response.status,
+        body: parsedBody,
+      });
+
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        break;
+      }
+    } catch (networkError) {
+      attempts.push({
+        endpoint,
+        error: networkError?.message || "network-error",
+      });
+    }
+  }
+
+  const aggregatedError = new Error("all-endpoints-failed");
+  aggregatedError.attempts = attempts;
+  throw aggregatedError;
+}
+
+function parseCoordinate(value) {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   btnSubmit.disabled = true;
@@ -36,46 +106,37 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  // Constrói o objeto de endereço de forma segura
-  const enderecoPayload = {
-    texto: data.endereco_text || "",
-    formatado: data.endereco_formatado || "",
-    placeId: data.place_id || "",
-    complemento: data.complemento || "",
-  };
-
-  // Adiciona lat/lng apenas se forem valores válidos
-  if (data.lat && data.lng) {
-    const lat = parseFloat(data.lat);
-    const lng = parseFloat(data.lng);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      enderecoPayload.lat = lat;
-      enderecoPayload.lng = lng;
-    }
-  }
+  const enderecoTexto = (data.endereco_text || "").trim();
+  const enderecoFormatado = (data.endereco_formatado || "").trim();
+  const enderecoAlternativo = (data.endereco || "").trim();
+  const complemento = (data.complemento || "").trim();
+  const placeId = (data.place_id || "").trim();
+  const lat = parseCoordinate(data.lat);
+  const lng = parseCoordinate(data.lng);
+  const enderecoPrincipal = enderecoTexto || enderecoFormatado || enderecoAlternativo;
 
   const payload = {
-    nome: data.nome,
-    email: data.email,
-    telefone: data.telefone,
+    nome: data.nome?.trim(),
+    email: data.email?.trim(),
+    telefone: data.telefone?.trim(),
     senha: data.senha,
-    endereco: enderecoPayload,
+    endereco: enderecoPrincipal,
+    endereco_text: enderecoTexto,
+    endereco_formatado: enderecoFormatado,
+    enderecoFormatado,
+    complemento,
+    place_id: placeId,
+    placeId,
+    ...(lat !== undefined ? { lat } : {}),
+    ...(lng !== undefined ? { lng } : {}),
+    aceiteTermos: form.elements.aceiteTermos?.checked ?? false,
   };
 
   try {
-    const functionUrl = "https://southamerica-east1-nailnow-3151a.cloudfunctions.net/registerClientAccount";
-    const response = await fetch(functionUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ data: payload }),
-    });
+    const { body } = await submitToRegisterFunction(payload);
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || "Falha ao criar a conta.");
+    if (body?.error) {
+      throw new Error(body.error);
     }
 
     formMsg.textContent = "Conta criada com sucesso! Verifique seu e-mail para confirmação.";
@@ -84,6 +145,9 @@ form.addEventListener("submit", async (event) => {
 
   } catch (error) {
     console.error("Erro detalhado durante o cadastro:", error);
+    if (error?.attempts) {
+      console.table(error.attempts);
+    }
     let errorMessage = "Ocorreu um erro inesperado. Tente novamente.";
     // Tenta extrair a mensagem de erro específica, se disponível
     if (error && typeof error.message === 'string') {
