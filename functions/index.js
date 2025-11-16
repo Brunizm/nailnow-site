@@ -2532,19 +2532,38 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:5173",
 ]);
 
+function isAllowedOrigin(origin) {
+  if (!origin || typeof origin !== "string") {
+    return false;
+  }
+
+  if (ALLOWED_ORIGINS.has(origin)) {
+    return true;
+  }
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
+    const isSecure = protocol === "https:";
+    const isNailnowDomain = hostname === "nailnow.app" || hostname.endsWith(".nailnow.app");
+
+    return (isSecure && isNailnowDomain) || isLocalhost;
+  } catch (error) {
+    return false;
+  }
+}
+
+function resolveAllowedOrigin(origin) {
+  if (isAllowedOrigin(origin)) {
+    return origin;
+  }
+
+  return APP_URL;
+}
+
 const corsHandler = cors({
   origin: (origin, callback) => {
-    if (!origin) {
-      callback(null, APP_URL);
-      return;
-    }
-
-    if (ALLOWED_ORIGINS.has(origin)) {
-      callback(null, origin);
-      return;
-    }
-
-    callback(null, APP_URL);
+    callback(null, resolveAllowedOrigin(origin));
   },
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: [
@@ -2561,7 +2580,7 @@ const corsHandler = cors({
 
 function applyCors(req, res) {
   const origin = req.headers?.origin;
-  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : APP_URL;
+  const allowedOrigin = resolveAllowedOrigin(origin);
   res.set("Access-Control-Allow-Origin", allowedOrigin);
   res.set("Vary", "Origin");
   res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
