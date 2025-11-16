@@ -63,7 +63,7 @@ form.addEventListener("submit", async (event) => {
   };
 
   try {
-    const functionUrl = "https://us-central1-nailnow-3151a.cloudfunctions.net/registerClientAccount";
+    const functionUrl = "https://southamerica-east1-nailnow-3151a.cloudfunctions.net/registerClientAccount";
     const response = await fetch(functionUrl, {
       method: "POST",
       headers: {
