@@ -322,7 +322,6 @@
     </nav>
 
     <script src="/assets/js/password-toggle.js"></script>
-    <script type="module" src="/assets/js/cliente-cadastro.js?v=2.1"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script>
       window.initEnderecoAutocomplete = function () {
@@ -353,71 +352,6 @@
         tryInit();
       });
     </script>
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-      import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
-
-      // Configuração do seu projeto
-      const firebaseConfig = {
-        apiKey: "AIzaSyAZeg0zQtv9a5crhnWP2biJ1UPA_LCVoR28",
-        authDomain: "nailnow-site-72103273-8290b.firebaseapp.com",
-        projectId: "nailnow-site-72103273-8290b",
-        storageBucket: "nailnow-site-72103273-8290b.appspot.com",
-        messagingSenderId: "729530854645",
-        appId: "1:729530854645:web:e39cfffff423bf384da9bc"
-      };
-
-      // Inicializa o Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-
-      // Pega o formulário
-      const form = document.getElementById("form-cadastro-cliente");
-
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault(); // evita recarregar a página
-
-        // pega os valores dos campos
-        const nomeCompleto = document.getElementById("nomeCompleto").value;
-        const email = document.getElementById("email").value;
-        const telefone = document.getElementById("telefone").value;
-        const senha = document.getElementById("senha").value;
-        const confirmarSenha = document.getElementById("confirmarSenha").value;
-        const endereco = document.getElementById("endereco").value;
-        const complemento = document.getElementById("complemento").value;
-        const aceiteTermos = document.getElementById("aceiteTermos").checked;
-
-        // validações simples
-        if (!aceiteTermos) {
-          alert("Você precisa aceitar os termos de uso e a política de privacidade");
-          return;
-        }
-
-        if (senha !== confirmarSenha) {
-          alert("As senhas não conferem");
-          return;
-        }
-
-        try {
-          // salva no Firestore, coleção "clientes"
-          await addDoc(collection(db, "clientes"), {
-            nomeCompleto,
-            email,
-            telefone,
-            endereco,
-            complemento,
-            aceiteTermos,
-            senha,
-            criadoEm: new Date().toISOString(),
-          });
-
-          alert("Conta criada com sucesso");
-          form.reset();
-        } catch (error) {
-          console.error("Erro ao salvar no Firebase", error);
-          alert("Ocorreu um problema ao salvar seus dados, tente novamente");
-        }
-      });
-    </script>
+    <script type="module" src="/assets/js/cliente-cadastro.js?v=3.0"></script>
   </body>
 </html>
