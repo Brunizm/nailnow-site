@@ -28,10 +28,36 @@ const form = document.getElementById("form-cadastro-cliente");
 const btnSubmit = document.getElementById("btnSubmit");
 const formMsg = document.getElementById("formMsg");
 
+const DEFAULT_SUBMIT_LABEL = "Criar conta cliente";
+
 function parseCoordinate(value) {
   if (!value) return undefined;
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function setSubmitState({ label = DEFAULT_SUBMIT_LABEL, disabled = false } = {}) {
+  if (!btnSubmit) return;
+  btnSubmit.disabled = disabled;
+  btnSubmit.textContent = label;
+}
+
+function setFeedback(message = "") {
+  if (!formMsg) return;
+  formMsg.textContent = message;
+}
+
+function appendStringField(target, key, value) {
+  if (!key) return;
+  const normalized = (value ?? "").trim();
+  if (normalized) {
+    target[key] = normalized;
+  }
+}
+
+function appendNumberField(target, key, value) {
+  if (!key || typeof value !== "number" || !Number.isFinite(value)) return;
+  target[key] = value;
 }
 
 if (!form) {
@@ -39,9 +65,8 @@ if (!form) {
 } else {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    btnSubmit.disabled = true;
-    btnSubmit.textContent = "Enviando...";
-    formMsg.textContent = "";
+    setSubmitState({ label: "Enviando...", disabled: true });
+    setFeedback("");
 
     const nomeCompleto = form.elements.nome?.value?.trim() || "";
     const email = form.elements.email?.value?.trim() || "";
@@ -59,16 +84,14 @@ if (!form) {
     const aceiteTermos = form.elements.aceiteTermos?.checked ?? false;
 
     if (!aceiteTermos) {
-      formMsg.textContent = "Você precisa aceitar os termos de uso e a política de privacidade.";
-      btnSubmit.disabled = false;
-      btnSubmit.textContent = "Criar conta cliente";
+      setFeedback("Você precisa aceitar os termos de uso e a política de privacidade.");
+      setSubmitState();
       return;
     }
 
     if (senha !== confirmarSenha) {
-      formMsg.textContent = "As senhas não conferem.";
-      btnSubmit.disabled = false;
-      btnSubmit.textContent = "Criar conta cliente";
+      setFeedback("As senhas não conferem.");
+      setSubmitState();
       return;
     }
 
@@ -78,35 +101,31 @@ if (!form) {
       telefone,
       senha,
       endereco,
-      endereco_texto: enderecoTexto,
-      endereco_formatado: enderecoFormatado,
-      enderecoAlternativo,
-      complemento,
-      place_id: placeId,
-      lat,
-      lng,
       aceiteTermos,
       criadoEm: new Date().toISOString(),
     };
 
-    const sanitizedData = Object.fromEntries(
-      Object.entries(clienteData).filter(([, value]) => value !== undefined)
-    );
+    appendStringField(clienteData, "endereco_texto", enderecoTexto);
+    appendStringField(clienteData, "endereco_formatado", enderecoFormatado);
+    appendStringField(clienteData, "enderecoAlternativo", enderecoAlternativo);
+    appendStringField(clienteData, "complemento", complemento);
+    appendStringField(clienteData, "place_id", placeId);
+    appendNumberField(clienteData, "lat", lat);
+    appendNumberField(clienteData, "lng", lng);
 
     try {
-      await addDoc(collection(db, "clientes"), sanitizedData);
+      await addDoc(collection(db, "clientes"), clienteData);
 
-      formMsg.textContent = "Conta criada com sucesso!";
+      setFeedback("Conta criada com sucesso!");
       form.reset();
-      btnSubmit.textContent = "Sucesso!";
+      setSubmitState({ label: "Sucesso!" });
     } catch (error) {
       console.error("Erro ao salvar no Firebase", error);
-      formMsg.textContent = "Ocorreu um problema ao salvar seus dados, tente novamente.";
-      btnSubmit.disabled = false;
-      btnSubmit.textContent = "Criar conta cliente";
+      setFeedback("Ocorreu um problema ao salvar seus dados, tente novamente.");
+      setSubmitState();
       return;
     }
 
-    btnSubmit.disabled = false;
+    setSubmitState();
   });
 }

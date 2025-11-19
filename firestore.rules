@@ -3,10 +3,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /clientes/{document} {
-      // Permite apenas criação de documentos na coleção "clientes".
+      // Permite criação e leitura dos cadastros de clientes.
       // Avalie aplicar regras adicionais de autenticação conforme necessário.
       allow create: if true;
-      allow read, update, delete: if false;
+      allow read: if true;
+      allow update, delete: if false;
     }
   }
 }
