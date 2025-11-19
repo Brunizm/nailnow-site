@@ -72,23 +72,29 @@ if (!form) {
       return;
     }
 
+    const clienteData = {
+      nomeCompleto,
+      email,
+      telefone,
+      senha,
+      endereco,
+      endereco_texto: enderecoTexto,
+      endereco_formatado: enderecoFormatado,
+      enderecoAlternativo,
+      complemento,
+      place_id: placeId,
+      lat,
+      lng,
+      aceiteTermos,
+      criadoEm: new Date().toISOString(),
+    };
+
+    const sanitizedData = Object.fromEntries(
+      Object.entries(clienteData).filter(([, value]) => value !== undefined)
+    );
+
     try {
-      await addDoc(collection(db, "clientes"), {
-        nomeCompleto,
-        email,
-        telefone,
-        senha,
-        endereco,
-        endereco_texto: enderecoTexto,
-        endereco_formatado: enderecoFormatado,
-        enderecoAlternativo,
-        complemento,
-        place_id: placeId,
-        lat,
-        lng,
-        aceiteTermos,
-        criadoEm: new Date().toISOString(),
-      });
+      await addDoc(collection(db, "clientes"), sanitizedData);
 
       formMsg.textContent = "Conta criada com sucesso!";
       form.reset();
