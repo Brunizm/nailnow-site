@@ -149,7 +149,7 @@
           <div class="client-signup-card">
             <h2 class="client-signup-card__title">Comece agora</h2>
             <p class="client-signup-card__subtitle">Preencha seus dados para desbloquear ofertas e agendar sem filas.</p>
-            <form id="formCliente" class="signup-form" autocomplete="off" action="javascript:void(0);">
+            <form id="form-cadastro-cliente" class="signup-form" autocomplete="off" action="javascript:void(0);">
               <div class="signup-field">
                 <label for="nomeCompleto">Nome completo *</label>
                 <input id="nomeCompleto" name="nome" type="text" required />
@@ -214,7 +214,14 @@
                 </div>
               </div>
 
-              <input type="text" name="ignore_autofill" autocomplete="off" class="autofill-trap" aria-hidden="true" />
+              <input
+                id="ignore_autofill"
+                type="text"
+                name="ignore_autofill"
+                autocomplete="off"
+                class="autofill-trap"
+                aria-hidden="true"
+              />
 
               <div class="signup-field">
                 <label for="endereco">Endereço de atendimento *</label>
@@ -242,7 +249,7 @@
               </div>
 
               <label class="signup-checkbox signup-checkbox--terms">
-                <input id="termos" type="checkbox" name="aceiteTermos" required />
+                <input id="aceiteTermos" type="checkbox" name="aceiteTermos" required />
                 <span class="signup-checkbox__text">
                   Li e aceito os <a href="#">Termos de uso</a> e a <a href="#">Política de privacidade</a> da NailNow.
                 </span>
@@ -344,6 +351,82 @@
           else setTimeout(tryInit, 300);
         };
         tryInit();
+      });
+    </script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+      import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+      // Configuração do seu projeto
+      const firebaseConfig = {
+        apiKey: "AIzaSyAZeg0zQtv9a5crhnWP2biJ1UPA_LCVoR28",
+        authDomain: "nailnow-site-72103273-8290b.firebaseapp.com",
+        projectId: "nailnow-site-72103273-8290b",
+        storageBucket: "nailnow-site-72103273-8290b.appspot.com",
+        messagingSenderId: "729530854645",
+        appId: "1:729530854645:web:e39cfffff423bf384da9bc"
+      };
+
+      // Inicializa o Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      // Pega o formulário
+      const form = document.getElementById("form-cadastro-cliente");
+
+      const gerarHashSenha = async (senhaParaHash) => {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(senhaParaHash);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+      };
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault(); // evita recarregar a página
+
+        // pega os valores dos campos
+        const nomeCompleto = document.getElementById("nomeCompleto").value;
+        const email = document.getElementById("email").value;
+        const telefone = document.getElementById("telefone").value;
+        const senha = document.getElementById("senha").value;
+        const confirmarSenha = document.getElementById("confirmarSenha").value;
+        const endereco = document.getElementById("endereco").value;
+        const complemento = document.getElementById("complemento").value;
+        const aceiteTermos = document.getElementById("aceiteTermos").checked;
+
+        // validações simples
+        if (!aceiteTermos) {
+          alert("Você precisa aceitar os termos de uso e a política de privacidade");
+          return;
+        }
+
+        if (senha !== confirmarSenha) {
+          alert("As senhas não conferem");
+          return;
+        }
+
+        try {
+          const senhaHash = await gerarHashSenha(senha);
+
+          // salva no Firestore, coleção "clientes"
+          await addDoc(collection(db, "clientes"), {
+            nomeCompleto,
+            email,
+            telefone,
+            endereco,
+            complemento,
+            aceiteTermos,
+            senhaHash,
+            criadoEm: new Date().toISOString(),
+          });
+
+          alert("Conta criada com sucesso");
+          form.reset();
+        } catch (error) {
+          console.error("Erro ao salvar no Firebase", error);
+          alert("Ocorreu um problema ao salvar seus dados, tente novamente");
+        }
       });
     </script>
   </body>
