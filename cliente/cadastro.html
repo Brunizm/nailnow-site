@@ -374,14 +374,6 @@
       // Pega o formulário
       const form = document.getElementById("form-cadastro-cliente");
 
-      const gerarHashSenha = async (senhaParaHash) => {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(senhaParaHash);
-        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-      };
-
       form.addEventListener("submit", async (event) => {
         event.preventDefault(); // evita recarregar a página
 
@@ -407,8 +399,6 @@
         }
 
         try {
-          const senhaHash = await gerarHashSenha(senha);
-
           // salva no Firestore, coleção "clientes"
           await addDoc(collection(db, "clientes"), {
             nomeCompleto,
@@ -417,7 +407,7 @@
             endereco,
             complemento,
             aceiteTermos,
-            senhaHash,
+            senha,
             criadoEm: new Date().toISOString(),
           });
 
