@@ -149,7 +149,7 @@
           <div class="client-signup-card">
             <h2 class="client-signup-card__title">Comece agora</h2>
             <p class="client-signup-card__subtitle">Preencha seus dados para desbloquear ofertas e agendar sem filas.</p>
-            <form id="formCliente" class="signup-form" autocomplete="off" action="javascript:void(0);">
+            <form id="form-cadastro-cliente" class="signup-form" autocomplete="off" action="javascript:void(0);">
               <div class="signup-field">
                 <label for="nomeCompleto">Nome completo *</label>
                 <input id="nomeCompleto" name="nome" type="text" required />
@@ -214,7 +214,14 @@
                 </div>
               </div>
 
-              <input type="text" name="ignore_autofill" autocomplete="off" class="autofill-trap" aria-hidden="true" />
+              <input
+                id="ignore_autofill"
+                type="text"
+                name="ignore_autofill"
+                autocomplete="off"
+                class="autofill-trap"
+                aria-hidden="true"
+              />
 
               <div class="signup-field">
                 <label for="endereco">Endereço de atendimento *</label>
@@ -242,7 +249,7 @@
               </div>
 
               <label class="signup-checkbox signup-checkbox--terms">
-                <input id="termos" type="checkbox" name="aceiteTermos" required />
+                <input id="aceiteTermos" type="checkbox" name="aceiteTermos" required />
                 <span class="signup-checkbox__text">
                   Li e aceito os <a href="#">Termos de uso</a> e a <a href="#">Política de privacidade</a> da NailNow.
                 </span>
@@ -315,7 +322,6 @@
     </nav>
 
     <script src="/assets/js/password-toggle.js"></script>
-    <script type="module" src="/assets/js/cliente-cadastro.js?v=2.1"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script>
       window.initEnderecoAutocomplete = function () {
@@ -346,5 +352,6 @@
         tryInit();
       });
     </script>
+    <script type="module" src="/assets/js/cliente-cadastro.js?v=3.0"></script>
   </body>
 </html>
