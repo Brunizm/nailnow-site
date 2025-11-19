@@ -16,7 +16,7 @@
  *        uma falha silenciosa na criação da conta.
  */
 
-const form = document.getElementById("formCliente");
+const form = document.getElementById("form-cadastro-cliente");
 const btnSubmit = document.getElementById("btnSubmit");
 const formMsg = document.getElementById("formMsg");
 
@@ -90,7 +90,10 @@ function parseCoordinate(value) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-form.addEventListener("submit", async (event) => {
+if (!form) {
+  console.warn("[cliente-cadastro] Formulário não encontrado pelo id 'form-cadastro-cliente'.");
+} else {
+  form.addEventListener("submit", async (event) => {
   event.preventDefault();
   btnSubmit.disabled = true;
   btnSubmit.textContent = "Enviando...";
@@ -162,4 +165,5 @@ form.addEventListener("submit", async (event) => {
     btnSubmit.disabled = false;
     btnSubmit.textContent = "Criar conta cliente";
   }
-});
+  });
+}
