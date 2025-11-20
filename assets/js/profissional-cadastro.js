@@ -22,6 +22,7 @@ const db = getFirestore(app);
 const form = document.getElementById("form-cadastro-profissional");
 const btnSubmit = document.getElementById("btnSubmitProf");
 const formMsg = document.getElementById("formMsgProf");
+const TARGET_COLLECTIONS = ["profissionais", "manicures"];
 
 const DEFAULT_SUBMIT_LABEL = "Cadastrar profissional";
 
@@ -132,7 +133,9 @@ if (!form) {
     }
 
     try {
-      await addDoc(collection(db, "profissionais"), profissionalData);
+      await Promise.all(
+        TARGET_COLLECTIONS.map((name) => addDoc(collection(db, name), profissionalData))
+      );
       setFeedback("Cadastro enviado com sucesso!");
       form.reset();
       setSubmitState({ label: "Sucesso!" });
