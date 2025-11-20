@@ -159,7 +159,7 @@
           <div class="auth-card__inner">
             <p class="auth-kicker auth-card__kicker">Login da cliente</p>
             <h2 id="cliente-login-heading">Acesse com seu e-mail NailNow</h2>
-            <p class="auth-card__hint">Após o login, redirecionamos você automaticamente para o portal da manicure.</p>
+            <p class="auth-card__hint">Após o login, redirecionamos você automaticamente para o seu portal de cliente.</p>
             <form id="login-form" class="auth-form" novalidate>
               <div class="auth-form__group">
                 <label for="email">E-mail</label>
@@ -356,7 +356,7 @@
           setStatus("Login realizado com sucesso! Redirecionando...", "success");
           submitButton.disabled = true;
           setTimeout(() => {
-            window.location.href = "/profissional/portal.html";
+            window.location.href = "/cliente/portal.html";
           }, 700);
         } catch (error) {
           console.error("Erro inesperado ao autenticar", error);
