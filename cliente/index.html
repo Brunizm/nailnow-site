@@ -159,7 +159,7 @@
           <div class="auth-card__inner">
             <p class="auth-kicker auth-card__kicker">Login da cliente</p>
             <h2 id="cliente-login-heading">Acesse com seu e-mail NailNow</h2>
-            <p class="auth-card__hint">Após o login, redirecionamos você automaticamente para o portal da cliente.</p>
+            <p class="auth-card__hint">Após o login, redirecionamos você automaticamente para o seu portal de cliente.</p>
             <form id="login-form" class="auth-form" novalidate>
               <div class="auth-form__group">
                 <label for="email">E-mail</label>
@@ -254,41 +254,22 @@
 
     <script src="/assets/js/password-toggle.js"></script>
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-      import {
-        collection,
-        doc,
-        getDoc,
-        getDocs,
-        getFirestore,
-        limit,
-        query,
-        where,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-      import {
-        getAuth,
-        onAuthStateChanged,
-        sendPasswordResetEmail,
-        signInWithEmailAndPassword,
-        signOut,
-      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+      import { collection, getDocs, getFirestore, query, where } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
       const firebaseConfig = {
-        apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
-        authDomain: "nailnow-7546c.firebaseapp.com",
-        projectId: "nailnow-7546c",
-        storageBucket: "nailnow-7546c.firebasestorage.app",
-        messagingSenderId: "413820353687",
-        appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
-        measurementId: "G-2YEGPEG0E1",
+        apiKey: "AIzaSyAZeg0zQtv9a5crhnWP2biJ1UPA_LCVoR28",
+        authDomain: "nailnow-site-72103273-8290b.firebaseapp.com",
+        projectId: "nailnow-site-72103273-8290b",
+        storageBucket: "nailnow-site-72103273-8290b.appspot.com",
+        messagingSenderId: "729530854645",
+        appId: "1:729530854645:web:e39cfffff423bf384da9bc",
       };
 
       const SESSION_KEY = "nailnowClienteSession";
-      const PROFILE_COLLECTIONS = ["clientes"];
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
-      const auth = getAuth(app);
 
       const loginForm = document.getElementById("login-form");
       const statusEl = document.getElementById("login-status");
@@ -309,89 +290,11 @@
         submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
       };
 
-      let redirectScheduled = false;
-      const redirectToPortal = () => {
-        if (redirectScheduled) {
-          return;
-        }
-        redirectScheduled = true;
-        setTimeout(() => {
-          window.location.href = "./portal.html";
-        }, 700);
-      };
-
-      const getStoredSession = () => {
-        try {
-          const raw = localStorage.getItem(SESSION_KEY);
-          if (!raw) return null;
-          const parsed = JSON.parse(raw);
-          if (parsed && parsed.id) {
-            if (!parsed.collection) {
-              parsed.collection = PROFILE_COLLECTIONS[0];
-            }
-            return parsed;
-          }
-          return null;
-        } catch (error) {
-          console.warn("Não foi possível ler a sessão salva", error);
-          return null;
-        }
-      };
-
-      const getNestedValue = (data, path) => {
-        return path.split(".").reduce((acc, key) => {
-          if (acc && Object.prototype.hasOwnProperty.call(acc, key)) {
-            return acc[key];
-          }
-          return undefined;
-        }, data);
-      };
-
-      const resolveStatusValue = (data) => {
-        const fields = ["status", "situacao", "workflow.status", "approval.status"];
-        for (const field of fields) {
-          const value = getNestedValue(data, field);
-          if (typeof value === "string" && value.trim()) {
-            return value.trim();
-          }
-        }
-        return "";
-      };
-
-      const CONFIRMED_STATUS_VALUES = new Set([
-        "confirmado",
-        "confirmada",
-        "confirmed",
-        "ativo",
-        "ativa",
-        "aprovado",
-        "aprovada",
-        "active",
-      ]);
-
-      const isProfileConfirmed = (profile) => {
-        const statusValue = (resolveStatusValue(profile) || "").toLowerCase();
-        const confirmationStatus = (profile.signupConfirmation?.status || "").toLowerCase();
-
-        if (CONFIRMED_STATUS_VALUES.has(statusValue)) {
-          return true;
-        }
-
-        if (CONFIRMED_STATUS_VALUES.has(confirmationStatus)) {
-          return true;
-        }
-
-        return false;
-      };
-
-      const persistSession = (profile, user) => {
+      const persistSession = (profile) => {
         const payload = {
-          uid: user?.uid || profile.uid || "",
           id: profile.id,
-          email: profile.email || profile.emailLowercase || user?.email || "",
-          nome: profile.nome || profile.name || user?.displayName || "",
-          collection: profile.collection || PROFILE_COLLECTIONS[0],
-          status: resolveStatusValue(profile) || "",
+          email: profile.email || "",
+          nome: profile.nomeCompleto || profile.nome || "",
           savedAt: Date.now(),
         };
         try {
@@ -401,189 +304,28 @@
         }
       };
 
-      const clearSession = () => {
-        try {
-          localStorage.removeItem(SESSION_KEY);
-        } catch (error) {
-          console.warn("Não foi possível limpar a sessão", error);
-        }
-      };
+      const findClienteByEmail = async (email) => {
+        const trimmed = (email || "").trim();
+        if (!trimmed) return null;
 
-      const buildLookupCandidates = (rawEmail) => {
-        const trimmed = (rawEmail ?? "").trim();
-        if (!trimmed) {
-          return [];
-        }
-
-        const lower = trimmed.toLowerCase();
-        const combinations = [
-          ["email", trimmed],
-          ["email", lower],
-          ["emailLowercase", lower],
-          ["contato.email", trimmed],
-          ["contato.email", lower],
-          ["contato.emailLowercase", lower],
-        ];
-
-        const seen = new Set();
-        return combinations.reduce((list, [field, value]) => {
-          if (!value) {
-            return list;
-          }
-          const key = `${field}|${value}`;
-          if (seen.has(key)) {
-            return list;
-          }
-          seen.add(key);
-          list.push({ field, value });
-          return list;
-        }, []);
-      };
-
-      const lookupProfilesByEmail = async (email) => {
-        const lookups = buildLookupCandidates(email);
-        const matches = [];
-        const seen = new Set();
-        let permissionDenied = false;
-
-        for (const { field, value } of lookups) {
-          for (const collectionName of PROFILE_COLLECTIONS) {
-            try {
-              const clienteQuery = query(collection(db, collectionName), where(field, "==", value), limit(1));
-              const snapshot = await getDocs(clienteQuery);
-              if (!snapshot.empty) {
-                const document = snapshot.docs[0];
-                const key = `${collectionName}|${document.id}`;
-                if (seen.has(key)) {
-                  continue;
-                }
-                seen.add(key);
-                matches.push({ id: document.id, data: document.data(), collection: collectionName });
-              }
-            } catch (error) {
-              if (error.code === "permission-denied") {
-                permissionDenied = true;
-              }
-              console.warn(`Falha ao buscar cliente pelo campo ${field} na coleção ${collectionName}`, error);
-            }
-          }
-        }
-
-        if (permissionDenied) {
-          const permError = new Error("firestore-permission-denied");
-          permError.code = "firestore-permission-denied";
-          throw permError;
-        }
-
-        return matches;
-      };
-
-      const fetchProfileByUid = async (uid) => {
-        if (!uid) {
-          return null;
-        }
-
-        for (const collectionName of PROFILE_COLLECTIONS) {
+        const candidates = [trimmed, trimmed.toLowerCase()];
+        for (const value of candidates) {
           try {
-            const snapshot = await getDoc(doc(db, collectionName, uid));
-            if (snapshot.exists()) {
-              return { id: snapshot.id, collection: collectionName, ...snapshot.data() };
+            const q = query(collection(db, "clientes"), where("email", "==", value));
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+              const docSnapshot = snapshot.docs[0];
+              return { id: docSnapshot.id, ...docSnapshot.data() };
             }
           } catch (error) {
-            if (error.code === "permission-denied") {
-              const permError = new Error("firestore-permission-denied");
-              permError.code = "firestore-permission-denied";
-              permError.cause = error;
-              throw permError;
-            }
-            console.warn(`Falha ao buscar cliente pelo UID na coleção ${collectionName}`, error);
+            console.error("Falha ao buscar cliente pelo e-mail", error);
           }
         }
 
         return null;
       };
 
-      const resolveProfileForUser = async (user, emailHint = "") => {
-        if (!user) {
-          const missing = new Error("profile-not-found");
-          missing.code = "profile-not-found";
-          throw missing;
-        }
-
-        const byUid = await fetchProfileByUid(user.uid);
-        if (byUid) {
-          return byUid;
-        }
-
-        const emailCandidates = [emailHint, user.email].filter((value, index, array) => {
-          return value && array.findIndex((item) => item && item.toLowerCase() === value.toLowerCase()) === index;
-        });
-
-        for (const candidate of emailCandidates) {
-          if (!candidate) continue;
-          const matches = await lookupProfilesByEmail(candidate);
-          if (matches.length) {
-            const match = matches[0];
-            return { id: match.id, collection: match.collection, ...match.data };
-          }
-        }
-
-        const notFound = new Error("profile-not-found");
-        notFound.code = "profile-not-found";
-        throw notFound;
-      };
-
-      const handleAuthError = (error) => {
-        const code = error.code || error.message;
-        if (code === "auth/invalid-email") {
-          setStatus("O e-mail informado é inválido. Verifique e tente novamente.", "error");
-        } else if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
-          setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
-        } else if (code === "auth/user-not-found" || code === "profile-not-found") {
-          setStatus("Não localizamos uma cliente com esse e-mail.", "error");
-        } else if (code === "auth/user-disabled") {
-          setStatus("Este acesso foi desativado. Fale com o suporte NailNow.", "error");
-        } else if (code === "auth/too-many-requests") {
-          setStatus("Muitas tentativas de acesso. Aguarde alguns instantes e tente novamente.", "error");
-        } else if (code === "firestore-permission-denied" || code === "permission-denied") {
-          setStatus(
-            "Não foi possível acessar seus dados agora. Atualize a página ou fale com o suporte NailNow.",
-            "error",
-          );
-        } else if (code === "auth/admin-restricted-operation") {
-          setStatus(
-            "O acesso seguro ao portal está temporariamente indisponível. Avise o suporte NailNow para regularizar.",
-            "error",
-          );
-        } else {
-          console.error("Erro inesperado no login", error);
-          setStatus("Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.", "error");
-        }
-      };
-
-      const ensureAuthForUser = async (user, emailHint = "") => {
-        setStatus("Validando seus dados...");
-        const profile = await resolveProfileForUser(user, emailHint);
-        if (!isProfileConfirmed(profile)) {
-          const displayEmail = emailHint || profile.email || profile.emailLowercase || user?.email || "seu e-mail";
-          setStatus(
-            `Seu cadastro ainda está pendente. Procure pelo e-mail "Confirme seu cadastro" enviado para ${displayEmail} e finalize a confirmação para acessar o portal.`,
-            "error",
-          );
-          try {
-            await signOut(auth);
-          } catch (signOutError) {
-            console.warn("Não foi possível encerrar a sessão após detectar status pendente", signOutError);
-          }
-          return;
-        }
-        persistSession(profile, user);
-        setStatus("Tudo certo! Redirecionando...", "success");
-        submitButton.disabled = true;
-        redirectToPortal();
-      };
-
-      loginForm.addEventListener("submit", async (event) => {
+      const handleLogin = async (event) => {
         event.preventDefault();
         const formData = new FormData(loginForm);
         const email = (formData.get("email") || "").toString().trim();
@@ -598,68 +340,36 @@
         setStatus("Autenticando...");
 
         try {
-          const credentials = await signInWithEmailAndPassword(auth, email, password);
-          await ensureAuthForUser(credentials.user, email);
+          const profile = await findClienteByEmail(email);
+
+          if (!profile || !profile.senha) {
+            setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
+            return;
+          }
+
+          if (password !== profile.senha) {
+            setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
+            return;
+          }
+
+          persistSession(profile);
+          setStatus("Login realizado com sucesso! Redirecionando...", "success");
+          submitButton.disabled = true;
+          setTimeout(() => {
+            window.location.href = "/cliente/portal.html";
+          }, 700);
         } catch (error) {
-          handleAuthError(error);
+          console.error("Erro inesperado ao autenticar", error);
+          setStatus("Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.", "error");
         } finally {
           setLoading(false);
         }
-      });
+      };
 
-      resetButton?.addEventListener("click", async () => {
-        const email = loginForm.email.value.trim();
-        if (!email) {
-          setStatus("Informe seu e-mail para solicitar a redefinição.", "error");
-          loginForm.email.focus();
-          return;
-        }
+      loginForm.addEventListener("submit", handleLogin);
 
-        setStatus("Enviando instruções de redefinição...");
-        resetButton.disabled = true;
-
-        try {
-          await sendPasswordResetEmail(auth, email);
-          setStatus("Enviamos um e-mail com instruções para redefinir sua senha.", "success");
-        } catch (error) {
-          handleAuthError(error);
-        } finally {
-          resetButton.disabled = false;
-        }
-      });
-
-      const existingSession = getStoredSession();
-      if (existingSession?.email && !loginForm.email.value) {
-        loginForm.email.value = existingSession.email;
-      }
-      if (existingSession?.uid) {
-        setStatus("Reconectando sua conta...");
-      }
-
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          redirectScheduled = false;
-          submitButton.disabled = false;
-          if (!statusEl.textContent || statusEl.classList.contains("auth-status--success")) {
-            setStatus("");
-          }
-          clearSession();
-          return;
-        }
-
-        try {
-          const session = getStoredSession();
-          const emailHint = session?.email || existingSession?.email || user.email || loginForm.email.value.trim();
-          await ensureAuthForUser(user, emailHint);
-        } catch (error) {
-          console.error("Falha ao retomar a sessão da cliente", error);
-          handleAuthError(error);
-          try {
-            await signOut(auth);
-          } catch (signOutError) {
-            console.warn("Não foi possível encerrar a sessão após falha", signOutError);
-          }
-        }
+      resetButton?.addEventListener("click", () => {
+        setStatus("Envie um e-mail para suporte@nailnow.app solicitando a redefinição da sua senha.", "error");
       });
     </script>
   </body>

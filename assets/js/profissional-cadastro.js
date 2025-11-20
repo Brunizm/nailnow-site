@@ -1,12 +1,7 @@
 /**
- * @fileoverview Lógica para o formulário de cadastro de clientes.
- * @version 3.0
- * @author Brunno Sena <contato@brunnoleitesena.com.br>
- *
- * @description
- * Simplifica o cadastro enviando os dados diretamente para o Firestore,
- * garantindo que a senha seja armazenada exatamente como digitada pelo
- * cliente e evitando falhas de rede com múltiplos endpoints de função.
+ * @fileoverview Lógica para o formulário de cadastro de profissionais NailNow.
+ * Replica a abordagem usada no cadastro de clientes para gravar os dados
+ * diretamente no Firestore sem depender de múltiplos endpoints externos.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
@@ -24,11 +19,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const form = document.getElementById("form-cadastro-cliente");
-const btnSubmit = document.getElementById("btnSubmit");
-const formMsg = document.getElementById("formMsg");
+const form = document.getElementById("form-cadastro-profissional");
+const btnSubmit = document.getElementById("btnSubmitProf");
+const formMsg = document.getElementById("formMsgProf");
 
-const DEFAULT_SUBMIT_LABEL = "Criar conta cliente";
+const DEFAULT_SUBMIT_LABEL = "Cadastrar profissional";
 
 function parseCoordinate(value) {
   if (!value) return undefined;
@@ -60,8 +55,14 @@ function appendNumberField(target, key, value) {
   target[key] = value;
 }
 
+function collectServices(currentForm) {
+  if (!currentForm) return [];
+  const inputs = currentForm.querySelectorAll("input[name='servicos']:checked");
+  return Array.from(inputs, (input) => input.value).filter(Boolean);
+}
+
 if (!form) {
-  console.warn("[cliente-cadastro] Formulário não encontrado pelo id 'form-cadastro-cliente'.");
+  console.warn("[profissional-cadastro] Formulário não encontrado pelo id 'form-cadastro-profissional'.");
 } else {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -69,6 +70,8 @@ if (!form) {
     setFeedback("");
 
     const nomeCompleto = form.elements.nome?.value?.trim() || "";
+    const cpfRaw = form.elements.cpf?.value?.trim() || "";
+    const cpf = cpfRaw.replace(/\D/g, "");
     const email = form.elements.email?.value?.trim() || "";
     const telefone = form.elements.telefone?.value?.trim() || "";
     const senha = form.elements.senha?.value || "";
@@ -77,11 +80,12 @@ if (!form) {
     const enderecoFormatado = form.elements.endereco_formatado?.value?.trim() || "";
     const enderecoAlternativo = form.elements.endereco?.value?.trim() || "";
     const endereco = enderecoTexto || enderecoFormatado || enderecoAlternativo;
-    const complemento = form.elements.complemento?.value?.trim() || "";
     const placeId = form.elements.place_id?.value?.trim() || "";
     const lat = parseCoordinate(form.elements.lat?.value);
     const lng = parseCoordinate(form.elements.lng?.value);
+    const bio = form.elements.bio?.value?.trim() || "";
     const aceiteTermos = form.elements.aceiteTermos?.checked ?? false;
+    const servicos = collectServices(form);
 
     if (!aceiteTermos) {
       setFeedback("Você precisa aceitar os termos de uso e a política de privacidade.");
@@ -95,28 +99,41 @@ if (!form) {
       return;
     }
 
-    const clienteData = {
+    const profissionalData = {
       nomeCompleto,
+      cpf,
       email,
+      emailLowercase: email.toLowerCase(),
       telefone,
       senha,
       endereco,
+      bio,
+      servicos,
       aceiteTermos,
+      role: "profissional",
       criadoEm: new Date().toISOString(),
     };
 
-    appendStringField(clienteData, "endereco_texto", enderecoTexto);
-    appendStringField(clienteData, "endereco_formatado", enderecoFormatado);
-    appendStringField(clienteData, "enderecoAlternativo", enderecoAlternativo);
-    appendStringField(clienteData, "complemento", complemento);
-    appendStringField(clienteData, "place_id", placeId);
-    appendNumberField(clienteData, "lat", lat);
-    appendNumberField(clienteData, "lng", lng);
+    appendStringField(profissionalData, "nome", nomeCompleto);
+    appendStringField(profissionalData, "displayName", nomeCompleto);
+    appendStringField(profissionalData, "cpfRaw", cpfRaw);
+    appendStringField(profissionalData, "documento", cpf);
+    appendStringField(profissionalData, "telefonePrincipal", telefone);
+
+    appendStringField(profissionalData, "endereco_texto", enderecoTexto);
+    appendStringField(profissionalData, "endereco_formatado", enderecoFormatado);
+    appendStringField(profissionalData, "enderecoAlternativo", enderecoAlternativo);
+    appendStringField(profissionalData, "place_id", placeId);
+    appendNumberField(profissionalData, "lat", lat);
+    appendNumberField(profissionalData, "lng", lng);
+
+    if (!servicos.length) {
+      delete profissionalData.servicos;
+    }
 
     try {
-      await addDoc(collection(db, "clientes"), clienteData);
-
-      setFeedback("Conta criada com sucesso!");
+      await addDoc(collection(db, "profissionais"), profissionalData);
+      setFeedback("Cadastro enviado com sucesso!");
       form.reset();
       setSubmitState({ label: "Sucesso!" });
     } catch (error) {
