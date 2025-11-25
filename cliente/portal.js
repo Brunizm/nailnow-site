@@ -79,6 +79,7 @@ const searchChipLocation = document.getElementById("search-chip-location");
 const searchChipService = document.getElementById("search-chip-service");
 const searchChipDate = document.getElementById("search-chip-date");
 const searchProgress = document.getElementById("search-progress");
+const isGoogleMapsAvailable = () => Boolean(window.google?.maps);
 let currentProfile = null;
 let fallbackProfileEmail = "";
 let professionalsCatalog = [];
@@ -91,6 +92,7 @@ let activeServiceFilter = "";
 let currentSearchTerm = "";
 let currentSearchTokens = [];
 let geocodeAbortController = null;
+let mapsGeocoder = null;
 const MAX_SERVICE_OPTIONS = 5;
 
 const resolveServiceOrder = (service, fallback) => {
@@ -200,6 +202,59 @@ const POSTAL_CODE_REGEX = /\b\d{5}-?\d{3}\b/g;
 const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
 const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
 const NOMINATIM_EMAIL = "suporte@nailnow.app";
+
+const ensureMapsGeocoder = () => {
+  if (mapsGeocoder) {
+    return mapsGeocoder;
+  }
+  if (!isGoogleMapsAvailable()) {
+    return null;
+  }
+  mapsGeocoder = new google.maps.Geocoder();
+  return mapsGeocoder;
+};
+
+const runGoogleGeocode = (request) => {
+  const geocoder = ensureMapsGeocoder();
+  if (!geocoder) {
+    return null;
+  }
+
+  return new Promise((resolve, reject) => {
+    geocoder.geocode(request, (results, status) => {
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      reject(new Error(`google-geocode-${status || "error"}`));
+    });
+  });
+};
+
+const normalizeGoogleGeocodeResult = (result, fallbackLabel = "") => {
+  if (!result || typeof result !== "object") {
+    return null;
+  }
+  const location = result.geometry?.location;
+  if (!location || typeof location.lat !== "function" || typeof location.lng !== "function") {
+    return null;
+  }
+  const latitude = location.lat();
+  const longitude = location.lng();
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  return {
+    coords: { latitude, longitude },
+    label: result.formatted_address || fallbackLabel,
+    raw: result,
+  };
+};
 
 const stripPostalCode = (value = "") => {
   if (typeof value !== "string") {
@@ -1569,6 +1624,18 @@ const populateServiceFilterOptions = (catalog = []) => {
 };
 
 const geocodeAddress = async (query, signal) => {
+  try {
+    const googleResults = await runGoogleGeocode({ address: query, region: "BR", language: "pt-BR" });
+    if (googleResults && googleResults.length) {
+      const normalized = normalizeGoogleGeocodeResult(googleResults[0], query);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  } catch (error) {
+    console.warn("Falha ao geocodificar endereço via Google Maps", error);
+  }
+
   const params = new URLSearchParams({
     format: "json",
     addressdetails: "1",
@@ -1610,6 +1677,22 @@ const geocodeAddress = async (query, signal) => {
 };
 
 const reverseGeocodeCoordinates = async (coords, signal) => {
+  try {
+    const googleResults = await runGoogleGeocode({
+      location: { lat: coords.latitude, lng: coords.longitude },
+      region: "BR",
+      language: "pt-BR",
+    });
+    if (googleResults && googleResults.length) {
+      const normalized = normalizeGoogleGeocodeResult(googleResults[0]);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  } catch (error) {
+    console.warn("Falha ao buscar endereço no Google Maps", error);
+  }
+
   const params = new URLSearchParams({
     format: "json",
     addressdetails: "1",
