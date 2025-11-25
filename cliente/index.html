@@ -92,9 +92,32 @@
   </head>
   <body>
     <script>
-      // Redireciona diretamente para o portal da cliente
-      if (window.location.pathname.endsWith("/cliente/index.html")) {
+      // Redireciona para o portal apenas se existir sessão da cliente
+      const params = new URLSearchParams(window.location.search);
+      const isLoggedOut = params.has("loggedOut");
+      const clientPath = window.location.pathname;
+      const isClientEntry =
+        clientPath === "/cliente/index.html" || clientPath === "/cliente/" || clientPath === "/cliente";
+
+      let session = null;
+      try {
+        const rawSession = localStorage.getItem("nailnowClienteSession");
+        session = rawSession ? JSON.parse(rawSession) : null;
+      } catch (error) {
+        console.warn("Não foi possível verificar a sessão salva", error);
+        localStorage.removeItem("nailnowClienteSession");
+      }
+
+      const hasSession = Boolean(session && (session.id || session.uid));
+
+      if (!isLoggedOut && hasSession && isClientEntry) {
         window.location.replace("/cliente/portal.html");
+        return;
+      }
+
+      if (isLoggedOut) {
+        localStorage.removeItem("nailnowClienteSession");
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     </script>
     <header class="site-header">

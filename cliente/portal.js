@@ -2604,7 +2604,7 @@ onAuthStateChanged(auth, async (user) => {
     dashboard.hidden = true;
     resetDashboard();
     setStatus("");
-    window.location.replace("/cliente/index.html");
+    window.location.replace("/cliente/index.html?loggedOut=1");
     return;
   }
 
