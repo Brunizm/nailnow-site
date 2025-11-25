@@ -91,6 +91,12 @@
     <script src="/assets/js/menu-toggle.js" defer></script>
   </head>
   <body>
+    <script>
+      // Redireciona diretamente para o portal da cliente
+      if (window.location.pathname.endsWith("/cliente/index.html")) {
+        window.location.replace("/cliente/portal.html");
+      }
+    </script>
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
