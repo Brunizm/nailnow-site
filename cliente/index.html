@@ -92,9 +92,17 @@
   </head>
   <body>
     <script>
-      // Redireciona diretamente para o portal da cliente
-      if (window.location.pathname.endsWith("/cliente/index.html")) {
-        window.location.replace("/cliente/portal.html");
+      // Redireciona para o portal apenas se existir sessão da cliente
+      try {
+        const rawSession = localStorage.getItem("nailnowClienteSession");
+        const session = rawSession ? JSON.parse(rawSession) : null;
+        const hasSession = Boolean(session?.id);
+
+        if (hasSession && window.location.pathname.endsWith("/cliente/index.html")) {
+          window.location.replace("/cliente/portal.html");
+        }
+      } catch (error) {
+        console.warn("Não foi possível verificar a sessão salva", error);
       }
     </script>
     <header class="site-header">
