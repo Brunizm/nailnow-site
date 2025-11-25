@@ -93,27 +93,31 @@
   <body>
     <script>
       // Redireciona para o portal apenas se existir sessão da cliente
+      const params = new URLSearchParams(window.location.search);
+      const isLoggedOut = params.has("loggedOut");
+      const clientPath = window.location.pathname;
+      const isClientEntry =
+        clientPath === "/cliente/index.html" || clientPath === "/cliente/" || clientPath === "/cliente";
+
+      let session = null;
       try {
-        const params = new URLSearchParams(window.location.search);
-        const isLoggedOut = params.has("loggedOut");
         const rawSession = localStorage.getItem("nailnowClienteSession");
-        const session = rawSession ? JSON.parse(rawSession) : null;
-        const hasSession = Boolean(session?.id);
-        const clientPath = window.location.pathname;
-        const isClientEntry =
-          clientPath === "/cliente/index.html" || clientPath === "/cliente/" || clientPath === "/cliente";
-
-        if (!isLoggedOut && hasSession && isClientEntry) {
-          window.location.replace("/cliente/portal.html");
-          return;
-        }
-
-        if (isLoggedOut) {
-          localStorage.removeItem("nailnowClienteSession");
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
+        session = rawSession ? JSON.parse(rawSession) : null;
       } catch (error) {
         console.warn("Não foi possível verificar a sessão salva", error);
+        localStorage.removeItem("nailnowClienteSession");
+      }
+
+      const hasSession = Boolean(session && (session.id || session.uid));
+
+      if (!isLoggedOut && hasSession && isClientEntry) {
+        window.location.replace("/cliente/portal.html");
+        return;
+      }
+
+      if (isLoggedOut) {
+        localStorage.removeItem("nailnowClienteSession");
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     </script>
     <header class="site-header">
