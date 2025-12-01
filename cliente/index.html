@@ -93,32 +93,45 @@
   <body>
     <script>
       // Redireciona para o portal apenas se existir sessão da cliente
-      const params = new URLSearchParams(window.location.search);
-      const isLoggedOut = params.has("loggedOut");
-      const clientPath = window.location.pathname;
-      const isClientEntry =
-        clientPath === "/cliente/index.html" || clientPath === "/cliente/" || clientPath === "/cliente";
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        const isLoggedOut = params.has("loggedOut");
+        const clientPath = window.location.pathname;
+        const isClientEntry =
+          clientPath === "/cliente/index.html" || clientPath === "/cliente/" || clientPath === "/cliente";
 
-      let session = null;
-      try {
-        const rawSession = localStorage.getItem("nailnowClienteSession");
-        session = rawSession ? JSON.parse(rawSession) : null;
-      } catch (error) {
-        console.warn("Não foi possível verificar a sessão salva", error);
-        localStorage.removeItem("nailnowClienteSession");
-      }
+        const SESSION_KEY = "nailnowClienteSession";
+        let session = null;
 
-      const hasSession = Boolean(session && (session.id || session.uid));
+        try {
+          const rawSession = localStorage.getItem(SESSION_KEY);
+          if (rawSession) {
+            try {
+              session = JSON.parse(rawSession);
+            } catch (parseError) {
+              session = rawSession;
+            }
+          }
+        } catch (error) {
+          console.warn("Não foi possível verificar a sessão salva", error);
+          localStorage.removeItem(SESSION_KEY);
+        }
 
-      if (hasSession && isClientEntry) {
-        window.location.replace("/cliente/portal.html");
-        return;
-      }
+        const hasSession = Boolean(
+          (session && typeof session === "object" && (session.id || session.uid || session.email)) ||
+            (typeof session === "string" && session.trim())
+        );
 
-      if (isLoggedOut) {
-        localStorage.removeItem("nailnowClienteSession");
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
+        if (hasSession && isClientEntry) {
+          window.location.replace("/cliente/portal.html");
+          return;
+        }
+
+        if (isLoggedOut) {
+          localStorage.removeItem(SESSION_KEY);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      })();
     </script>
     <header class="site-header">
       <div class="header-inner">
