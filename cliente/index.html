@@ -110,7 +110,7 @@
 
       const hasSession = Boolean(session && (session.id || session.uid));
 
-      if (!isLoggedOut && hasSession && isClientEntry) {
+      if (hasSession && isClientEntry) {
         window.location.replace("/cliente/portal.html");
         return;
       }
