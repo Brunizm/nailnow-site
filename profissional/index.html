@@ -93,6 +93,49 @@
   </head>
   <body>
 
+    <script>
+      // Redireciona para o portal da profissional quando existe sessão salva
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        const isLoggedOut = params.has("loggedOut");
+        const proPath = window.location.pathname;
+        const isProfessionalEntry =
+          proPath === "/profissional/index.html" || proPath === "/profissional/" || proPath === "/profissional";
+
+        const SESSION_KEY = "nailnowManicureSession";
+        let session = null;
+
+        try {
+          const rawSession = localStorage.getItem(SESSION_KEY);
+          if (rawSession) {
+            try {
+              session = JSON.parse(rawSession);
+            } catch (parseError) {
+              session = rawSession;
+            }
+          }
+        } catch (error) {
+          console.warn("Não foi possível verificar a sessão da profissional", error);
+          localStorage.removeItem(SESSION_KEY);
+        }
+
+        const hasSession = Boolean(
+          (session && typeof session === "object" && (session.id || session.uid || session.email)) ||
+            (typeof session === "string" && session.trim())
+        );
+
+        if (hasSession && isProfessionalEntry) {
+          window.location.replace("/profissional/portal.html");
+          return;
+        }
+
+        if (isLoggedOut) {
+          localStorage.removeItem(SESSION_KEY);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      })();
+    </script>
+
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
