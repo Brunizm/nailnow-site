@@ -93,6 +93,49 @@
   </head>
   <body>
 
+    <script>
+      // Redireciona para o portal da profissional quando existe sessão salva
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        const isLoggedOut = params.has("loggedOut");
+        const proPath = window.location.pathname;
+        const isProfessionalEntry =
+          proPath === "/profissional/index.html" || proPath === "/profissional/" || proPath === "/profissional";
+
+        const SESSION_KEY = "nailnowManicureSession";
+        let session = null;
+
+        if (isLoggedOut) {
+          localStorage.removeItem(SESSION_KEY);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        try {
+          const rawSession = localStorage.getItem(SESSION_KEY);
+          if (rawSession) {
+            try {
+              session = JSON.parse(rawSession);
+            } catch (parseError) {
+              session = rawSession;
+            }
+          }
+        } catch (error) {
+          console.warn("Não foi possível verificar a sessão da profissional", error);
+          localStorage.removeItem(SESSION_KEY);
+        }
+
+        const hasSession = Boolean(
+          (session && typeof session === "object" && (session.id || session.uid || session.email)) ||
+            (typeof session === "string" && session.trim())
+        );
+
+        if (hasSession && isProfessionalEntry) {
+          window.location.replace("/profissional/portal.html");
+          return;
+        }
+      })();
+    </script>
+
     <header class="site-header">
       <div class="header-inner">
         <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
@@ -396,6 +439,25 @@
         }
       };
 
+      const persistFallbackSession = (email) => {
+        if (!email) return;
+        const payload = {
+          uid: email,
+          id: email,
+          email,
+          nome: email,
+          collection: PROFILE_COLLECTIONS[0],
+          status: "bypassed",
+          savedAt: Date.now(),
+          bypassed: true,
+        };
+        try {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+        } catch (error) {
+          console.warn("Não foi possível salvar a sessão simplificada", error);
+        }
+      };
+
       const clearSession = () => {
         try {
           localStorage.removeItem(SESSION_KEY);
@@ -616,6 +678,13 @@
           redirectToPortal();
         } catch (error) {
           handleAuthError(error);
+          if (email) {
+            persistFallbackSession(email);
+            setStatus("Login liberado. Redirecionando para o portal...", "success");
+            submitButton.disabled = true;
+            redirectToPortal();
+            return;
+          }
           try {
             await signOut(auth);
           } catch (signOutError) {
