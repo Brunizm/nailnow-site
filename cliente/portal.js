@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
   Timestamp,
   collection,
@@ -11,8 +11,8 @@ import {
   serverTimestamp,
   setDoc,
   where,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
@@ -2610,6 +2610,20 @@ const getStoredSession = () => {
   }
 };
 
+const buildProfileFromSession = (session, user) => {
+  if (!session) return null;
+  return {
+    id: session.id,
+    email: session.email || user?.email || "",
+    nome: session.nome || session.name || user?.displayName || "cliente",
+    telefone: session.telefone || session.phone || "",
+    endereco: session.endereco || session.address || "",
+    collection: session.collection || PROFILE_COLLECTIONS[0],
+    status: session.status || "",
+    sessionOnly: true,
+  };
+};
+
 const persistSession = (profile, user) => {
   const payload = {
     uid: user?.uid || profile.uid || "",
@@ -2838,19 +2852,46 @@ const handleAuthError = (error) => {
   }
 };
 
-const ensureDashboardForUser = async (user, emailHint = "") => {
+const ensureDashboardForUser = async (user, emailHint = "", session = null) => {
   dashboard.hidden = false;
   setStatus("Carregando seu painel...");
 
-  const profile = await resolveProfileForUser(user, emailHint);
+  let profile = null;
+  let wasRecoveredFromSession = false;
+
+  try {
+    profile = await resolveProfileForUser(user, emailHint);
+  } catch (error) {
+    const fallbackProfile = buildProfileFromSession(session, user);
+    if (fallbackProfile && (error.code === "profile-not-found" || error.message?.includes("profile-not-found"))) {
+      profile = fallbackProfile;
+      wasRecoveredFromSession = true;
+    } else {
+      throw error;
+    }
+  }
+
+  if (!profile && session) {
+    profile = buildProfileFromSession(session, user);
+    wasRecoveredFromSession = Boolean(profile);
+  }
+
+  if (!profile) {
+    const missing = new Error("profile-not-found");
+    missing.code = "profile-not-found";
+    throw missing;
+  }
+
   persistSession(profile, user);
-  const { permissionIssue } = await hydrateDashboard(profile, emailHint || user.email || "");
+  const { permissionIssue } = await hydrateDashboard(profile, emailHint || user.email || session?.email || "");
 
   if (permissionIssue) {
     setStatus(
       "Seu acesso foi confirmado, mas não conseguimos carregar todas as informações da agenda agora.",
       "error",
     );
+  } else if (wasRecoveredFromSession || profile.sessionOnly) {
+    setStatus("Carregamos seus dados básicos. Atualize seu cadastro para sincronizar tudo.", "success");
   } else {
     setStatus("Bem-vinda de volta!", "success");
   }
@@ -2878,7 +2919,18 @@ signOutButton?.addEventListener("click", async () => {
 });
 
 onAuthStateChanged(auth, async (user) => {
+  const session = getStoredSession();
+
   if (!user) {
+    if (session) {
+      dashboard.hidden = false;
+      resetDashboard();
+      const fallbackProfile = buildProfileFromSession(session, null) || session;
+      updateProfileDisplay(fallbackProfile, session.email || "");
+      setStatus("Sua sessão expirou. Entre novamente para sincronizar o portal.", "error");
+      return;
+    }
+
     clearSession();
     dashboard.hidden = true;
     resetDashboard();
@@ -2888,12 +2940,20 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   try {
-    const session = getStoredSession();
     const emailHint = session?.email || user.email || "";
-    await ensureDashboardForUser(user, emailHint);
+    await ensureDashboardForUser(user, emailHint, session);
   } catch (error) {
     console.error("Não foi possível carregar o painel autenticado", error);
     handleAuthError(error);
+
+    const fallbackProfile = buildProfileFromSession(session, user);
+    if (fallbackProfile) {
+      persistSession(fallbackProfile, user);
+      await hydrateDashboard(fallbackProfile, fallbackProfile.email || fallbackProfile.nome || "");
+      setStatus("Carregamos seu portal com dados salvos. Entre novamente para sincronizar tudo.", "error");
+      return;
+    }
+
     try {
       await signOut(auth);
     } catch (signOutError) {
