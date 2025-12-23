@@ -79,6 +79,26 @@ const searchChipLocation = document.getElementById("search-chip-location");
 const searchChipService = document.getElementById("search-chip-service");
 const searchChipDate = document.getElementById("search-chip-date");
 const searchProgress = document.getElementById("search-progress");
+const journeyRecommendations = document.getElementById("journey-recommendations");
+const journeyRecommendationsEmpty = document.getElementById("journey-recommendations-empty");
+const journeyProfileBadge = document.getElementById("journey-profile-badge");
+const journeyProfileAvatar = document.getElementById("journey-profile-avatar");
+const journeyProfileName = document.getElementById("journey-profile-name");
+const journeyProfileMeta = document.getElementById("journey-profile-meta");
+const journeyProfileRating = document.getElementById("journey-profile-rating");
+const journeyProfilePortfolio = document.getElementById("journey-profile-portfolio");
+const journeyProfileDistance = document.getElementById("journey-profile-distance");
+const journeyProfileServices = document.getElementById("journey-profile-services");
+const journeyProfileNote = document.getElementById("journey-profile-note");
+const journeySummaryStatus = document.getElementById("journey-summary-status");
+const journeySummaryProfessional = document.getElementById("journey-summary-professional");
+const journeySummaryService = document.getElementById("journey-summary-service");
+const journeySummarySlot = document.getElementById("journey-summary-slot");
+const journeySummaryAddress = document.getElementById("journey-summary-address");
+const journeySummaryTotal = document.getElementById("journey-summary-total");
+const journeySummaryHint = document.getElementById("journey-summary-hint");
+const journeySummaryEmpty = document.getElementById("journey-summary-empty");
+const journeySummarySubmit = document.getElementById("journey-summary-submit");
 const isGoogleMapsAvailable = () => Boolean(window.google?.maps);
 let currentProfile = null;
 let fallbackProfileEmail = "";
@@ -94,6 +114,13 @@ let currentSearchTokens = [];
 let geocodeAbortController = null;
 let mapsGeocoder = null;
 const MAX_SERVICE_OPTIONS = 5;
+
+const getInitials = (name = "") => {
+  const parts = name.trim().split(/\s+/);
+  if (!parts.length) return "N";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+};
 
 const resolveServiceOrder = (service, fallback) => {
   if (!service || typeof service !== "object") {
@@ -690,6 +717,7 @@ const updateSelectedServiceDetails = (professional = selectedProfessional) => {
   }
 
   updateRequestSubmitState();
+  updateJourneySummary();
 };
 
 const applySelectedService = (serviceIndex, professional = selectedProfessional) => {
@@ -872,6 +900,8 @@ const resetDashboard = () => {
   }
   setLocationStatus("");
   updateSearchChips();
+  updateJourneyProfile(null);
+  updateJourneySummary();
 };
 
 const formatCurrency = (value) => {
@@ -1181,11 +1211,238 @@ const normalizeProfessionalProfile = (snapshot) => {
   };
 };
 
+const resolveReviewCount = (professional) => {
+  const candidates = [
+    professional?.reviews,
+    professional?.reviewsCount,
+    professional?.reviewCount,
+    professional?.totalAvaliacoes,
+    professional?.avaliacoes,
+    professional?.avaliacoesCount,
+    professional?.qtdAvaliacoes,
+  ];
+  for (const candidate of candidates) {
+    const value = Number.parseInt(candidate, 10);
+    if (Number.isFinite(value) && value >= 0) {
+      return value;
+    }
+  }
+  return null;
+};
+
+const formatReviewLabel = (professional) => {
+  const count = resolveReviewCount(professional);
+  if (count === null) {
+    return "Avaliações em coleta";
+  }
+  if (count === 1) {
+    return "1 avaliação";
+  }
+  return `${count} avaliações`;
+};
+
+const renderJourneyRecommendations = (items = []) => {
+  if (!journeyRecommendations || !journeyRecommendationsEmpty) {
+    return;
+  }
+  journeyRecommendations.innerHTML = "";
+
+  const shortlist = items.slice(0, 3);
+  if (!shortlist.length) {
+    journeyRecommendationsEmpty.hidden = false;
+    return;
+  }
+  journeyRecommendationsEmpty.hidden = true;
+
+  shortlist.forEach((professional, index) => {
+    const wrapper = document.createElement("article");
+    wrapper.className = "journey-recommendation";
+
+    const head = document.createElement("div");
+    head.className = "journey-recommendation__head";
+    const name = document.createElement("div");
+    const title = document.createElement("p");
+    title.className = "journey-recommendation__name";
+    title.textContent = getPublicProfessionalLabel(professional);
+    const meta = document.createElement("p");
+    meta.className = "journey-recommendation__meta";
+    const metaParts = [professional.area, professional.rating ? `${professional.rating} ★` : "nota em coleta"]
+      .filter(Boolean)
+      .join(" • ");
+    meta.textContent = metaParts || "Área em confirmação";
+    name.append(title, meta);
+    head.appendChild(name);
+
+    if (index === 0) {
+      const badge = document.createElement("span");
+      badge.className = "journey-badge";
+      badge.textContent = "Mais escolhida";
+      head.appendChild(badge);
+    }
+
+    wrapper.appendChild(head);
+
+    const services = document.createElement("div");
+    services.className = "journey-services";
+    const serviceList = Array.isArray(professional.servicos)
+      ? professional.servicos.slice(0, 2)
+      : [];
+    if (serviceList.length) {
+      serviceList.forEach((service) => {
+        const tag = document.createElement("span");
+        tag.className = "journey-service-tag";
+        const priceLabel =
+          service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+        tag.innerHTML = `<strong>${service.name}</strong><span class="journey-service-price">${priceLabel}</span>`;
+        services.appendChild(tag);
+      });
+    } else {
+      const tag = document.createElement("span");
+      tag.className = "journey-service-tag";
+      tag.textContent = "Serviços confirmados ao selecionar";
+      services.appendChild(tag);
+    }
+    wrapper.appendChild(services);
+
+    const footer = document.createElement("div");
+    footer.className = "journey-recommendation__footer";
+    const distance = document.createElement("p");
+    distance.className = "journey-distance";
+    if (Number.isFinite(professional.distanceKm)) {
+      distance.textContent = `${formatDistance(professional.distanceKm)} de você`;
+    } else {
+      distance.textContent = customerLocation.coords ? "Distância não informada" : "Defina o endereço";
+      distance.classList.add("journey-distance--muted");
+    }
+    const cta = document.createElement("button");
+    cta.type = "button";
+    cta.className = "journey-cta";
+    cta.textContent = "Ver horários";
+    cta.addEventListener("click", () => selectProfessional(professional));
+
+    footer.append(distance, cta);
+    wrapper.appendChild(footer);
+
+    journeyRecommendations.appendChild(wrapper);
+  });
+};
+
+const updateJourneyProfile = (professional) => {
+  if (!journeyProfileName || !journeyProfileBadge || !journeyProfileServices) {
+    return;
+  }
+
+  if (!professional) {
+    journeyProfileBadge.textContent = "Escolha uma manicure";
+    journeyProfileName.textContent = "Nenhuma selecionada";
+    journeyProfileMeta.textContent = "Escolha uma profissional na lista ao lado.";
+    journeyProfileRating.textContent = "—";
+    journeyProfilePortfolio.textContent = "—";
+    journeyProfileDistance.textContent = "—";
+    journeyProfileServices.innerHTML = "";
+    journeyProfileNote.textContent =
+      "Selecione uma manicure para ver serviços, valores e avaliações antes de enviar a solicitação.";
+    if (journeyProfileAvatar) {
+      journeyProfileAvatar.textContent = "N";
+    }
+    return;
+  }
+
+  const displayName = getPublicProfessionalLabel(professional);
+  journeyProfileName.textContent = displayName;
+  if (journeyProfileAvatar) {
+    journeyProfileAvatar.textContent = getInitials(displayName);
+  }
+  journeyProfileMeta.textContent = professional.area || "Área a combinar";
+  journeyProfileRating.textContent = professional.rating ? `${professional.rating} ★` : "Avaliação em coleta";
+  const portfolioSize =
+    professional.portfolioSize ||
+    professional.portfolioCount ||
+    (Array.isArray(professional.portfolio) ? professional.portfolio.length : null);
+  journeyProfilePortfolio.textContent = Number.isFinite(portfolioSize) ? `${portfolioSize} criações` : "Portfólio em coleta";
+  journeyProfileDistance.textContent = Number.isFinite(professional.distanceKm)
+    ? `${formatDistance(professional.distanceKm)} de você`
+    : customerLocation.coords
+      ? "Distância a confirmar"
+      : "Defina o endereço";
+
+  journeyProfileServices.innerHTML = "";
+  if (professional.servicos && professional.servicos.length) {
+    professional.servicos.slice(0, 3).forEach((service) => {
+      const chip = document.createElement("span");
+      chip.className = "journey-profile__service";
+      const priceLabel =
+        service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+      chip.innerHTML = `<strong>${service.name}</strong><span class="journey-service-price">${priceLabel}</span>`;
+      journeyProfileServices.appendChild(chip);
+    });
+  }
+
+  if (!professional.servicos || !professional.servicos.length) {
+    const chip = document.createElement("span");
+    chip.className = "journey-profile__service";
+    chip.textContent = "Serviços combinados após seleção";
+    journeyProfileServices.appendChild(chip);
+  }
+
+  journeyProfileBadge.textContent = formatReviewLabel(professional);
+  journeyProfileNote.textContent =
+    professional.isOutsideCoverage
+      ? "Essa manicure está fora do raio informado. Confirme disponibilidade ao solicitar."
+      : "Revise o portfólio e finalize o pedido com horário e endereço.";
+};
+
+const updateJourneySummary = () => {
+  if (!journeySummaryProfessional || !journeySummarySubmit) {
+    return;
+  }
+
+  const hasSelection = Boolean(selectedProfessional && selectedService);
+  const hasSchedule = Boolean(requestDateInput?.value && requestTimeInput?.value);
+  const addressCandidate =
+    (requestLocationInput?.value || searchLocationInput?.value || customerLocation.label || currentProfile?.endereco || "").trim();
+  const hasAddress = Boolean(addressCandidate);
+
+  journeySummaryProfessional.textContent = hasSelection
+    ? getPublicProfessionalLabel(selectedProfessional)
+    : "Selecione na lista";
+
+  const priceLabel = selectedService
+    ? selectedService.priceLabel ||
+      (typeof selectedService.price === "number" ? formatCurrency(selectedService.price) : "Sob consulta")
+    : "—";
+
+  journeySummaryService.textContent = selectedService?.name || "Escolha um serviço";
+  journeySummaryTotal.textContent = priceLabel;
+  journeySummaryAddress.textContent = hasAddress ? addressCandidate : "Informe onde prefere ser atendida";
+
+  if (hasSchedule) {
+    const base = `${requestDateInput.value}T${requestTimeInput.value}`;
+    const parsed = new Date(base);
+    const formattedDate = Number.isNaN(parsed.getTime())
+      ? `${requestDateInput.value} às ${requestTimeInput.value}`
+      : `${dateFormatter.format(parsed)} · ${timeFormatter.format(parsed)}`;
+    journeySummarySlot.textContent = formattedDate;
+  } else {
+    journeySummarySlot.textContent = "Defina data e horário";
+  }
+
+  const ready = hasSelection && hasSchedule;
+  journeySummarySubmit.disabled = !ready;
+  journeySummaryStatus.textContent = ready ? "Pronto para enviar" : "Montando";
+  journeySummaryHint.textContent = hasSelection
+    ? "Confirme os detalhes e envie o pedido para a manicure responder."
+    : "Selecione uma manicure para liberar o pedido.";
+  journeySummaryEmpty.hidden = ready;
+};
+
 const renderProfessionalResults = (items = []) => {
   if (!professionalResults || !professionalResultsEmpty) {
     return;
   }
   professionalResults.innerHTML = "";
+
+  renderJourneyRecommendations(items);
 
   if (!items.length) {
     if (customerLocation.coords) {
@@ -1308,6 +1565,7 @@ const updateRequestSubmitState = () => {
     requestSubmitButton.disabled = !(hasSchedule && hasSelection);
   }
   updateSearchChips();
+  updateJourneySummary();
 };
 
 const populateRequestForm = (professional) => {
@@ -1442,6 +1700,8 @@ const populateRequestForm = (professional) => {
 
   setRequestFeedback("");
   updateRequestSubmitState();
+  updateJourneyProfile(professional);
+  updateJourneySummary();
 };
 
 const selectProfessional = (professional) => {
@@ -1449,6 +1709,8 @@ const selectProfessional = (professional) => {
   if (!professional) {
     populateRequestForm(null);
     renderProfessionalResults(filteredProfessionals);
+    updateJourneyProfile(null);
+    updateJourneySummary();
     return;
   }
   if (professional.servicos && professional.servicos.length) {
@@ -1462,6 +1724,8 @@ const selectProfessional = (professional) => {
   }
   renderProfessionalResults(filteredProfessionals);
   populateRequestForm(professional);
+  updateJourneyProfile(professional);
+  updateJourneySummary();
 };
 
 const filterProfessionals = (term) => {
@@ -1552,6 +1816,7 @@ const setCustomerLocation = (coords, label = "", options = {}) => {
     applyProfessionalFilters();
     updateSearchChips();
     syncRequestLocationFromSearch();
+    updateJourneySummary();
     return;
   }
 
@@ -1573,6 +1838,7 @@ const setCustomerLocation = (coords, label = "", options = {}) => {
   applyProfessionalFilters();
   updateSearchChips();
   syncRequestLocationFromSearch();
+  updateJourneySummary();
 };
 
 const populateServiceFilterOptions = (catalog = []) => {
@@ -2152,20 +2418,33 @@ requestDatePickerButton?.addEventListener("click", (event) => {
 requestLocationInput?.addEventListener("input", (event) => {
   markRequestFieldModified(event.target);
   setRequestFeedback("");
+  updateJourneySummary();
 });
 requestLocationNumberInput?.addEventListener("input", (event) => {
   markRequestFieldModified(event.target);
   setRequestFeedback("");
+  updateJourneySummary();
 });
 requestLocationComplementInput?.addEventListener("input", (event) => {
   markRequestFieldModified(event.target);
   setRequestFeedback("");
+  updateJourneySummary();
 });
 requestNotesInput?.addEventListener("input", () => setRequestFeedback(""));
 requestForm?.addEventListener("submit", handleRequestSubmission);
 
+journeySummarySubmit?.addEventListener("click", () => {
+  if (!requestForm) return;
+  if (typeof requestForm.requestSubmit === "function") {
+    requestForm.requestSubmit();
+  } else {
+    requestForm.submit();
+  }
+});
+
 syncRequestLocationFromSearch();
 updateSearchChips();
+updateJourneySummary();
 
 const updateMetrics = (pending, confirmed, cancelled) => {
   metricPending.textContent = pending.length;
