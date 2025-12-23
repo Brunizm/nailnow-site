@@ -171,6 +171,119 @@
           </div>
         </section>
 
+        <section class="portal-section portal-journey" aria-labelledby="portal-journey-heading">
+          <div class="portal-section__header portal-journey__header">
+            <div>
+              <p class="portal-section__eyebrow">Escolha, avalie e confirme</p>
+              <h2 id="portal-journey-heading">Fluxo rápido do seu agendamento</h2>
+              <p class="portal-section__description">
+                Explore manicures próximas, visualize o perfil com avaliações e finalize o pedido sem sair do portal.
+              </p>
+            </div>
+            <div class="portal-journey__hint">
+              <span class="journey-chip">Etapas guiadas</span>
+              <span class="journey-chip journey-chip--accent">Experiência mobile no desktop</span>
+            </div>
+          </div>
+
+          <div class="journey-grid" role="list">
+            <article class="journey-card" role="listitem" aria-labelledby="journey-recommendations-heading">
+              <div class="journey-card__head">
+                <div>
+                  <p class="journey-card__eyebrow">Design de unhas</p>
+                  <h3 id="journey-recommendations-heading">Manicures próximas a você</h3>
+                </div>
+                <span class="journey-pill">Mais escolhidas</span>
+              </div>
+              <p class="journey-card__lead">
+                Veja rapidamente quem atende no seu endereço e abra horários disponíveis.
+              </p>
+              <div id="journey-recommendations" class="journey-recommendations" role="list"></div>
+              <p id="journey-recommendations-empty" class="journey-empty" hidden>
+                Defina um endereço ou raio para ver manicures recomendadas.
+              </p>
+            </article>
+
+            <article class="journey-card" role="listitem" aria-labelledby="journey-profile-heading">
+              <div class="journey-card__head">
+                <div>
+                  <p class="journey-card__eyebrow">Perfil</p>
+                  <h3 id="journey-profile-heading">Profissional selecionada</h3>
+                </div>
+                <span class="journey-pill journey-pill--soft" id="journey-profile-badge">Escolha uma manicure</span>
+              </div>
+              <div class="journey-profile">
+                <div class="journey-profile__identity">
+                  <div class="journey-avatar" id="journey-profile-avatar" aria-hidden="true">N</div>
+                  <div>
+                    <p class="journey-profile__name" id="journey-profile-name">Nenhuma selecionada</p>
+                    <p class="journey-profile__meta" id="journey-profile-meta">Escolha uma profissional na lista ao lado.</p>
+                  </div>
+                </div>
+                <dl class="journey-profile__stats">
+                  <div>
+                    <dt>Avaliação</dt>
+                    <dd id="journey-profile-rating">—</dd>
+                  </div>
+                  <div>
+                    <dt>Criações</dt>
+                    <dd id="journey-profile-portfolio">—</dd>
+                  </div>
+                  <div>
+                    <dt>Distância</dt>
+                    <dd id="journey-profile-distance">—</dd>
+                  </div>
+                </dl>
+                <div class="journey-profile__services" id="journey-profile-services" aria-label="Serviços principais"></div>
+                <p class="journey-profile__note" id="journey-profile-note">
+                  Selecione uma manicure para ver serviços, valores e avaliações antes de enviar a solicitação.
+                </p>
+              </div>
+            </article>
+
+            <article class="journey-card journey-card--summary" role="listitem" aria-labelledby="journey-summary-heading">
+              <div class="journey-card__head">
+                <div>
+                  <p class="journey-card__eyebrow">Resumo do pedido</p>
+                  <h3 id="journey-summary-heading">Design de unhas a domicílio</h3>
+                </div>
+                <span class="journey-pill journey-pill--accent" id="journey-summary-status">Montando</span>
+              </div>
+              <div class="journey-summary">
+                <div class="journey-summary__row">
+                  <span>Profissional</span>
+                  <strong id="journey-summary-professional">Selecione na lista</strong>
+                </div>
+                <div class="journey-summary__row">
+                  <span>Serviço</span>
+                  <strong id="journey-summary-service">Escolha um serviço</strong>
+                </div>
+                <div class="journey-summary__row">
+                  <span>Horário</span>
+                  <strong id="journey-summary-slot">Defina data e horário</strong>
+                </div>
+                <div class="journey-summary__row">
+                  <span>Endereço</span>
+                  <strong id="journey-summary-address">Informe onde prefere ser atendida</strong>
+                </div>
+                <div class="journey-summary__total">
+                  <div>
+                    <p>Total estimado</p>
+                    <strong id="journey-summary-total">—</strong>
+                  </div>
+                  <p class="journey-summary__hint" id="journey-summary-hint">Valores podem variar conforme o serviço escolhido.</p>
+                </div>
+                <button type="button" id="journey-summary-submit" class="journey-summary__cta" disabled>
+                  Confirmar pedido
+                </button>
+                <p class="journey-empty journey-empty--inline" id="journey-summary-empty" hidden>
+                  Escolha uma manicure, serviço e horário para confirmar pelo portal.
+                </p>
+              </div>
+            </article>
+          </div>
+        </section>
+
         <div class="portal-columns">
           <aside class="portal-section portal-profile" aria-labelledby="cliente-profile-heading">
             <div class="portal-profile__grid">

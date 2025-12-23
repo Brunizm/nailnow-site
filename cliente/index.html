@@ -298,20 +298,28 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
       import { collection, getDocs, getFirestore, query, where } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+      import {
+        browserLocalPersistence,
+        getAuth,
+        setPersistence,
+        signInWithEmailAndPassword,
+      } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
       const firebaseConfig = {
-        apiKey: "AIzaSyAZeg0zQtv9a5crhnWP2biJ1UPA_LCVoR28",
-        authDomain: "nailnow-site-72103273-8290b.firebaseapp.com",
-        projectId: "nailnow-site-72103273-8290b",
-        storageBucket: "nailnow-site-72103273-8290b.appspot.com",
-        messagingSenderId: "729530854645",
-        appId: "1:729530854645:web:e39cfffff423bf384da9bc",
+        apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+        authDomain: "nailnow-7546c.firebaseapp.com",
+        projectId: "nailnow-7546c",
+        storageBucket: "nailnow-7546c.firebasestorage.app",
+        messagingSenderId: "413820353687",
+        appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+        measurementId: "G-2YEGPEG0E1",
       };
 
       const SESSION_KEY = "nailnowClienteSession";
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
+      const auth = getAuth(app);
 
       const loginForm = document.getElementById("login-form");
       const statusEl = document.getElementById("login-status");
@@ -330,6 +338,14 @@
       const setLoading = (isLoading) => {
         submitButton.disabled = isLoading;
         submitButton.textContent = isLoading ? "Entrando..." : "Entrar";
+      };
+
+      const ensureAuthPersistence = async () => {
+        try {
+          await setPersistence(auth, browserLocalPersistence);
+        } catch (error) {
+          console.warn("Não foi possível ajustar a persistência da sessão", error);
+        }
       };
 
       const persistSession = (profile) => {
@@ -405,20 +421,19 @@
         setStatus("Autenticando...");
 
         try {
-          const profile = await findClienteByEmail(email);
+          await ensureAuthPersistence();
+          const { user } = await signInWithEmailAndPassword(auth, email, password);
 
-          if (profile && profile.senha) {
-            if (password !== profile.senha) {
-              setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
-              return;
+          try {
+            const profile = await findClienteByEmail(email);
+            if (profile) {
+              persistSession(profile);
+            } else {
+              persistFallbackSession(user?.email || email);
             }
-            persistSession(profile);
-          } else if (profile && !profile.senha) {
-            // Permite login para perfis sem senha explícita no Firestore
-            persistSession(profile);
-          } else {
-            setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
-            return;
+          } catch (profileError) {
+            console.warn("Não foi possível recuperar o perfil após login", profileError);
+            persistFallbackSession(user?.email || email);
           }
 
           setStatus("Login realizado com sucesso! Redirecionando...", "success");
@@ -428,16 +443,18 @@
           }, 300);
         } catch (error) {
           console.error("Erro inesperado ao autenticar", error);
-          if (email) {
-            persistFallbackSession(email);
-            setStatus("Login liberado. Redirecionando para o seu portal...", "success");
-            submitButton.disabled = true;
-            setTimeout(() => {
-              window.location.replace("/cliente/portal.html");
-            }, 300);
-            return;
+          const code = error?.code || "";
+          if (code === "auth/invalid-email") {
+            setStatus("O e-mail informado é inválido. Verifique e tente novamente.", "error");
+          } else if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+            setStatus("Credenciais não conferem. Confira sua senha e tente novamente.", "error");
+          } else if (code === "auth/user-not-found") {
+            setStatus("Não encontramos uma cliente com esse e-mail.", "error");
+          } else if (code === "auth/too-many-requests") {
+            setStatus("Muitas tentativas de acesso. Aguarde alguns instantes e tente novamente.", "error");
+          } else {
+            setStatus("Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.", "error");
           }
-          setStatus("Não foi possível entrar no momento. Tente novamente em instantes ou fale com o suporte.", "error");
         } finally {
           setLoading(false);
         }
