@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /cliente/
+Disallow: /profissional/
+Disallow: /auth.html
+Disallow: /confirmar-cadastro.html
+
+Sitemap: https://www.nailnow.app/sitemap.xml
