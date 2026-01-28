@@ -39211,13 +39211,12 @@ main {
 }
 
 .header-inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: clamp(1rem, 4vw, 2.5rem);
   max-width: var(--max-width);
   margin: 0 auto;
-  flex-wrap: wrap;
 }
 
 .mobile-menu-toggle {
@@ -39298,11 +39297,7 @@ main {
 }
 
 .header-navigation {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: clamp(0.65rem, 2vw, 1.25rem);
-  margin-left: auto;
+  display: contents;
 }
 
 .header-actions {
@@ -39311,6 +39306,8 @@ main {
   gap: clamp(0.75rem, 2vw, 1.25rem);
   justify-content: flex-end;
   flex-wrap: nowrap;
+  grid-column: 3;
+  justify-self: end;
 }
 
 .header-actions .social-link {
@@ -39331,6 +39328,8 @@ main {
   font-size: clamp(1.2rem, 2.6vw, 1.85rem);
   color: var(--pink-primary);
   white-space: nowrap;
+  grid-column: 2;
+  justify-self: center;
 }
 
 .brand-mark__logo {
@@ -39347,7 +39346,9 @@ main {
   align-items: center;
   gap: clamp(1rem, 3vw, 2rem);
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
+  grid-column: 1;
+  justify-self: start;
 }
 
 .social-link {
@@ -40309,6 +40310,8 @@ main {
   }
 
   .header-navigation {
+    display: flex;
+    flex-direction: column;
     order: 3;
     width: 100%;
     background: rgba(255, 255, 255, 0.96);
