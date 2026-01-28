@@ -39331,7 +39331,8 @@ main {
   white-space: nowrap;
   grid-column: 2;
   justify-self: center;
-  margin-top: 0.35rem;
+  align-self: center;
+  margin-top: 0;
 }
 
 .brand-mark__logo {
