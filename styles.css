@@ -39324,12 +39324,14 @@ main {
   gap: 0.75rem;
   font-family: "Playfair Display", serif;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: clamp(1.2rem, 2.6vw, 1.85rem);
+  letter-spacing: 0.12em;
+  font-size: clamp(1.2rem, 2.6vw, 1.9rem);
+  font-weight: 600;
   color: var(--pink-primary);
   white-space: nowrap;
   grid-column: 2;
   justify-self: center;
+  margin-top: 0.35rem;
 }
 
 .brand-mark__logo {
