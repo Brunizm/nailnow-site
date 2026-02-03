@@ -42012,6 +42012,11 @@ main {
   color: var(--text-main);
 }
 
+.terms-title {
+  font-size: clamp(1.4rem, 2.4vw, 2.1rem);
+  letter-spacing: 0.04em;
+}
+
 
 .about {
   max-width: var(--max-width);
