@@ -96,4 +96,4 @@ Dessa forma, o botão (CTA) leva a usuária diretamente para a página autentica
 - Revise as regras do Firestore para evitar que clientes escrevam diretamente em `confirmados` ou `cancelados`.
 - Registre logs estruturados nas funções para facilitar auditoria e reenvio manual, se necessário.
 
-Com essa estrutura, as notificações por e-mail se mantêm sincronizadas com os status exibidos no portal e preservam o fluxo Uber-like desejado.
+Com essa estrutura, as notificações por e-mail se mantêm sincronizadas com os status exibidos no portal e preservam o fluxo rápido de acompanhamento desejado.
