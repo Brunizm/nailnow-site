@@ -26,7 +26,7 @@ google-site-verification=N7GUtT1KPTYnJ5dWs6XyMJTcKWQqnv9i58BBGmnXO3Q
 
 ## Diagnóstico para o erro “token não encontrado”
 
-Se o Search Console informar que não encontrou o token, normalmente é porque o registro ainda não foi criado na raiz ou ainda não propagou.
+Se o Search Console informar que não encontrou o token, normalmente é porque o registro ainda não foi criado na raiz, foi salvo com Host incorreto, ou ainda não propagou.
 
 Atualmente foram detectados apenas estes TXT no domínio:
 
@@ -34,6 +34,21 @@ Atualmente foram detectados apenas estes TXT no domínio:
 - `v=spf1 include:spf.efwd.registrar-servers.com ~all`
 
 Ou seja, o TXT `google-site-verification=...` ainda não está público no DNS autoritativo.
+
+## Segunda tentativa (quando o Google pedir “adicionar um TXT diferente”)
+
+Alguns provedores tratam o campo **Host/Name** de forma diferente. Se a primeira tentativa falhar, mantenha o TXT original e adicione **mais uma variação** com o mesmo valor, testando uma destas opções de Host:
+
+- `@`
+- vazio (em branco)
+- `nailnow.app`
+
+> Use **somente uma variação por vez**, aguarde propagação e tente verificar novamente.
+
+Também teste o valor com e sem aspas, dependendo do painel DNS:
+
+- `google-site-verification=N7GUtT1KPTYnJ5dWs6XyMJTcKWQqnv9i58BBGmnXO3Q`
+- `"google-site-verification=N7GUtT1KPTYnJ5dWs6XyMJTcKWQqnv9i58BBGmnXO3Q"`
 
 ## Como conferir antes de clicar em verificar
 
@@ -47,6 +62,13 @@ ou
 
 ```bash
 nslookup -type=TXT nailnow.app
+```
+
+Se seu DNS local estiver desatualizado, teste também em resolvedores públicos:
+
+```bash
+dig +short TXT nailnow.app @8.8.8.8
+dig +short TXT nailnow.app @1.1.1.1
 ```
 
 Quando o valor `google-site-verification=N7GUtT1KPTYnJ5dWs6XyMJTcKWQqnv9i58BBGmnXO3Q` aparecer, volte ao Search Console e tente novamente.
