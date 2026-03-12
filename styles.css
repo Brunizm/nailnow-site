@@ -41479,6 +41479,10 @@ main {
   gap: clamp(1.75rem, 4vw, 2.5rem);
 }
 
+.services-grid--two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .service-card {
   background: var(--surface);
   border-radius: 24px;
@@ -41496,6 +41500,18 @@ main {
   margin: 1rem 0 0;
   padding-left: 1.25rem;
   color: var(--text-muted);
+}
+
+
+.services-page .services-grid {
+  gap: clamp(1rem, 2.5vw, 1.5rem) clamp(1.25rem, 3vw, 2rem);
+}
+
+.services-page .service-card {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
 }
 
 .eyebrow {
@@ -42488,6 +42504,10 @@ main {
   }
 
   .services-grid--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .services-grid--two-columns {
     grid-template-columns: 1fr;
   }
 
