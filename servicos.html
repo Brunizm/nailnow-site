@@ -16,7 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Conheça os serviços NailNow: manicure, pedicure, gel, alongamento, nail art e spa dos pés."
+      content="Conheça os serviços NailNow: manicure, pedicure, gel, blindagem, alongamento, nail art e spa dos pés."
     />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://www.nailnow.app/servicos.html" />
@@ -26,7 +26,7 @@
     <meta property="og:title" content="Serviços | NailNow" />
     <meta
       property="og:description"
-      content="Serviços completos para mãos e pés com acabamento profissional e autocuidado premium."
+      content="Lista completa de serviços NailNow para cuidados de mãos e pés com acabamento profissional."
     />
     <meta property="og:url" content="https://www.nailnow.app/servicos.html" />
     <meta property="og:image" content="https://www.nailnow.app/assets/nail1.png" />
@@ -34,7 +34,7 @@
     <meta name="twitter:title" content="Serviços | NailNow" />
     <meta
       name="twitter:description"
-      content="Serviços completos para mãos e pés com acabamento profissional e autocuidado premium."
+      content="Lista completa de serviços NailNow para cuidados de mãos e pés com acabamento profissional."
     />
     <meta name="twitter:image" content="https://www.nailnow.app/assets/nail1.png" />
     <title>Serviços | NailNow</title>
@@ -155,8 +155,12 @@
             "item": {
               "@type": "Service",
               "name": "Manicure tradicional",
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
               "description": "Cutilagem, lixamento e esmaltação clássica com acabamento elegante para o dia a dia.",
-              "provider": { "@type": "Organization", "name": "NailNow" }
+              "areaServed": "Brasil"
             }
           },
           {
@@ -165,8 +169,12 @@
             "item": {
               "@type": "Service",
               "name": "Pedicure tradicional",
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
               "description": "Cuidado completo dos pés com esmaltação tradicional e sensação de leveza.",
-              "provider": { "@type": "Organization", "name": "NailNow" }
+              "areaServed": "Brasil"
             }
           },
           {
@@ -175,8 +183,110 @@
             "item": {
               "@type": "Service",
               "name": "Manicure gel",
-              "description": "Esmaltação em gel para brilho intenso e longa duração, com secagem imediata.",
-              "provider": { "@type": "Organization", "name": "NailNow" }
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
+              "description": "Esmaltação em gel para brilho intenso e longa duração com secagem imediata.",
+              "areaServed": "Brasil"
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "item": {
+              "@type": "Service",
+              "name": "Pedicure gel",
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
+              "description": "Acabamento resistente e impecável para pés bem cuidados por muito mais tempo.",
+              "areaServed": "Brasil"
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 5,
+            "item": {
+              "@type": "Service",
+              "name": "Blindagem",
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
+              "description": "Camada protetora que reforça a unha natural, ajuda a evitar quebras e prolonga o acabamento.",
+              "areaServed": "Brasil"
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 6,
+            "item": {
+              "@type": "Service",
+              "name": "Banho de gel",
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
+              "description": "Reforço em gel sobre a unha natural para mais estrutura, brilho e durabilidade.",
+              "areaServed": "Brasil"
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 7,
+            "item": {
+              "@type": "Service",
+              "name": "Remoção de gel",
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
+              "description": "Remoção técnica e segura do gel para preservar a saúde da unha natural.",
+              "areaServed": "Brasil"
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 8,
+            "item": {
+              "@type": "Service",
+              "name": "Alongamento",
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
+              "description": "Extensão personalizada em diferentes formatos e comprimentos com resultado profissional.",
+              "areaServed": "Brasil"
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 9,
+            "item": {
+              "@type": "Service",
+              "name": "Nail art (decoração)",
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
+              "description": "Decorações criativas, minimalistas ou artísticas para unhas únicas e cheias de personalidade.",
+              "areaServed": "Brasil"
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 10,
+            "item": {
+              "@type": "Service",
+              "name": "Spa dos pés",
+              "provider": {
+                "@type": "Organization",
+                "name": "NailNow"
+              },
+              "description": "Ritual relaxante com esfoliação, hidratação e massagem para renovar os pés.",
+              "areaServed": "Brasil"
             }
           },
           {
@@ -255,40 +365,64 @@
   </head>
   <body>
     <main>
-      <section class="hero" aria-labelledby="titulo-servicos">
-        <div class="hero__icon" aria-hidden="true">💅</div>
-        <h1 id="titulo-servicos">Nossos Serviços</h1>
+      <section class="page-hero">
+        <span class="eyebrow">Serviços</span>
+        <h1>Tudo que você precisa para mãos e pés impecáveis</h1>
         <p>
-          Escolha o cuidado ideal para suas mãos e pés. Aqui você encontra opções tradicionais, técnicas em gel,
-          alongamentos e experiências relaxantes em um catálogo simples e elegante.
+          Escolha entre opções tradicionais, técnicas em gel, alongamento e experiências de autocuidado. Nossa seleção foi
+          pensada para ficar clara, prática e fácil de comparar.
         </p>
       </section>
 
-      <section class="services-grid" aria-label="Lista de serviços NailNow">
-        <article class="service-card">
-          <h2><span aria-hidden="true">✨</span>Manicure tradicional</h2>
-          <p>Cutilagem, lixamento e esmaltação clássica com acabamento elegante para o dia a dia.</p>
-        </article>
-
-        <article class="service-card">
-          <h2><span aria-hidden="true">🦶</span>Pedicure tradicional</h2>
-          <p>Cuidado completo dos pés com esmaltação tradicional e sensação de leveza.</p>
-        </article>
-
-        <article class="service-card">
-          <h2><span aria-hidden="true">💎</span>Manicure gel</h2>
-          <p>Esmaltação em gel para brilho intenso e longa duração, com secagem imediata.</p>
-        </article>
-
-        <article class="service-card">
-          <h2><span aria-hidden="true">🌸</span>Pedicure gel</h2>
-          <p>Acabamento resistente e impecável para pés bem cuidados por muito mais tempo.</p>
-        </article>
-
-        <article class="service-card">
-          <h2><span aria-hidden="true">🛡️</span>Blindagem</h2>
-          <p>Camada de proteção que fortalece a unha natural e ajuda a evitar quebras.</p>
-        </article>
+      <section class="services">
+        <div class="section-heading">
+          <h2>Lista completa de serviços</h2>
+          <p>Os serviços abaixo incluem exatamente as opções solicitadas, com uma descrição rápida para facilitar sua escolha.</p>
+        </div>
+        <div class="services-grid">
+          <article class="service-card">
+            <h3>✨ Manicure tradicional</h3>
+            <p>Cutilagem, lixamento e esmaltação clássica com acabamento elegante para o dia a dia.</p>
+          </article>
+          <article class="service-card">
+            <h3>🦶 Pedicure tradicional</h3>
+            <p>Cuidado completo dos pés com esmaltação tradicional e sensação de leveza.</p>
+          </article>
+          <article class="service-card">
+            <h3>💎 Manicure gel</h3>
+            <p>Esmaltação em gel para brilho intenso e longa duração com secagem imediata.</p>
+          </article>
+          <article class="service-card">
+            <h3>🌸 Pedicure gel</h3>
+            <p>Acabamento resistente e impecável para pés bem cuidados por muito mais tempo.</p>
+          </article>
+          <article class="service-card">
+            <h3>🛡️ Blindagem</h3>
+            <p>Camada protetora que reforça a unha natural, ajuda a evitar quebras e prolonga o acabamento.</p>
+          </article>
+          <article class="service-card">
+            <h3>🌟 Banho de gel</h3>
+            <p>Reforço em gel sobre a unha natural para mais estrutura, brilho e durabilidade.</p>
+          </article>
+          <article class="service-card">
+            <h3>🧴 Remoção de gel</h3>
+            <p>Remoção técnica e segura do gel para preservar a saúde da unha natural.</p>
+          </article>
+          <article class="service-card">
+            <h3>📏 Alongamento</h3>
+            <p>Extensão personalizada em diferentes formatos e comprimentos com resultado profissional.</p>
+          </article>
+          <article class="service-card">
+            <h3>🎨 Nail art (decoração)</h3>
+            <p>Decorações criativas, minimalistas ou artísticas para unhas únicas e cheias de personalidade.</p>
+          </article>
+          <article class="service-card">
+            <h3>🫧 Spa dos pés</h3>
+            <p>Ritual relaxante com esfoliação, hidratação e massagem para renovar os pés.</p>
+          </article>
+        </div>
+      </section>
+    </main>
 
         <article class="service-card">
           <h2><span aria-hidden="true">🌟</span>Banho de gel</h2>
