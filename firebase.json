@@ -9,11 +9,11 @@
       "firebase/**",
       "functions/**"
     ],
-    "redirects": [
+    "cleanUrls": true,
+    "rewrites": [
       {
         "source": "/servicos",
-        "destination": "/servicos.html",
-        "type": 301
+        "destination": "/servicos.html"
       }
     ]
   },
