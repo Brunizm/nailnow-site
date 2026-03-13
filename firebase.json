@@ -8,6 +8,13 @@
       "**/node_modules/**",
       "firebase/**",
       "functions/**"
+    ],
+    "redirects": [
+      {
+        "source": "/servicos",
+        "destination": "/servicos.html",
+        "type": 301
+      }
     ]
   },
   "firestore": {
