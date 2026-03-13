@@ -8,8 +8,8 @@
       name="description"
       content="Escolha o tipo de cadastro NailNow para clientes ou profissionais."
     />
-    <meta http-equiv="refresh" content="5; url=/cliente/cadastro.html" />
-    <link rel="canonical" href="https://www.nailnow.app/cadastro.html" />
+    <meta http-equiv="refresh" content="5; url=/cliente/cadastro" />
+    <link rel="canonical" href="https://www.nailnow.app/cadastro" />
     <style>
       :root {
         color-scheme: light;
@@ -88,7 +88,7 @@
             "@type": "ListItem",
             "position": 2,
             "name": "Cadastro de Manicure",
-            "item": "https://www.nailnow.app/cadastro.html"
+            "item": "https://www.nailnow.app/cadastro"
           }
         ]
       }
@@ -211,7 +211,7 @@
           const params = new URLSearchParams(search);
           ["role", "tipo", "perfil"].forEach((key) => params.delete(key));
           const cleanedQuery = params.toString();
-          const basePath = role === "profissional" ? "/profissional/cadastro.html" : "/cliente/cadastro.html";
+          const basePath = role === "profissional" ? "/profissional/cadastro" : "/cliente/cadastro";
           const query = cleanedQuery ? `?${cleanedQuery}` : "";
           const suffix = hash || "";
           return `${basePath}${query}${suffix}`;

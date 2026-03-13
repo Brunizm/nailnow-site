@@ -119,7 +119,7 @@
           ],
           "availableChannel": {
             "@type": "ServiceChannel",
-            "serviceUrl": "https://www.nailnow.app/servicos.html",
+            "serviceUrl": "https://www.nailnow.app/servicos",
             "serviceLocation": {
               "@type": "Place",
               "name": "Atendimento a domicílio"
@@ -1169,7 +1169,7 @@
             "Dellas space Beauty Bar",
             "Soft Skin Espaço de Beleza & Cia"
 ],
-          "url": "https://www.nailnow.app/servicos.html"
+          "url": "https://www.nailnow.app/servicos"
         }
       </script>
   </head>
@@ -1189,7 +1189,7 @@
     </div>
     <header class="site-header">
       <div class="header-inner">
-        <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
+        <a href="//" class="brand-mark" aria-label="Início da NailNow">
           <img src="/assets/nailnow-logo.svg" alt="Logotipo da NailNow" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
@@ -1209,12 +1209,12 @@
         <div class="header-navigation" id="site-navigation">
           <nav class="primary-nav" aria-label="Principal">
             <a href="/" class="nav-link" aria-current="page">Home</a>
-            <a href="como-funciona.html" class="nav-link">Como funciona</a>
-            <a href="servicos.html" class="nav-link">Serviços</a>
+            <a href="como-funciona" class="nav-link">Como funciona</a>
+            <a href="servicos" class="nav-link">Serviços</a>
           </nav>
           <div class="header-actions">
-            <a href="profissional/index.html" class="header-cta">Sou Manicure</a>
-            <a href="cliente/index.html" class="header-cta">Sou Cliente</a>
+            <a href="profissional" class="header-cta">Sou Manicure</a>
+            <a href="cliente" class="header-cta">Sou Cliente</a>
             <a
             class="social-link social-link--instagram"
             href="https://www.instagram.com/nailnow/"
@@ -1417,7 +1417,7 @@
             Cadastre-se gratuitamente, receba pedidos recorrentes e tenha suporte financeiro, logístico e de marketing a cada atendimento.
           </p>
         </div>
-        <a href="profissional/cadastro.html" class="btn btn--light">Cadastrar-se</a>
+        <a href="profissional/cadastro" class="btn btn--light">Cadastrar-se</a>
       </section>
 
     </main>
@@ -1430,9 +1430,9 @@
         </div>
         <div class="footer-column footer-links" aria-label="Links úteis">
           <h3>FAQ</h3>
-          <a href="faq.html">Perguntas frequentes</a>
-          <a href="como-funciona.html">Como funciona</a>
-          <a href="agendamentos.html">Agendamentos</a>
+          <a href="faq">Perguntas frequentes</a>
+          <a href="como-funciona">Como funciona</a>
+          <a href="agendamentos">Agendamentos</a>
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
@@ -1450,8 +1450,8 @@
 
     <nav class="bottom-nav" aria-label="Navegação inferior fixa">
         <a href="/" class="bottom-nav__link" aria-label="Ir para o início">Home</a>
-      <a href="servicos.html" class="bottom-nav__link" aria-label="Buscar serviços profissionais">Buscar</a>
-      <a href="cliente/index.html" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
+      <a href="servicos" class="bottom-nav__link" aria-label="Buscar serviços profissionais">Buscar</a>
+      <a href="cliente" class="bottom-nav__link" aria-label="Ver agendamentos">Agendamentos</a>
       <a href="cliente/" class="bottom-nav__link" aria-label="Ver perfil ou fazer login">Perfil</a>
     </nav>
 
@@ -2545,7 +2545,7 @@
           profissional: pro.id,
           servico: serviceParam,
         });
-        cta.href = `cliente/index.html?${params.toString()}`;
+        cta.href = `cliente?${params.toString()}`;
         cta.textContent = "Reservar atendimento";
 
         content.appendChild(header);
