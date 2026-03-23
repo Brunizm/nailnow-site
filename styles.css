@@ -41862,6 +41862,17 @@ main {
   margin: 0;
 }
 
+
+.local-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.local-links .btn {
+  letter-spacing: 0.08em;
+}
+
 .partners {
   max-width: var(--max-width);
   margin: 0 auto;
