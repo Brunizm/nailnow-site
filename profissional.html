@@ -186,6 +186,11 @@
         font-size: 0.92rem;
       }
 
+      .pro-form > span {
+        font-weight: 600;
+        font-size: 0.92rem;
+      }
+
       .pro-form input,
       .pro-form select {
         width: 100%;
@@ -193,6 +198,30 @@
         border-radius: 10px;
         padding: 0.78rem 0.9rem;
         font-size: 0.98rem;
+      }
+
+      .pro-service-checklist {
+        display: grid;
+        gap: 0.6rem;
+        margin: 0.15rem 0 0.25rem;
+      }
+
+      .pro-service-checklist label {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.55rem 0.7rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(244, 92, 162, 0.26);
+        font-size: 0.92rem;
+        font-weight: 500;
+      }
+
+      .pro-service-checklist input[type="checkbox"] {
+        width: 1rem;
+        height: 1rem;
+        accent-color: var(--pink-primary);
       }
 
       .pro-form button {
@@ -328,15 +357,14 @@
             <label for="whatsapp">WhatsApp (com DDD)</label>
             <input id="whatsapp" name="whatsapp" type="tel" placeholder="(51) 99999-0000" required />
 
-            <label for="especialidade">Serviços desejados</label>
-            <select id="especialidade" name="especialidade" required>
-              <option value="">Selecione os serviços</option>
-              <option>Manicure clássica</option>
-              <option>Pedicure clássica</option>
-              <option>Alongamento em gel</option>
-              <option>Esmaltação em gel (manicure)</option>
-              <option>Esmaltação em gel (pedicure)</option>
-            </select>
+            <span id="especialidade-label">Serviços desejados</span>
+            <div class="pro-service-checklist" role="group" aria-labelledby="especialidade-label">
+              <label><input type="checkbox" name="especialidade" value="Manicure clássica" /> Manicure clássica</label>
+              <label><input type="checkbox" name="especialidade" value="Pedicure clássica" /> Pedicure clássica</label>
+              <label><input type="checkbox" name="especialidade" value="Alongamento em gel" /> Alongamento em gel</label>
+              <label><input type="checkbox" name="especialidade" value="Esmaltação em gel (manicure)" /> Esmaltação em gel (manicure)</label>
+              <label><input type="checkbox" name="especialidade" value="Esmaltação em gel (pedicure)" /> Esmaltação em gel (pedicure)</label>
+            </div>
 
             <label for="instagram">Instagram profissional (@...)</label>
             <input id="instagram" name="instagram" type="text" placeholder="@seuinstagram" required />
@@ -414,11 +442,21 @@
           .trim()
           .toLowerCase();
         const whatsapp = String(formData.get("whatsapp") || "").trim();
-        const especialidade = String(formData.get("especialidade") || "").trim();
+        const especialidades = formData
+          .getAll("especialidade")
+          .map((value) => String(value || "").trim())
+          .filter(Boolean);
         const instagramRaw = String(formData.get("instagram") || "").trim();
         const bairro = String(formData.get("bairro") || "").trim();
 
         const instagram = instagramRaw.startsWith("@") ? instagramRaw : `@${instagramRaw}`;
+
+        if (especialidades.length === 0) {
+          feedback.textContent = "Selecione pelo menos um serviço desejado.";
+          button.disabled = false;
+          button.textContent = "QUERO PRIORIDADE NO LANÇAMENTO";
+          return;
+        }
 
         const payload = {
           nomeCompleto,
@@ -426,7 +464,8 @@
           email,
           telefone: whatsapp,
           whatsapp,
-          especialidade,
+          especialidade: especialidades.join(", "),
+          especialidades,
           instagram,
           bairro,
           cidade: "Porto Alegre",
