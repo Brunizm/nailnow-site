@@ -13,7 +13,7 @@ const SUPPORT_SENDER = "NailNow <suporte@nailnow.app>";
 
 const ROLE_LOGIN_PATH = {
   cliente: "/cliente/index.html",
-  profissional: "/profissional/index.html",
+  profissional: "/profissional",
 };
 
 const ROLE_PORTAL_PATH = {
