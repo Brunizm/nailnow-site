@@ -108,14 +108,22 @@
         align-items: center;
         justify-content: center;
         width: fit-content;
-        background: linear-gradient(90deg, var(--pink-dark), var(--pink-primary));
+        background: var(--pink-primary);
         color: #fff;
         text-decoration: none;
         font-weight: 700;
         border-radius: 999px;
         padding: 0.85rem 1.35rem;
-        border: none;
+        border: 1px solid var(--pink-primary);
         cursor: pointer;
+        transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+      }
+
+      .pro-btn:hover,
+      .pro-btn:focus-visible {
+        background: var(--pink-accent);
+        border-color: var(--pink-accent);
+        transform: translateY(-1px);
       }
 
       .pro-points,
@@ -155,7 +163,8 @@
       .pro-lp__conversion {
         display: grid;
         gap: 1rem;
-        background: linear-gradient(160deg, var(--pink-dark) 0%, var(--pink-primary) 100%);
+        background: var(--pink-primary);
+        border-color: var(--pink-primary);
       }
 
       .pro-lp__conversion h2,
