@@ -415,7 +415,7 @@ async function queueMailForDelivery(payload, options = {}) {
 
 const ROLE_LOGIN_PATH = {
   cliente: "/cliente/index.html",
-  profissional: "/profissional/index.html",
+  profissional: "/profissional",
 };
 
 const ROLE_PORTAL_PATH = {
