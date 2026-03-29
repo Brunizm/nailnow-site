@@ -60,15 +60,15 @@
       .pro-lp__section,
       .pro-lp__hero,
       .pro-lp__conversion {
-        background: #fff;
-        border: 1px solid #f0e5eb;
+        background: var(--surface);
+        border: 1px solid rgba(244, 92, 162, 0.16);
         border-radius: 24px;
-        box-shadow: 0 14px 42px rgba(74, 21, 75, 0.08);
+        box-shadow: 0 14px 42px rgba(244, 92, 162, 0.12);
         padding: clamp(1.4rem, 2.5vw, 2.6rem);
       }
 
       .pro-lp__hero {
-        background: linear-gradient(145deg, #fff7fb, #fff);
+        background: linear-gradient(145deg, var(--surface-alt), var(--surface));
       }
 
       .pro-kicker {
@@ -76,7 +76,7 @@
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-weight: 700;
-        color: #bf3475;
+        color: var(--pink-primary);
         margin-bottom: 0.6rem;
       }
 
@@ -84,7 +84,7 @@
       .pro-lp h2,
       .pro-lp h3 {
         margin: 0;
-        color: #2a1631;
+        color: var(--text-main);
       }
 
       .pro-lp h1 {
@@ -95,7 +95,7 @@
 
       .pro-lp p {
         margin: 0;
-        color: #4f3e57;
+        color: var(--text-muted);
       }
 
       .pro-hero__body {
@@ -108,14 +108,22 @@
         align-items: center;
         justify-content: center;
         width: fit-content;
-        background: linear-gradient(90deg, #8b2f6b, #bf3475);
+        background: var(--pink-primary);
         color: #fff;
         text-decoration: none;
         font-weight: 700;
         border-radius: 999px;
         padding: 0.85rem 1.35rem;
-        border: none;
+        border: 1px solid var(--pink-primary);
         cursor: pointer;
+        transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+      }
+
+      .pro-btn:hover,
+      .pro-btn:focus-visible {
+        background: var(--pink-accent);
+        border-color: var(--pink-accent);
+        transform: translateY(-1px);
       }
 
       .pro-points,
@@ -130,10 +138,10 @@
 
       .pro-points li,
       .pro-steps li {
-        border: 1px solid #edd9e5;
+        border: 1px solid rgba(244, 92, 162, 0.2);
         border-radius: 14px;
         padding: 0.9rem 1rem;
-        background: #fff9fc;
+        background: var(--surface-alt);
       }
 
       .pro-benefit-grid {
@@ -141,10 +149,10 @@
       }
 
       .pro-benefit-card {
-        border: 1px solid #edd9e5;
+        border: 1px solid rgba(244, 92, 162, 0.2);
         border-radius: 16px;
         padding: 1rem;
-        background: #fff;
+        background: var(--surface);
       }
 
       .pro-benefit-card h3 {
@@ -155,13 +163,17 @@
       .pro-lp__conversion {
         display: grid;
         gap: 1rem;
-        background: linear-gradient(160deg, #2a1631 0%, #4a1d53 100%);
+        background: linear-gradient(145deg, var(--surface-alt), var(--surface));
+        border: 1px solid rgba(244, 92, 162, 0.16);
       }
 
       .pro-lp__conversion h2,
-      .pro-lp__conversion p,
       .pro-lp__conversion label {
-        color: #fff;
+        color: var(--text-main);
+      }
+
+      .pro-lp__conversion p {
+        color: var(--text-muted);
       }
 
       .pro-form {
@@ -170,6 +182,11 @@
       }
 
       .pro-form label {
+        font-weight: 600;
+        font-size: 0.92rem;
+      }
+
+      .pro-form > span {
         font-weight: 600;
         font-size: 0.92rem;
       }
@@ -183,6 +200,30 @@
         font-size: 0.98rem;
       }
 
+      .pro-service-checklist {
+        display: grid;
+        gap: 0.6rem;
+        margin: 0.15rem 0 0.25rem;
+      }
+
+      .pro-service-checklist label {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.55rem 0.7rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(244, 92, 162, 0.26);
+        font-size: 0.92rem;
+        font-weight: 500;
+      }
+
+      .pro-service-checklist input[type="checkbox"] {
+        width: 1rem;
+        height: 1rem;
+        accent-color: var(--pink-primary);
+      }
+
       .pro-form button {
         margin-top: 0.45rem;
       }
@@ -190,7 +231,7 @@
       .pro-form__feedback {
         min-height: 1.2rem;
         font-size: 0.92rem;
-        color: #ffe9f5;
+        color: var(--pink-dark);
       }
     </style>
   </head>
@@ -233,6 +274,19 @@
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"
+                />
+              </svg>
+            </a>
+            <a
+              class="social-link"
+              href="https://www.linkedin.com/company/nailnowapp/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LinkedIn da NailNow"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M6.94 8.5H3.56V20h3.38V8.5ZM5.25 3A1.97 1.97 0 1 0 5.3 6.94 1.97 1.97 0 0 0 5.25 3Zm6.09 5.5H8.1V20h3.24v-5.67c0-1.5.28-2.95 2.13-2.95 1.83 0 1.86 1.72 1.86 3.04V20h3.25v-6.24c0-3.06-.66-5.42-4.24-5.42-1.72 0-2.88.95-3.35 1.85h-.05V8.5Z"
                 />
               </svg>
             </a>
@@ -310,16 +364,20 @@
             <label for="nomeCompleto">Nome completo</label>
             <input id="nomeCompleto" name="nomeCompleto" type="text" required />
 
+            <label for="email">E-mail</label>
+            <input id="email" name="email" type="email" placeholder="voce@exemplo.com" autocomplete="email" required />
+
             <label for="whatsapp">WhatsApp (com DDD)</label>
             <input id="whatsapp" name="whatsapp" type="tel" placeholder="(51) 99999-0000" required />
 
-            <label for="especialidade">Sua especialidade</label>
-            <select id="especialidade" name="especialidade" required>
-              <option value="">Selecione</option>
-              <option>Manicure</option>
-              <option>Gel</option>
-              <option>Nail Art</option>
-            </select>
+            <span id="especialidade-label">Serviços desejados</span>
+            <div class="pro-service-checklist" role="group" aria-labelledby="especialidade-label">
+              <label><input type="checkbox" name="especialidade" value="Manicure clássica" /> Manicure clássica</label>
+              <label><input type="checkbox" name="especialidade" value="Pedicure clássica" /> Pedicure clássica</label>
+              <label><input type="checkbox" name="especialidade" value="Alongamento em gel" /> Alongamento em gel</label>
+              <label><input type="checkbox" name="especialidade" value="Esmaltação em gel (manicure)" /> Esmaltação em gel (manicure)</label>
+              <label><input type="checkbox" name="especialidade" value="Esmaltação em gel (pedicure)" /> Esmaltação em gel (pedicure)</label>
+            </div>
 
             <label for="instagram">Instagram profissional (@...)</label>
             <input id="instagram" name="instagram" type="text" placeholder="@seuinstagram" required />
@@ -393,19 +451,34 @@
 
         const formData = new FormData(form);
         const nomeCompleto = String(formData.get("nomeCompleto") || "").trim();
+        const email = String(formData.get("email") || "")
+          .trim()
+          .toLowerCase();
         const whatsapp = String(formData.get("whatsapp") || "").trim();
-        const especialidade = String(formData.get("especialidade") || "").trim();
+        const especialidades = formData
+          .getAll("especialidade")
+          .map((value) => String(value || "").trim())
+          .filter(Boolean);
         const instagramRaw = String(formData.get("instagram") || "").trim();
         const bairro = String(formData.get("bairro") || "").trim();
 
         const instagram = instagramRaw.startsWith("@") ? instagramRaw : `@${instagramRaw}`;
 
+        if (especialidades.length === 0) {
+          feedback.textContent = "Selecione pelo menos um serviço desejado.";
+          button.disabled = false;
+          button.textContent = "QUERO PRIORIDADE NO LANÇAMENTO";
+          return;
+        }
+
         const payload = {
           nomeCompleto,
           nome: nomeCompleto,
+          email,
           telefone: whatsapp,
           whatsapp,
-          especialidade,
+          especialidade: especialidades.join(", "),
+          especialidades,
           instagram,
           bairro,
           cidade: "Porto Alegre",
