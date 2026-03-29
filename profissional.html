@@ -189,7 +189,15 @@
         gap: 0.8rem;
       }
 
-      .pro-form-progress__bar {
+      .pro-story-progress {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        margin-top: 0.5rem;
+      }
+
+      .pro-story-progress__bar {
         position: relative;
         flex: 1;
         height: 8px;
@@ -198,7 +206,7 @@
         overflow: hidden;
       }
 
-      .pro-form-progress__fill {
+      .pro-story-progress__fill {
         position: absolute;
         inset: 0;
         width: 0%;
@@ -206,28 +214,15 @@
         transition: width 0.25s ease;
       }
 
-      .pro-form-progress__label {
+      .pro-story-progress__label {
         font-size: 0.82rem;
         font-weight: 600;
         color: var(--text-main);
         white-space: nowrap;
       }
 
-      .pro-form-step {
-        border: 1px solid rgba(244, 92, 162, 0.2);
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.75);
-        padding: 1rem;
-      }
-
-      .pro-form-step[hidden] {
+      .pro-story-step[hidden] {
         display: none;
-      }
-
-      .pro-form-step__hint {
-        font-size: 0.85rem;
-        color: var(--text-muted);
-        margin-top: -0.25rem;
       }
 
       .pro-form label {
@@ -277,10 +272,11 @@
         margin-top: 0.45rem;
       }
 
-      .pro-form-actions {
+      .pro-story-actions {
         display: flex;
         flex-wrap: wrap;
         gap: 0.65rem;
+        margin-top: 1rem;
       }
 
       .pro-btn--ghost {
@@ -383,7 +379,16 @@
           </div>
         </section>
 
-        <section class="pro-lp__section" aria-labelledby="dor-title">
+        <section class="pro-lp__section" aria-label="Progresso da apresentação">
+          <div class="pro-story-progress" aria-live="polite">
+            <div class="pro-story-progress__bar" aria-hidden="true">
+              <span id="story-progress-fill" class="pro-story-progress__fill"></span>
+            </div>
+            <span id="story-progress-label" class="pro-story-progress__label">Seção 1 de 4</span>
+          </div>
+        </section>
+
+        <section class="pro-lp__section pro-story-step" data-story-step="1" aria-labelledby="dor-title">
           <h2 id="dor-title">Você já sentiu que trabalha muito e ganha pouco?</h2>
           <p>
             O modelo tradicional de salão muitas vezes sufoca o crescimento da manicure. Com a NailNow, mudamos as regras do jogo:
@@ -392,9 +397,12 @@
             <li>❌ Antes: "Presa" a horários fixos e comissões baixas.<br />✅ NailNow: Você é sua própria chefe. Defina sua agenda e multiplique seus ganhos.</li>
             <li>❌ Antes: Horas ociosa esperando a cliente entrar pela porta.<br />✅ NailNow: Notificações de serviços na sua região, em tempo real.</li>
           </ul>
+          <div class="pro-story-actions">
+            <button class="pro-btn js-story-next" type="button">Próxima seção</button>
+          </div>
         </section>
 
-        <section class="pro-lp__section" aria-labelledby="beneficios-title">
+        <section class="pro-lp__section pro-story-step" data-story-step="2" aria-labelledby="beneficios-title" hidden>
           <h2 id="beneficios-title">Por que ser uma profissional NailNow?</h2>
           <div class="pro-benefit-grid">
             <article class="pro-benefit-card">
@@ -415,18 +423,26 @@
               </p>
             </article>
           </div>
+          <div class="pro-story-actions">
+            <button class="pro-btn pro-btn--ghost js-story-prev" type="button">Voltar</button>
+            <button class="pro-btn js-story-next" type="button">Próxima seção</button>
+          </div>
         </section>
 
-        <section class="pro-lp__section" aria-labelledby="passos-title">
+        <section class="pro-lp__section pro-story-step" data-story-step="3" aria-labelledby="passos-title" hidden>
           <h2 id="passos-title">Sua nova carreira em 3 passos simples:</h2>
           <ol class="pro-steps">
             <li><strong>Pré-cadastro:</strong> Preencha seus dados na nossa lista prioritária.</li>
             <li><strong>Curadoria:</strong> Nossa equipe valida seu perfil e portfólio (garantia de qualidade NailNow).</li>
             <li><strong>Faturamento:</strong> Com o app liberado, você aceita serviços e começa a lucrar onde e quando quiser.</li>
           </ol>
+          <div class="pro-story-actions">
+            <button class="pro-btn pro-btn--ghost js-story-prev" type="button">Voltar</button>
+            <button class="pro-btn js-story-next" type="button">Ir para cadastro</button>
+          </div>
         </section>
 
-        <section class="pro-lp__conversion" aria-labelledby="conversao-title">
+        <section class="pro-lp__conversion pro-story-step" data-story-step="4" aria-labelledby="conversao-title" hidden>
           <h2 id="conversao-title">Seja uma das 50 manicures fundadoras em Porto Alegre.</h2>
           <p>
             Estamos selecionando as melhores profissionais para a fase Alfa. Quem entrar agora terá prioridade máxima no algoritmo
@@ -499,6 +515,10 @@
             </section>
 
             <p id="formMsgPrioridade" class="pro-form__feedback" role="status" aria-live="polite"></p>
+            <div class="pro-story-actions">
+              <button class="pro-btn pro-btn--ghost js-story-prev" type="button">Voltar</button>
+              <button id="btnPrioridade" class="pro-btn" type="submit">QUERO PRIORIDADE NO LANÇAMENTO</button>
+            </div>
           </form>
         </section>
       </div>
@@ -554,67 +574,39 @@
       const form = document.getElementById("form-prioridade");
       const feedback = document.getElementById("formMsgPrioridade");
       const button = document.getElementById("btnPrioridade");
-      const steps = Array.from(document.querySelectorAll(".pro-form-step"));
-      const progressFill = document.getElementById("form-progress-fill");
-      const progressLabel = document.getElementById("form-progress-label");
-      let currentStep = 0;
+      const storySteps = Array.from(document.querySelectorAll(".pro-story-step"));
+      const storyProgressFill = document.getElementById("story-progress-fill");
+      const storyProgressLabel = document.getElementById("story-progress-label");
+      let currentStoryStep = 0;
 
-      const validateStep = (stepIndex) => {
-        const step = steps[stepIndex];
-        if (!step) return true;
-        const fields = step.querySelectorAll("input[required], select[required], textarea[required]");
-
-        for (const field of fields) {
-          if (!field.checkValidity()) {
-            field.reportValidity();
-            return false;
-          }
-        }
-
-        if (step.querySelector('[name="especialidade"]')) {
-          const hasChecked = Boolean(form?.querySelector('[name="especialidade"]:checked'));
-          if (!hasChecked) {
-            feedback.textContent = "Selecione pelo menos um serviço desejado.";
-            return false;
-          }
-        }
-
-        feedback.textContent = "";
-        return true;
-      };
-
-      const updateStepUi = (nextStep) => {
-        currentStep = Math.max(0, Math.min(nextStep, steps.length - 1));
-        steps.forEach((step, index) => {
-          step.hidden = index !== currentStep;
+      const updateStoryUi = (nextStep) => {
+        currentStoryStep = Math.max(0, Math.min(nextStep, storySteps.length - 1));
+        storySteps.forEach((step, index) => {
+          step.hidden = index !== currentStoryStep;
         });
 
-        const progress = ((currentStep + 1) / steps.length) * 100;
-        if (progressFill) progressFill.style.width = `${progress}%`;
-        if (progressLabel) progressLabel.textContent = `Pergunta ${currentStep + 1} de ${steps.length}`;
+        const progress = ((currentStoryStep + 1) / storySteps.length) * 100;
+        if (storyProgressFill) storyProgressFill.style.width = `${progress}%`;
+        if (storyProgressLabel) storyProgressLabel.textContent = `Seção ${currentStoryStep + 1} de ${storySteps.length}`;
 
-        const activeStep = steps[currentStep];
+        const activeStep = storySteps[currentStoryStep];
         activeStep?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-        const firstField = activeStep?.querySelector("input, select, textarea");
-        firstField?.focus();
       };
 
-      form?.addEventListener("click", (event) => {
+      document.addEventListener("click", (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
 
-        if (target.classList.contains("js-next-step")) {
-          if (!validateStep(currentStep)) return;
-          updateStepUi(currentStep + 1);
+        if (target.classList.contains("js-story-next")) {
+          updateStoryUi(currentStoryStep + 1);
         }
 
-        if (target.classList.contains("js-prev-step")) {
-          updateStepUi(currentStep - 1);
+        if (target.classList.contains("js-story-prev")) {
+          updateStoryUi(currentStoryStep - 1);
         }
       });
 
-      updateStepUi(0);
+      updateStoryUi(0);
 
       form?.addEventListener("submit", async (event) => {
         event.preventDefault();
