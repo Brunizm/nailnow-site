@@ -310,6 +310,9 @@
             <label for="nomeCompleto">Nome completo</label>
             <input id="nomeCompleto" name="nomeCompleto" type="text" required />
 
+            <label for="email">E-mail</label>
+            <input id="email" name="email" type="email" placeholder="voce@exemplo.com" autocomplete="email" required />
+
             <label for="whatsapp">WhatsApp (com DDD)</label>
             <input id="whatsapp" name="whatsapp" type="tel" placeholder="(51) 99999-0000" required />
 
@@ -393,6 +396,9 @@
 
         const formData = new FormData(form);
         const nomeCompleto = String(formData.get("nomeCompleto") || "").trim();
+        const email = String(formData.get("email") || "")
+          .trim()
+          .toLowerCase();
         const whatsapp = String(formData.get("whatsapp") || "").trim();
         const especialidade = String(formData.get("especialidade") || "").trim();
         const instagramRaw = String(formData.get("instagram") || "").trim();
@@ -403,6 +409,7 @@
         const payload = {
           nomeCompleto,
           nome: nomeCompleto,
+          email,
           telefone: whatsapp,
           whatsapp,
           especialidade,
