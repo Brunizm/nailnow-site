@@ -556,7 +556,10 @@
         }
 
         const activeStep = storySteps[currentStoryStep];
-        activeStep?.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (activeStep) {
+          const top = activeStep.getBoundingClientRect().top + window.scrollY - 24;
+          window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+        }
       };
 
       document.addEventListener("click", (event) => {
