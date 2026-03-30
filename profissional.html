@@ -164,8 +164,8 @@
       .pro-lp__conversion {
         display: grid;
         gap: 1rem;
-        background: linear-gradient(145deg, var(--surface-alt), var(--surface));
-        border: 1px solid rgba(244, 92, 162, 0.16);
+        background: linear-gradient(145deg, rgba(244, 92, 162, 0.13), rgba(244, 92, 162, 0.08));
+        border: 1px solid rgba(244, 92, 162, 0.24);
       }
 
       .pro-lp__conversion h2,
@@ -366,7 +366,7 @@
 
     <main class="page-content">
       <div class="pro-lp">
-        <section class="pro-lp__hero" aria-labelledby="hero-title">
+        <section class="pro-lp__hero pro-story-step" data-story-step="1" aria-labelledby="hero-title">
           <p class="pro-kicker">Grupo de testes • Porto Alegre</p>
           <div class="pro-hero__body">
             <h1 id="hero-title">O salão retém 50% do seu lucro? Na NailNow, o seu talento vale mais.</h1>
@@ -374,7 +374,7 @@
               Conquiste sua independência financeira e liberdade de agenda. Conectamos você às melhores clientes de Porto Alegre
               diretamente pelo celular.
             </p>
-            <a href="#form-prioridade" class="pro-btn">QUERO MINHA LIBERDADE FINANCEIRA</a>
+            <button class="pro-btn js-story-next" type="button">QUERO MINHA LIBERDADE FINANCEIRA</button>
             <p><strong>Vagas limitadas para o grupo de testes em Porto Alegre.</strong></p>
           </div>
         </section>
@@ -384,11 +384,11 @@
             <div class="pro-story-progress__bar" aria-hidden="true">
               <span id="story-progress-fill" class="pro-story-progress__fill"></span>
             </div>
-            <span id="story-progress-label" class="pro-story-progress__label">Seção 1 de 4</span>
+            <span id="story-progress-label" class="pro-story-progress__label">Seção 1 de 5</span>
           </div>
         </section>
 
-        <section class="pro-lp__section pro-story-step" data-story-step="1" aria-labelledby="dor-title">
+        <section class="pro-lp__section pro-story-step" data-story-step="2" aria-labelledby="dor-title" hidden>
           <h2 id="dor-title">Você já sentiu que trabalha muito e ganha pouco?</h2>
           <p>
             O modelo tradicional de salão muitas vezes sufoca o crescimento da manicure. Com a NailNow, mudamos as regras do jogo:
@@ -402,7 +402,7 @@
           </div>
         </section>
 
-        <section class="pro-lp__section pro-story-step" data-story-step="2" aria-labelledby="beneficios-title" hidden>
+        <section class="pro-lp__section pro-story-step" data-story-step="3" aria-labelledby="beneficios-title" hidden>
           <h2 id="beneficios-title">Por que ser uma profissional NailNow?</h2>
           <div class="pro-benefit-grid">
             <article class="pro-benefit-card">
@@ -429,7 +429,7 @@
           </div>
         </section>
 
-        <section class="pro-lp__section pro-story-step" data-story-step="3" aria-labelledby="passos-title" hidden>
+        <section class="pro-lp__section pro-story-step" data-story-step="4" aria-labelledby="passos-title" hidden>
           <h2 id="passos-title">Sua nova carreira em 3 passos simples:</h2>
           <ol class="pro-steps">
             <li><strong>Pré-cadastro:</strong> Preencha seus dados na nossa lista prioritária.</li>
@@ -442,7 +442,7 @@
           </div>
         </section>
 
-        <section class="pro-lp__conversion pro-story-step" data-story-step="4" aria-labelledby="conversao-title" hidden>
+        <section class="pro-lp__conversion pro-story-step" data-story-step="5" aria-labelledby="conversao-title" hidden>
           <h2 id="conversao-title">Seja uma das 50 manicures fundadoras em Porto Alegre.</h2>
           <p>
             Estamos selecionando as melhores profissionais para a fase Alfa. Quem entrar agora terá prioridade máxima no algoritmo
@@ -529,7 +529,7 @@
         appId: "1:729530854645:web:e39cfffff423bf384da9bc",
       };
 
-      const TARGET_COLLECTIONS = ["profissionais", "manicures"];
+      const TARGET_COLLECTION = "profissionais";
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
 
@@ -549,7 +549,9 @@
 
         const progress = ((currentStoryStep + 1) / storySteps.length) * 100;
         if (storyProgressFill) storyProgressFill.style.width = `${progress}%`;
-        if (storyProgressLabel) storyProgressLabel.textContent = `Seção ${currentStoryStep + 1} de ${storySteps.length}`;
+        if (storyProgressLabel) {
+          storyProgressLabel.textContent = `Seção ${currentStoryStep + 1} de ${storySteps.length}`;
+        }
 
         const activeStep = storySteps[currentStoryStep];
         activeStep?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -615,7 +617,7 @@
         };
 
         try {
-          await Promise.all(TARGET_COLLECTIONS.map((name) => addDoc(collection(db, name), payload)));
+          await addDoc(collection(db, TARGET_COLLECTION), payload);
           feedback.textContent = "Pré-cadastro enviado com sucesso! Nossa equipe entrará em contato.";
           form.reset();
         } catch (error) {

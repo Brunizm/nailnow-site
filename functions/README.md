@@ -115,3 +115,19 @@ if you want to visualize them immediately.
 
 Repita o mesmo fluxo em `http://localhost:3000/cliente/cadastro.html` para
 garantir que o cadastro de clientes também esteja operando.
+
+## 7. Migração legada de `manicures` para `profissionais`
+
+Se você ainda tiver dados antigos na coleção `manicures`, rode o script abaixo
+para consolidar tudo em `profissionais`:
+
+```bash
+cd functions
+npm install
+npm run migrate:manicures -- --dry-run
+npm run migrate:manicures
+```
+
+O script tenta localizar duplicados por e-mail (prioridade), CPF e depois ID.
+Quando encontra um perfil já existente em `profissionais`, ele faz merge com
+`set(..., { merge: true })`; caso contrário, cria um novo documento.
