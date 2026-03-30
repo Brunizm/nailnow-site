@@ -450,43 +450,16 @@
           </p>
 
           <form id="form-prioridade" class="pro-form" autocomplete="on">
-            <div class="pro-form-progress" aria-live="polite">
-              <div class="pro-form-progress__bar" aria-hidden="true">
-                <span id="form-progress-fill" class="pro-form-progress__fill"></span>
-              </div>
-              <span id="form-progress-label" class="pro-form-progress__label">Pergunta 1 de 5</span>
-            </div>
-
-            <section class="pro-form-step" data-step="1">
+            <section class="pro-form-step">
               <label for="nomeCompleto">Nome completo</label>
               <p class="pro-form-step__hint">Como você gosta de ser chamada no atendimento?</p>
               <input id="nomeCompleto" name="nomeCompleto" type="text" required />
-              <div class="pro-form-actions">
-                <button class="pro-btn js-next-step" type="button">Continuar</button>
-              </div>
-            </section>
-
-            <section class="pro-form-step" data-step="2" hidden>
               <label for="email">E-mail</label>
               <p class="pro-form-step__hint">Vamos usar esse contato para te avisar da sua aprovação.</p>
               <input id="email" name="email" type="email" placeholder="voce@exemplo.com" autocomplete="email" required />
-              <div class="pro-form-actions">
-                <button class="pro-btn pro-btn--ghost js-prev-step" type="button">Voltar</button>
-                <button class="pro-btn js-next-step" type="button">Continuar</button>
-              </div>
-            </section>
-
-            <section class="pro-form-step" data-step="3" hidden>
               <label for="whatsapp">WhatsApp (com DDD)</label>
               <p class="pro-form-step__hint">É por aqui que enviamos convites e próximos passos.</p>
               <input id="whatsapp" name="whatsapp" type="tel" placeholder="(51) 99999-0000" required />
-              <div class="pro-form-actions">
-                <button class="pro-btn pro-btn--ghost js-prev-step" type="button">Voltar</button>
-                <button class="pro-btn js-next-step" type="button">Continuar</button>
-              </div>
-            </section>
-
-            <section class="pro-form-step" data-step="4" hidden>
               <span id="especialidade-label">Serviços desejados</span>
               <p class="pro-form-step__hint">Você pode marcar mais de uma opção.</p>
               <div class="pro-service-checklist" role="group" aria-labelledby="especialidade-label">
@@ -496,29 +469,18 @@
                 <label><input type="checkbox" name="especialidade" value="Esmaltação em gel (manicure)" /> Esmaltação em gel (manicure)</label>
                 <label><input type="checkbox" name="especialidade" value="Esmaltação em gel (pedicure)" /> Esmaltação em gel (pedicure)</label>
               </div>
-              <div class="pro-form-actions">
-                <button class="pro-btn pro-btn--ghost js-prev-step" type="button">Voltar</button>
-                <button class="pro-btn js-next-step" type="button">Continuar</button>
-              </div>
-            </section>
-
-            <section class="pro-form-step" data-step="5" hidden>
               <label for="instagram">Instagram profissional (@...)</label>
               <input id="instagram" name="instagram" type="text" placeholder="@seuinstagram" required />
 
               <label for="bairro">Bairro onde atende/mora</label>
               <input id="bairro" name="bairro" type="text" required />
               <div class="pro-form-actions">
-                <button class="pro-btn pro-btn--ghost js-prev-step" type="button">Voltar</button>
+                <button class="pro-btn pro-btn--ghost js-story-prev" type="button">Voltar</button>
                 <button id="btnPrioridade" class="pro-btn" type="submit">QUERO PRIORIDADE NO LANÇAMENTO</button>
               </div>
             </section>
 
             <p id="formMsgPrioridade" class="pro-form__feedback" role="status" aria-live="polite"></p>
-            <div class="pro-story-actions">
-              <button class="pro-btn pro-btn--ghost js-story-prev" type="button">Voltar</button>
-              <button id="btnPrioridade" class="pro-btn" type="submit">QUERO PRIORIDADE NO LANÇAMENTO</button>
-            </div>
           </form>
         </section>
       </div>
@@ -610,7 +572,6 @@
 
       form?.addEventListener("submit", async (event) => {
         event.preventDefault();
-        if (!validateStep(currentStep)) return;
         button.disabled = true;
         button.textContent = "Enviando...";
         feedback.textContent = "";
