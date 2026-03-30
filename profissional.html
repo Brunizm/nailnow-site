@@ -557,7 +557,9 @@
 
         const activeStep = storySteps[currentStoryStep];
         if (activeStep) {
-          const top = activeStep.getBoundingClientRect().top + window.scrollY - 24;
+          const header = document.querySelector(".site-header");
+          const headerOffset = header instanceof HTMLElement ? header.offsetHeight + 20 : 24;
+          const top = activeStep.getBoundingClientRect().top + window.scrollY - headerOffset;
           window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
         }
       };
