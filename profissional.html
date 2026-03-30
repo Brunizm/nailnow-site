@@ -600,6 +600,8 @@
       const storyProgressFill = document.getElementById("story-progress-fill");
       const storyProgressLabel = document.getElementById("story-progress-label");
       let currentStoryStep = 0;
+      const HERO_SECTION_OFFSET = 1;
+      const STORY_TOTAL_SECTIONS = storySteps.length + HERO_SECTION_OFFSET;
 
       const updateStoryUi = (nextStep) => {
         currentStoryStep = Math.max(0, Math.min(nextStep, storySteps.length - 1));
@@ -607,7 +609,7 @@
           step.hidden = index !== currentStoryStep;
         });
 
-        const progress = ((currentStoryStep + 1) / storySteps.length) * 100;
+        const progress = ((currentStoryStep + 1 + HERO_SECTION_OFFSET) / STORY_TOTAL_SECTIONS) * 100;
         if (storyProgressFill) storyProgressFill.style.width = `${progress}%`;
         if (storyProgressLabel) {
           storyProgressLabel.textContent = `Seção ${currentStoryStep + 1} de ${storySteps.length}`;
