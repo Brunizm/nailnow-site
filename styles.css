@@ -40227,6 +40227,69 @@ main {
   box-shadow: 0 24px 44px -30px rgba(244, 92, 162, 0.4);
 }
 
+.hero--home-fullpage {
+  position: relative;
+  min-height: calc(100vh - 150px);
+  width: min(100%, 1280px);
+  border-radius: 0;
+  padding: clamp(2.5rem, 6vw, 5rem) clamp(1.2rem, 4vw, 3rem);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(24, 15, 20, 0.52), rgba(24, 15, 20, 0.58)),
+    url("assets/nail1.png") center / cover no-repeat;
+  box-shadow: none;
+  border: 0;
+}
+
+.hero--home-fullpage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 70% 45%, rgba(255, 224, 238, 0.28), transparent 52%);
+  pointer-events: none;
+}
+
+.hero--home.hero--home-fullpage .hero-copy {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 880px);
+  text-align: center;
+  align-items: center;
+}
+
+.hero--home.hero--home-fullpage .hero-label {
+  color: rgba(255, 230, 242, 0.9);
+  background: rgba(41, 25, 33, 0.42);
+  border-color: rgba(255, 209, 230, 0.36);
+}
+
+.hero--home.hero--home-fullpage h1,
+.hero--home.hero--home-fullpage h1 .hero-headline__subtitle,
+.hero--home.hero--home-fullpage p {
+  color: #fff;
+  text-align: center;
+}
+
+.hero--home.hero--home-fullpage h1 em {
+  color: #f6d0e4;
+  font-style: italic;
+}
+
+.hero--home.hero--home-fullpage p {
+  max-width: 50ch;
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.hero--home.hero--home-fullpage .booking-card {
+  width: min(100%, 860px);
+  margin-top: clamp(1rem, 2.5vw, 1.75rem);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 210, 230, 0.4);
+  backdrop-filter: blur(8px);
+}
+
 .hero--client .hero-copy__description {
   color: var(--text-main);
   font-weight: 500;
