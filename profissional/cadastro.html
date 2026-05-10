@@ -62,6 +62,12 @@
         collection,
         addDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      import {
+        getStorage,
+        ref,
+        uploadBytes,
+        getDownloadURL,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
@@ -85,6 +91,7 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
+      const storage = getStorage(app);
 
       function setFeedbackMessage(element, message, variant = "info") {
         if (!element) return;
@@ -134,6 +141,18 @@
           form.querySelectorAll("input[name='servicos']:checked"),
           (el) => el.value,
         );
+      }
+
+      async function uploadArquivo(uid, arquivo, caminho) {
+        if (!arquivo || arquivo.size === 0) return null;
+        try {
+          const storageRef = ref(storage, `profissionais/${uid}/${caminho}`);
+          const snapshot = await uploadBytes(storageRef, arquivo);
+          return await getDownloadURL(snapshot.ref);
+        } catch (error) {
+          console.warn(`Falha ao enviar arquivo ${caminho}`, error);
+          return null;
+        }
       }
 
       function sanitize(value) {
@@ -301,11 +320,19 @@
           const endereco = sanitize(form.endereco_text.value);
           const bio = sanitize(form.bio.value);
           const servicos = coletarServicos(form);
+          const fotoArquivo = form.foto?.files?.[0] || null;
+          const docFrenteArquivo = form.docFrente?.files?.[0] || null;
+          const docVersoArquivo = form.docVerso?.files?.[0] || null;
 
           const enderecoFormatado = sanitize(form.endereco_formatado.value);
           const placeId = sanitize(form.place_id.value);
           const lat = sanitize(form.lat.value);
           const lng = sanitize(form.lng.value);
+
+          if (!docFrenteArquivo || !docVersoArquivo) {
+            setFeedbackMessage(feedback, "❌ Envie a frente e o verso do documento de identidade.", "error");
+            return;
+          }
 
           if (!nome || !cpf || !email || !senha || !confirmar) {
             setFeedbackMessage(feedback, "❌ Preencha os campos obrigatórios (*).", "error");
@@ -329,6 +356,16 @@
           const uid = user.uid;
 
           if (btn) {
+            btn.textContent = "Enviando documentos…";
+          }
+
+          const [fotoUrl, docFrenteUrl, docVersoUrl] = await Promise.all([
+            uploadArquivo(uid, fotoArquivo, "foto-perfil"),
+            uploadArquivo(uid, docFrenteArquivo, "documentos/identidade-frente"),
+            uploadArquivo(uid, docVersoArquivo, "documentos/identidade-verso"),
+          ]);
+
+          if (btn) {
             btn.textContent = "Salvando cadastro…";
           }
 
@@ -347,6 +384,11 @@
             lng,
             bio,
             servicos,
+            ...(fotoUrl && { fotoUrl }),
+            documentos: {
+              identidadeFrente: docFrenteUrl || null,
+              identidadeVerso: docVersoUrl || null,
+            },
             atualizadoEm: serverTimestamp(),
           };
 
@@ -625,6 +667,50 @@
                 <textarea id="bio" name="bio" rows="3" placeholder="Ex.: 5 anos de experiência, especializada em gel..."></textarea>
               </div>
 
+              <div class="signup-field">
+                <label for="foto">Foto de perfil</label>
+                <div class="file-upload-area">
+                  <input id="foto" name="foto" type="file" accept="image/*" class="file-upload-input" />
+                  <label for="foto" class="file-upload-label">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" class="file-upload-icon"><path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 11c-5.33 0-8 2.67-8 4v1h16v-1c0-1.33-2.67-4-8-4z"/></svg>
+                    <span class="file-upload-label__text">Escolher foto</span>
+                    <span class="file-upload-label__hint">JPG, PNG — máx. 5 MB</span>
+                  </label>
+                  <span class="file-upload-name" id="foto-name"></span>
+                </div>
+              </div>
+
+              <fieldset class="signup-fieldset">
+                <legend class="signup-field__legend">Documento de identidade *</legend>
+                <p class="signup-field__hint">Envie a frente e o verso do seu RG ou CNH para validarmos seu perfil.</p>
+
+                <div class="signup-field">
+                  <label for="docFrente">Frente do documento *</label>
+                  <div class="file-upload-area">
+                    <input id="docFrente" name="docFrente" type="file" accept="image/*,.pdf" class="file-upload-input" required />
+                    <label for="docFrente" class="file-upload-label">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" class="file-upload-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/></svg>
+                      <span class="file-upload-label__text">Escolher arquivo</span>
+                      <span class="file-upload-label__hint">JPG, PNG ou PDF — máx. 10 MB</span>
+                    </label>
+                    <span class="file-upload-name" id="docFrente-name"></span>
+                  </div>
+                </div>
+
+                <div class="signup-field">
+                  <label for="docVerso">Verso do documento *</label>
+                  <div class="file-upload-area">
+                    <input id="docVerso" name="docVerso" type="file" accept="image/*,.pdf" class="file-upload-input" required />
+                    <label for="docVerso" class="file-upload-label">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" class="file-upload-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/></svg>
+                      <span class="file-upload-label__text">Escolher arquivo</span>
+                      <span class="file-upload-label__hint">JPG, PNG ou PDF — máx. 10 MB</span>
+                    </label>
+                    <span class="file-upload-name" id="docVerso-name"></span>
+                  </div>
+                </div>
+              </fieldset>
+
               <button id="enviar" class="signup-submit" type="submit">Cadastrar profissional</button>
               <p id="signup-feedback" class="signup-feedback" role="status" aria-live="polite"></p>
             </form>
@@ -692,6 +778,23 @@
     </nav>
 
     <script src="/assets/js/password-toggle.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const fileInputs = [
+          { inputId: "foto", nameId: "foto-name" },
+          { inputId: "docFrente", nameId: "docFrente-name" },
+          { inputId: "docVerso", nameId: "docVerso-name" },
+        ];
+        fileInputs.forEach(({ inputId, nameId }) => {
+          const input = document.getElementById(inputId);
+          const nameEl = document.getElementById(nameId);
+          if (!input || !nameEl) return;
+          input.addEventListener("change", () => {
+            nameEl.textContent = input.files[0]?.name || "";
+          });
+        });
+      });
+    </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script>
       window.initEnderecoAutocomplete = function () {
