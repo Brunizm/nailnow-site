@@ -1,18 +1,9 @@
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { initializeApp } from 'firebase-admin/app';
 import { Timestamp } from 'firebase-admin/firestore';
-import { defineSecret } from 'firebase-functions/params';
 import sendEmail, { resolveSettings } from './mail/sendEmail.js';
 
 initializeApp();
-
-const SENDGRID_API_KEY = defineSecret('SENDGRID_API_KEY');
-const SENDGRID_SENDER = defineSecret('SENDGRID_SENDER');
-const SENDGRID_TEMPLATE_CLIENT = defineSecret('SENDGRID_TEMPLATE_CLIENT');
-const SENDGRID_TEMPLATE_PROFESSIONAL = defineSecret('SENDGRID_TEMPLATE_PROFESSIONAL');
-const SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP = defineSecret(
-  'SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP'
-);
 
 const normalizeStatus = (status) => (status || '').toString().toLowerCase();
 
@@ -162,23 +153,7 @@ const shouldNotify = (context) => {
   return ['solicitacoes', 'confirmados', 'cancelados'].includes(normalized);
 };
 
-const readSecret = (secret) => {
-  if (!secret) return undefined;
-  try {
-    return secret.value();
-  } catch (error) {
-    return undefined;
-  }
-};
-
-const readMailSettings = () =>
-  resolveSettings({
-    apiKey: readSecret(SENDGRID_API_KEY),
-    sender: readSecret(SENDGRID_SENDER),
-    templateClient: readSecret(SENDGRID_TEMPLATE_CLIENT),
-    templateProfessional: readSecret(SENDGRID_TEMPLATE_PROFESSIONAL),
-    templateProfessionalSignup: readSecret(SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP),
-  });
+const readMailSettings = () => resolveSettings();
 
 const normalizeProfessionalProfile = (data = {}, professionalId = null) => ({
   id: professionalId || data.uid || null,
@@ -233,13 +208,6 @@ Equipe NailNow`;
 export const onProfessionalRequestChange = onDocumentWritten(
   {
     document: 'profissionais/{professionalId}/{collectionId}/{requestId}',
-    secrets: [
-      SENDGRID_API_KEY,
-      SENDGRID_SENDER,
-      SENDGRID_TEMPLATE_CLIENT,
-      SENDGRID_TEMPLATE_PROFESSIONAL,
-      SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP,
-    ],
   },
   async (event) => {
     if (!shouldNotify(event)) {
@@ -292,13 +260,6 @@ export const onProfessionalRequestChange = onDocumentWritten(
 export const onProfessionalProfileCreated = onDocumentCreated(
   {
     document: 'profissionais/{professionalId}',
-    secrets: [
-      SENDGRID_API_KEY,
-      SENDGRID_SENDER,
-      SENDGRID_TEMPLATE_CLIENT,
-      SENDGRID_TEMPLATE_PROFESSIONAL,
-      SENDGRID_TEMPLATE_PROFESSIONAL_SIGNUP,
-    ],
   },
   async (event) => {
     const data = event.data?.data();

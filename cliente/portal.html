@@ -1,6 +1,17 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
+    <script src="/assets/js/force-https.js"></script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NKTL1PLZ2J"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NKTL1PLZ2J');
+</script>
+
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
@@ -8,15 +19,17 @@
       content="Portal da Cliente NailNow — acompanhe solicitações, confirmações e histórico de atendimentos com profissionais verificadas."
     />
     <meta name="robots" content="noindex, nofollow" />
-    <link rel="canonical" href="https://www.nailnow.app/cliente/portal.html" />
+    <link rel="canonical" href="https://www.nailnow.app/cliente/portal" />
+    <link rel="alternate" hreflang="pt-BR" href="https://www.nailnow.app/cliente/portal" />
     <meta property="og:site_name" content="NailNow" />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
     <meta property="og:title" content="Portal da Cliente | NailNow" />
     <meta
       property="og:description"
       content="Portal da Cliente NailNow — acompanhe solicitações, confirmações e histórico de atendimentos com profissionais verificadas."
     />
-    <meta property="og:url" content="https://www.nailnow.app/cliente/portal.html" />
+    <meta property="og:url" content="https://www.nailnow.app/cliente/portal" />
     <meta property="og:image" content="https://www.nailnow.app/assets/nail1.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Portal da Cliente | NailNow" />
@@ -41,16 +54,49 @@
         "name": "NailNow",
         "url": "https://www.nailnow.app/",
         "logo": "https://www.nailnow.app/assets/nailnow-logo.svg",
-        "sameAs": ["https://www.instagram.com/nailnowbr/"]
+        "sameAs": ["https://www.instagram.com/nailnow/"],
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "suporte@nailnow.app",
+            "availableLanguage": ["pt-BR"],
+            "areaServed": "BR"
+          }
+        ],
+        "areaServed": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
       }
     </script>
-    <script src="/assets/js/menu-toggle.js" defer></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": "https://www.nailnow.app/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Cliente",
+            "item": "https://www.nailnow.app/cliente/portal"
+          }
+        ]
+      }
+    </script>
+<script src="/assets/js/menu-toggle.js" defer></script>
   </head>
-  <body>
+  <body class="portal portal--cliente">
     <header class="site-header">
       <div class="header-inner">
-        <a href="/index.html" class="brand-mark" aria-label="Início da NailNow">
-          <img src="/assets/nailnow-logo.svg" alt="" class="brand-mark__logo" />
+        <a href="/" class="brand-mark" aria-label="Início da NailNow">
+          <img src="/assets/nailnow-logo.svg" alt="Logotipo da NailNow" class="brand-mark__logo" />
           <span class="brand-mark__text">NailNow</span>
         </a>
         <button
@@ -68,23 +114,49 @@
         </button>
         <div class="header-navigation" id="site-navigation">
           <nav class="primary-nav" aria-label="Principal">
-            <a href="../index.html" class="nav-link">Home</a>
-            <a href="../como-funciona.html" class="nav-link">Como funciona</a>
-            <a href="../servicos.html" class="nav-link">Serviços</a>
+            <a href="..//" class="nav-link">Home</a>
+            <a href="../como-funciona" class="nav-link">Como funciona</a>
+            <a href="../servicos" class="nav-link">Serviços</a>
           </nav>
           <div class="header-actions">
-            <a href="../cliente/index.html" class="header-cta" aria-current="page">Sou Cliente</a>
-            <a href="../profissional/index.html" class="header-cta">Sou Profissional</a>
+            <a href="../profissional" class="header-cta">Sou Manicure</a>
+            <a href="../cliente" class="header-cta" aria-current="page">Sou Cliente</a>
             <a
-              class="social-link social-link--instagram"
-              href="https://www.instagram.com/nailnowbr/"
+            class="social-link social-link--instagram"
+            href="https://www.instagram.com/nailnow/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram da NailNow"
+            >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+            d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"
+            />
+            </svg>
+            </a>
+            <a
+              class="social-link"
+              href="https://www.linkedin.com/company/nailnowapp/"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Instagram da NailNow"
+              aria-label="LinkedIn da NailNow"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path
-                  d="M7 3C4.24 3 2 5.24 2 8v8c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V8c0-2.76-2.24-5-5-5H7zm10 2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h10zm-5 3.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5zm4.75-4.75a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"
+                  d="M6.94 8.5H3.56V20h3.38V8.5ZM5.25 3A1.97 1.97 0 1 0 5.3 6.94 1.97 1.97 0 0 0 5.25 3Zm6.09 5.5H8.1V20h3.24v-5.67c0-1.5.28-2.95 2.13-2.95 1.83 0 1.86 1.72 1.86 3.04V20h3.25v-6.24c0-3.06-.66-5.42-4.24-5.42-1.72 0-2.88.95-3.35 1.85h-.05V8.5Z"
+                />
+              </svg>
+            </a>
+            <a
+              class="social-link"
+              href="https://www.facebook.com/NailNowapp/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook da NailNow"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M13.5 21v-8.1h2.7l.4-3.15h-3.1V7.73c0-.91.25-1.53 1.56-1.53h1.67V3.38c-.29-.04-1.27-.12-2.41-.12-2.38 0-4.01 1.45-4.01 4.12v2.36H8v3.15h2.32V21h3.18Z"
                 />
               </svg>
             </a>
@@ -95,179 +167,378 @@
 
     <main class="page-content">
       <div id="dashboard" class="dashboard" hidden aria-labelledby="cliente-dashboard-heading">
-        <section class="dashboard-hero">
-          <div class="dashboard-hero__header">
-            <div>
+        <section class="dashboard-hero portal-hero">
+          <div class="dashboard-hero__header portal-hero__headline">
+            <div class="portal-hero__intro">
               <p class="dashboard-kicker">Portal da cliente</p>
               <h1 id="cliente-dashboard-heading">Olá, <span data-profile-name>cliente</span>!</h1>
               <p class="dashboard-intro">
                 Acompanhe solicitações enviadas às profissionais, confirme próximos serviços e consulte o histórico das suas experiências NailNow.
               </p>
+              <button type="button" id="sign-out" class="dashboard-signout portal-hero__signout">Sair</button>
             </div>
-            <button type="button" id="sign-out" class="dashboard-signout">Sair</button>
           </div>
           <div id="dashboard-status" class="auth-status" role="status" aria-live="polite" hidden></div>
-          <div class="dashboard-summary">
-            <article class="profile-card" aria-labelledby="cliente-profile-heading">
-              <h2 id="cliente-profile-heading">Meus dados</h2>
-              <dl class="profile-details">
-                <div class="profile-details__item">
-                  <dt>Nome</dt>
-                  <dd id="profile-display">—</dd>
+          <div class="portal-hero__metrics" aria-label="Resumo dos agendamentos">
+            <div class="metric-card">
+              <span class="metric-label">Solicitações</span>
+              <span class="metric-value" id="metric-pending">0</span>
+              <span class="metric-footnote">aguardando retorno</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Confirmados</span>
+              <span class="metric-value" id="metric-confirmed">0</span>
+              <span class="metric-footnote">próximos serviços</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Cancelados</span>
+              <span class="metric-value" id="metric-cancelled">0</span>
+              <span class="metric-footnote">não realizados</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="portal-section portal-journey" aria-labelledby="portal-journey-heading">
+          <div class="portal-section__header portal-journey__header">
+            <div>
+              <p class="portal-section__eyebrow">Escolha, avalie e confirme</p>
+              <h2 id="portal-journey-heading">Fluxo rápido do seu agendamento</h2>
+              <p class="portal-section__description">
+                Explore manicures próximas, visualize o perfil com avaliações e finalize o pedido sem sair do portal.
+              </p>
+            </div>
+            <div class="portal-journey__hint">
+              <span class="journey-chip">Etapas guiadas</span>
+              <span class="journey-chip journey-chip--accent">Experiência mobile no desktop</span>
+            </div>
+          </div>
+
+          <div class="journey-grid" role="list">
+            <article class="journey-card" role="listitem" aria-labelledby="journey-recommendations-heading">
+              <div class="journey-card__head">
+                <div>
+                  <p class="journey-card__eyebrow">Design de unhas</p>
+                  <h3 id="journey-recommendations-heading">Manicures próximas a você</h3>
                 </div>
-                <div class="profile-details__item">
-                  <dt>E-mail</dt>
-                  <dd id="profile-email">—</dd>
-                </div>
-                <div class="profile-details__item">
-                  <dt>Telefone</dt>
-                  <dd id="profile-phone">—</dd>
-                </div>
-                <div class="profile-details__item">
-                  <dt>Endereço</dt>
-                  <dd id="profile-address">—</dd>
-                </div>
-              </dl>
-              <p class="profile-support-note">
-                Para atualizar qualquer informação, fale com o suporte NailNow pelo e-mail
-                <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>.
+                <span class="journey-pill">Mais escolhidas</span>
+              </div>
+              <p class="journey-card__lead">
+                Veja rapidamente quem atende no seu endereço e abra horários disponíveis.
+              </p>
+              <div id="journey-recommendations" class="journey-recommendations" role="list"></div>
+              <p id="journey-recommendations-empty" class="journey-empty" hidden>
+                Defina um endereço ou raio para ver manicures recomendadas.
               </p>
             </article>
-            <div class="dashboard-metrics" aria-label="Resumo dos agendamentos">
-              <div class="metric-card">
-                <span class="metric-label">Solicitações</span>
-                <span class="metric-value" id="metric-pending">0</span>
-                <span class="metric-footnote">aguardando retorno</span>
+
+            <article class="journey-card" role="listitem" aria-labelledby="journey-profile-heading">
+              <div class="journey-card__head">
+                <div>
+                  <p class="journey-card__eyebrow">Perfil</p>
+                  <h3 id="journey-profile-heading">Profissional selecionada</h3>
+                </div>
+                <span class="journey-pill journey-pill--soft" id="journey-profile-badge">Escolha uma manicure</span>
               </div>
-              <div class="metric-card">
-                <span class="metric-label">Confirmados</span>
-                <span class="metric-value" id="metric-confirmed">0</span>
-                <span class="metric-footnote">próximos serviços</span>
+              <div class="journey-profile">
+                <div class="journey-profile__identity">
+                  <div class="journey-avatar" id="journey-profile-avatar" aria-hidden="true">N</div>
+                  <div>
+                    <p class="journey-profile__name" id="journey-profile-name">Nenhuma selecionada</p>
+                    <p class="journey-profile__meta" id="journey-profile-meta">Escolha uma profissional na lista ao lado.</p>
+                  </div>
+                </div>
+                <dl class="journey-profile__stats">
+                  <div>
+                    <dt>Avaliação</dt>
+                    <dd id="journey-profile-rating">—</dd>
+                  </div>
+                  <div>
+                    <dt>Criações</dt>
+                    <dd id="journey-profile-portfolio">—</dd>
+                  </div>
+                  <div>
+                    <dt>Distância</dt>
+                    <dd id="journey-profile-distance">—</dd>
+                  </div>
+                </dl>
+                <div class="journey-profile__services" id="journey-profile-services" aria-label="Serviços principais"></div>
+                <p class="journey-profile__note" id="journey-profile-note">
+                  Selecione uma manicure para ver serviços, valores e avaliações antes de enviar a solicitação.
+                </p>
               </div>
-              <div class="metric-card">
-                <span class="metric-label">Cancelados</span>
-                <span class="metric-value" id="metric-cancelled">0</span>
-                <span class="metric-footnote">não realizados</span>
+            </article>
+
+            <article class="journey-card journey-card--summary" role="listitem" aria-labelledby="journey-summary-heading">
+              <div class="journey-card__head">
+                <div>
+                  <p class="journey-card__eyebrow">Resumo do pedido</p>
+                  <h3 id="journey-summary-heading">Design de unhas a domicílio</h3>
+                </div>
+                <span class="journey-pill journey-pill--accent" id="journey-summary-status">Montando</span>
               </div>
-            </div>
+              <div class="journey-summary">
+                <div class="journey-summary__row">
+                  <span>Profissional</span>
+                  <strong id="journey-summary-professional">Selecione na lista</strong>
+                </div>
+                <div class="journey-summary__row">
+                  <span>Serviço</span>
+                  <strong id="journey-summary-service">Escolha um serviço</strong>
+                </div>
+                <div class="journey-summary__row">
+                  <span>Horário</span>
+                  <strong id="journey-summary-slot">Defina data e horário</strong>
+                </div>
+                <div class="journey-summary__row">
+                  <span>Endereço</span>
+                  <strong id="journey-summary-address">Informe onde prefere ser atendida</strong>
+                </div>
+                <div class="journey-summary__total">
+                  <div>
+                    <p>Total estimado</p>
+                    <strong id="journey-summary-total">—</strong>
+                  </div>
+                  <p class="journey-summary__hint" id="journey-summary-hint">Valores podem variar conforme o serviço escolhido.</p>
+                </div>
+                <button type="button" id="journey-summary-submit" class="journey-summary__cta" disabled>
+                  Confirmar pedido
+                </button>
+                <p class="journey-empty journey-empty--inline" id="journey-summary-empty" hidden>
+                  Escolha uma manicure, serviço e horário para confirmar pelo portal.
+                </p>
+              </div>
+            </article>
           </div>
         </section>
 
-        <section class="request-board" aria-labelledby="request-board-heading">
-          <div class="request-board__intro">
-            <h2 id="request-board-heading">Solicitar atendimento</h2>
-            <p>
-              Envie uma solicitação rápida para manicures NailNow e acompanhe o retorno diretamente pelo portal.
-            </p>
-          </div>
-          <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
-            <div class="booking-card__field booking-card__field--wide">
-              <label class="booking-card__label" for="professional-search">Buscar manicure</label>
-              <div class="booking-card__control booking-card__control--line">
-                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
-                  <path
-                    d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 14.5 15l.27.28v.79l4.25 4.25a1 1 0 0 0 1.5-1.32l-.1-.1L15.5 14Zm-5 0a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"
-                  />
-                </svg>
-                <input
-                  type="search"
-                  id="professional-search"
-                  class="booking-card__input"
-                  placeholder="Nome, bairro ou serviço"
-                  autocomplete="off"
-                />
+        <div class="portal-columns">
+          <aside class="portal-section portal-profile" aria-labelledby="cliente-profile-heading">
+            <div class="portal-profile__grid">
+              <article class="profile-card" aria-labelledby="cliente-profile-heading">
+                <h2 id="cliente-profile-heading">Meus dados</h2>
+                <dl class="profile-details">
+                  <div class="profile-details__item">
+                    <dt>Nome</dt>
+                    <dd id="profile-display">—</dd>
+                  </div>
+                  <div class="profile-details__item">
+                    <dt>E-mail</dt>
+                    <dd id="profile-email">—</dd>
+                  </div>
+                  <div class="profile-details__item">
+                    <dt>Telefone</dt>
+                    <dd id="profile-phone">—</dd>
+                  </div>
+                  <div class="profile-details__item">
+                    <dt>Endereço</dt>
+                    <dd id="profile-address">—</dd>
+                  </div>
+                </dl>
+              </article>
+            </div>
+          </aside>
+
+          <section class="request-board portal-section portal-request" aria-labelledby="request-board-heading">
+            <div class="portal-request__header">
+              <div class="request-board__intro">
+                <h2 id="request-board-heading">Solicitar atendimento</h2>
+                <p>
+                  Envie uma solicitação rápida para manicures NailNow e acompanhe o retorno diretamente pelo portal.
+                </p>
               </div>
-              <div id="professional-results" class="request-results request-results--inline" role="list"></div>
-              <p id="professional-results-empty" class="request-results__empty" hidden>
-                Não encontramos manicures com esse filtro agora. Ajuste os termos e tente novamente.
-              </p>
             </div>
-            <p id="request-form-empty" class="booking-card__hint">
-              Escolha uma manicure acima para liberar os detalhes da solicitação.
-            </p>
-            <div class="booking-card__field" data-request-field="professional" hidden>
-              <label class="booking-card__label" for="request-professional">Profissional selecionada</label>
-              <input id="request-professional" type="text" class="booking-card__input" readonly />
-            </div>
-            <div class="booking-card__field" data-request-field="service" hidden>
-              <label class="booking-card__label" for="request-service">Serviço</label>
-              <select id="request-service" class="booking-card__input booking-card__input--select"></select>
-            </div>
-            <div class="booking-card__field" data-request-field="price" hidden>
-              <label class="booking-card__label" for="request-price">Valor</label>
-              <input id="request-price" type="text" class="booking-card__input" readonly />
-            </div>
-            <div class="booking-card__row" data-request-field="schedule" hidden>
-              <div class="booking-card__field">
-                <label class="booking-card__label" for="request-date">Data desejada</label>
-                <div class="booking-card__control booking-card__control--compact">
-                  <input type="date" id="request-date" class="booking-card__input" required />
-                </div>
-              </div>
-              <div class="booking-card__field">
-                <label class="booking-card__label" for="request-time">Horário</label>
-                <div class="booking-card__control booking-card__control--compact booking-card__control--with-trailing-icon">
-                  <input type="time" id="request-time" class="booking-card__input" required />
-                  <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
-                    <path
-                      d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
+            <form id="service-request-form" class="booking-card booking-card--portal" novalidate>
+              <div class="booking-card__layout">
+              <div class="booking-card__column booking-card__column--search">
+                <div class="booking-card__field booking-card__field--wide booking-card__field--location">
+                  <label class="booking-card__label" for="search-location">Onde você quer ser atendida?</label>
+                  <div class="booking-card__control booking-card__control--with-action">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
+                      <path
+                        d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
+                      />
+                    </svg>
+                    <input
+                      type="search"
+                      id="search-location"
+                      class="booking-card__input"
+                      placeholder="Digite o endereço do atendimento"
+                      autocomplete="street-address"
                     />
-                  </svg>
+                    <button type="button" id="detect-location" class="booking-card__action">Usar localização</button>
+                  </div>
+                  <div class="booking-card__row booking-card__row--address-extras">
+                    <div class="booking-card__field booking-card__field--number">
+                      <label class="booking-card__label" for="search-location-number">Número</label>
+                      <input
+                        type="text"
+                        id="search-location-number"
+                        class="booking-card__input"
+                        inputmode="numeric"
+                        autocomplete="address-line2"
+                        placeholder="Ex: 123"
+                      />
+                    </div>
+                    <div class="booking-card__field booking-card__field--complement">
+                      <label class="booking-card__label" for="search-location-complement">Complemento</label>
+                      <input
+                        type="text"
+                        id="search-location-complement"
+                        class="booking-card__input"
+                        autocomplete="address-line3"
+                        placeholder="Apartamento, bloco, referência"
+                      />
+                    </div>
+                  </div>
+                  <p id="search-location-status" class="auth-status" role="status" aria-live="polite" hidden></p>
+                  <div
+                    id="search-progress"
+                    class="request-toolbar__status booking-card__status"
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                  >
+                    <span class="request-toolbar__spinner" aria-hidden="true"></span>
+                    <span>Procurando manicures próximas...</span>
+                  </div>
                 </div>
+                <div class="booking-card__row booking-card__row--filters">
+                  <div class="booking-card__field">
+                    <label class="booking-card__label" for="search-radius">Buscar manicures em até</label>
+                    <div class="booking-card__control booking-card__control--compact">
+                      <select id="search-radius" class="booking-card__input booking-card__input--select">
+                        <option value="5">5 km</option>
+                        <option value="10" selected>10 km</option>
+                        <option value="15">15 km</option>
+                        <option value="20">20 km</option>
+                        <option value="30">30 km</option>
+                        <option value="50">50 km</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="booking-card__field">
+                    <label class="booking-card__label" for="search-service">Serviço desejado</label>
+                    <div class="booking-card__control booking-card__control--compact">
+                      <select id="search-service" class="booking-card__input booking-card__input--select">
+                        <option value="" selected>Todos os serviços</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="booking-card__field booking-card__field--wide booking-card__field--results">
+                  <h3 class="booking-card__heading">Manicures próximas</h3>
+                  <div id="professional-results" class="request-results request-results--inline" role="list"></div>
+                  <p id="professional-results-empty" class="request-results__empty" hidden>
+                    Informe seu endereço e ajuste os filtros acima para encontrar manicures próximas a você.
+                  </p>
+                </div>
+                <p id="request-form-empty" class="booking-card__hint">
+                  Defina sua localização, selecione uma manicure e complete os detalhes para enviar a solicitação.
+                </p>
+              </div>
+              <div class="booking-card__column booking-card__column--details">
+                <div class="booking-card__field" data-request-field="professional" hidden>
+                  <label class="booking-card__label" for="request-professional">Profissional selecionada</label>
+                  <input id="request-professional" type="text" class="booking-card__input" readonly />
+                </div>
+                <div class="booking-card__field" data-request-field="service" hidden>
+                  <label class="booking-card__label" for="request-service">Serviço</label>
+                  <div
+                    id="request-service-options"
+                    class="service-options"
+                    role="radiogroup"
+                    aria-label="Serviço desejado"
+                  ></div>
+                  <select id="request-service" class="booking-card__input booking-card__input--select"></select>
+                  <p id="request-service-empty" class="service-options__empty" hidden>
+                    Essa manicure confirma os serviços diretamente após receber sua solicitação.
+                  </p>
+                </div>
+                <div class="booking-card__field" data-request-field="price" hidden>
+                  <label class="booking-card__label" for="request-price">Valor</label>
+                  <input id="request-price" type="text" class="booking-card__input" readonly />
+                </div>
+                <div class="booking-card__row" data-request-field="schedule" hidden>
+                  <div class="booking-card__field">
+                    <label class="booking-card__label" for="request-date">Data desejada</label>
+                    <div class="booking-card__control booking-card__control--compact booking-card__control--with-action">
+                      <input type="date" id="request-date" class="booking-card__input" required />
+                      <button
+                        type="button"
+                        id="request-date-picker"
+                        class="booking-card__icon-button"
+                        aria-label="Abrir calendário"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
+                          <path
+                            d="M7 2.75a.75.75 0 0 1 .75.75V5h8.5V3.5a.75.75 0 0 1 1.5 0V5h.5A2.75 2.75 0 0 1 21 7.75v10.5A2.75 2.75 0 0 1 18.25 21H5.75A2.75 2.75 0 0 1 3 18.25V7.75A2.75 2.75 0 0 1 5.75 5h.5V3.5A.75.75 0 0 1 7 2.75ZM5.75 6.5A1.25 1.25 0 0 0 4.5 7.75v1.25h15V7.75A1.25 1.25 0 0 0 18.25 6.5Zm14.75 4.5h-15v7.25c0 .69.56 1.25 1.25 1.25h12.5c.69 0 1.25-.56 1.25-1.25Z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="booking-card__field">
+                    <label class="booking-card__label" for="request-time">Horário</label>
+                    <div class="booking-card__control booking-card__control--compact booking-card__control--with-trailing-icon">
+                      <select id="request-time" class="booking-card__input booking-card__input--select" required>
+                        <option value="" disabled selected hidden>Selecione um horário</option>
+                      </select>
+                      <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon">
+                        <path
+                          d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5A9.5 9.5 0 0 0 12 2.5Zm-.75 4a.75.75 0 0 1 1.5 0v4.19l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.64Z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div class="booking-card__field" data-request-field="notes" hidden>
+                  <label class="booking-card__label" for="request-notes">Observações para a profissional</label>
+                  <textarea
+                    id="request-notes"
+                    rows="3"
+                    class="booking-card__input booking-card__input--textarea"
+                    placeholder="Preferências, referências ou instruções adicionais"
+                  ></textarea>
+                </div>
+                <button type="submit" id="submit-request" class="booking-card__submit" disabled>Enviar solicitação</button>
+                <p id="request-feedback" class="booking-card__feedback auth-status" role="status" aria-live="polite" hidden></p>
               </div>
             </div>
-            <div class="booking-card__field booking-card__field--location" data-request-field="location" hidden>
-              <label class="booking-card__label" for="request-location">Endereço do atendimento</label>
-              <div class="booking-card__control booking-card__control--line">
-                <svg viewBox="0 0 24 24" aria-hidden="true" class="booking-card__icon booking-card__icon--leading">
-                  <path
-                    d="M12 2.5a7 7 0 0 0-7 7c0 4.61 6.23 11.19 6.5 11.47.27.27.7.27.97 0 .27-.28 6.53-6.86 6.53-11.47a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"
-                  />
-                </svg>
-                <input
-                  id="request-location"
-                  type="text"
-                  class="booking-card__input"
-                  placeholder="Digite o endereço do atendimento"
-                />
+            </form>
+          </section>
+        </div>
+
+        <section class="portal-section portal-schedule" aria-label="Solicitações registradas">
+          <div class="portal-section__header">
+            <p class="portal-section__description">
+              Confira o status das suas solicitações e acompanhe os próximos atendimentos.
+            </p>
+          </div>
+          <div class="schedule-grid">
+            <section class="schedule-section" aria-labelledby="cliente-pending-heading">
+              <div class="schedule-section__head">
+                <h3 id="cliente-pending-heading">Solicitações pendentes</h3>
+                <span class="schedule-count" id="badge-pending">0</span>
               </div>
-            </div>
-            <div class="booking-card__field" data-request-field="notes" hidden>
-              <label class="booking-card__label" for="request-notes">Observações para a profissional</label>
-              <textarea
-                id="request-notes"
-                rows="3"
-                class="booking-card__input booking-card__input--textarea"
-                placeholder="Preferências, referências ou instruções adicionais"
-              ></textarea>
-            </div>
-            <button type="submit" id="submit-request" class="booking-card__submit" disabled>Enviar solicitação</button>
-            <p id="request-feedback" class="booking-card__feedback auth-status" role="status" aria-live="polite" hidden></p>
-          </form>
-        </section>
+              <div id="pending-list" class="schedule-list" role="list"></div>
+            </section>
 
-        <section class="schedule-section" aria-labelledby="cliente-pending-heading">
-          <div class="schedule-section__head">
-            <h2 id="cliente-pending-heading">Solicitações pendentes</h2>
-            <span class="schedule-count" id="badge-pending">0</span>
-          </div>
-          <div id="pending-list" class="schedule-list" role="list"></div>
-        </section>
+            <section class="schedule-section" aria-labelledby="cliente-confirmed-heading">
+              <div class="schedule-section__head">
+                <h3 id="cliente-confirmed-heading">Solicitações confirmadas</h3>
+                <span class="schedule-count" id="badge-confirmed">0</span>
+              </div>
+              <div id="confirmed-list" class="schedule-list" role="list"></div>
+            </section>
 
-        <section class="schedule-section" aria-labelledby="cliente-confirmed-heading">
-          <div class="schedule-section__head">
-            <h2 id="cliente-confirmed-heading">Solicitações confirmadas</h2>
-            <span class="schedule-count" id="badge-confirmed">0</span>
+            <section class="schedule-section" aria-labelledby="cliente-cancelled-heading">
+              <div class="schedule-section__head">
+                <h3 id="cliente-cancelled-heading">Solicitações canceladas</h3>
+                <span class="schedule-count" id="badge-cancelled">0</span>
+              </div>
+              <div id="cancelled-list" class="schedule-list" role="list"></div>
+            </section>
           </div>
-          <div id="confirmed-list" class="schedule-list" role="list"></div>
-        </section>
-
-        <section class="schedule-section" aria-labelledby="cliente-cancelled-heading">
-          <div class="schedule-section__head">
-            <h2 id="cliente-cancelled-heading">Solicitações canceladas</h2>
-            <span class="schedule-count" id="badge-cancelled">0</span>
-          </div>
-          <div id="cancelled-list" class="schedule-list" role="list"></div>
         </section>
       </div>
     </main>
@@ -280,23 +551,28 @@
         </div>
         <div class="footer-column footer-links" aria-label="Links úteis">
           <h3>FAQ</h3>
-          <a href="../faq.html">Perguntas frequentes</a>
-          <a href="../como-funciona.html">Como funciona</a>
-          <a href="../agendamentos.html">Agendamentos</a>
+          <a href="../faq">Perguntas frequentes</a>
+          <a href="../como-funciona">Como funciona</a>
+          <a href="../agendamentos">Agendamentos</a>
         </div>
         <div class="footer-column footer-links" aria-label="Contato e suporte">
           <h3>Contato & suporte</h3>
           <a href="mailto:suporte@nailnow.app">suporte@nailnow.app</a>
         </div>
+        <div class="footer-column footer-links" aria-label="Institucional">
+          <h3>Institucional</h3>
+          <a href="/quem-somos">Quem somos</a>
+        </div>
         <div class="footer-column footer-links" aria-label="Termos e políticas">
           <h3>Termos & políticas</h3>
-          <a href="#">Termos de uso</a>
-          <a href="#">Política de privacidade</a>
-          <a href="#">Cookies e preferências</a>
+          <a href="/termos-cliente">Termos de uso</a>
+          <a href="/politica-de-privacidade">Política de privacidade</a>
+          <a href="/cookies-e-preferencias">Cookies e preferências</a>
         </div>
       </div>
-      <p class="footer-copy">© NailNow 2025. Todos os direitos reservados.</p>
+      <p class="footer-copy">© NailNow 2026. Todos os direitos reservados. NAILNOW SERVICOS DIGITAIS LTDA</p>
     </footer>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeFS75JZeUXATAztu5ntNpgCT-wfNlai0&libraries=places&language=pt-BR&region=BR" defer></script>
     <script type="module" src="./portal.js"></script>
   </body>
 </html>

@@ -11,22 +11,49 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  writeBatch,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
-  authDomain: "nailnow-site.firebaseapp.com",
-  projectId: "nailnow-site",
-  storageBucket: "nailnow-site.appspot.com",
-  messagingSenderId: "726392294571",
-  appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+  apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+  authDomain: "nailnow-7546c.firebaseapp.com",
+  projectId: "nailnow-7546c",
+  storageBucket: "nailnow-7546c.firebasestorage.app",
+  messagingSenderId: "413820353687",
+  appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+  measurementId: "G-2YEGPEG0E1",
 };
 
 const SESSION_KEY = "nailnowManicureSession";
 const PROFILE_COLLECTIONS = ["profissionais"];
-
+const MAX_SERVICE_ENTRIES = 7;
+const FIXED_SERVICE_NAMES = [
+  "Manicure clássica",
+  "Pedicure clássica",
+  "Alongamento em gel",
+  "Esmaltação em gel (manicure)",
+  "Esmaltação em gel (pedicure)",
+  "Esmaltação em gel (manicure) + retirada de esmalte",
+  "Esmaltação em gel (pedicure) + retirada de esmalte",
+];
+const getFixedServiceName = (index) => FIXED_SERVICE_NAMES[index] || `Serviço ${index + 1}`;
+const FIXED_SERVICE_PRICES = [40, 50, 150, 90, 110, 110, 120];
+const FIXED_SERVICE_DURATIONS = [
+  "1 hora",
+  "1 hora",
+  "3 horas",
+  "1 hora",
+  "1 hora",
+  "1 hora",
+  "1 hora",
+];
+const getFixedServicePrice = (index) => {
+  const value = FIXED_SERVICE_PRICES[index];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+};
+const getFixedServiceDuration = (index) => FIXED_SERVICE_DURATIONS[index] || "";
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -34,6 +61,14 @@ const auth = getAuth(app);
 const statusEl = document.getElementById("dashboard-status");
 const dashboard = document.getElementById("dashboard");
 const signOutButton = document.getElementById("sign-out");
+const getHomeUrl = () => {
+  try {
+    return new URL("/", window.location.origin).href;
+  } catch (error) {
+    return "/";
+  }
+};
+const HOME_URL = getHomeUrl();
 const profileNameElements = document.querySelectorAll("[data-profile-name]");
 const profileDisplay = document.getElementById("profile-display");
 const profileEmail = document.getElementById("profile-email");
@@ -43,15 +78,175 @@ const servicesList = document.getElementById("services-list");
 const servicesEmpty = document.getElementById("services-empty");
 const metricPending = document.getElementById("metric-pending");
 const metricConfirmed = document.getElementById("metric-confirmed");
-const metricCancelled = document.getElementById("metric-cancelled");
 const badgePending = document.getElementById("badge-pending");
 const badgeConfirmed = document.getElementById("badge-confirmed");
-const badgeCancelled = document.getElementById("badge-cancelled");
 const pendingList = document.getElementById("pending-list");
 const confirmedList = document.getElementById("confirmed-list");
-const cancelledList = document.getElementById("cancelled-list");
+const availabilityForm = document.getElementById("availability-form");
+const availabilityAddressInput = document.getElementById("availability-address");
+const availabilityCityInput = document.getElementById("availability-city");
+const availabilityDetectButton = document.getElementById("availability-detect");
+const availabilityGeocodeButton = document.getElementById("availability-geocode");
+const availabilityLocationStatus = document.getElementById("availability-location-status");
+const availabilityDaysContainer = document.getElementById("availability-days");
+const availabilityStartInput = document.getElementById("availability-start");
+const availabilityEndInput = document.getElementById("availability-end");
+const availabilityAddSlotButton = document.getElementById("availability-add-slot");
+const availabilitySlotsList = document.getElementById("availability-slots");
+const availabilitySlotsEmpty = document.getElementById("availability-slots-empty");
+const availabilityFeedback = document.getElementById("availability-feedback");
+const availabilityServicesList = document.getElementById("availability-services-list");
+const DEFAULT_AVAILABILITY_CITY = "Porto Alegre";
+const DEFAULT_AVAILABILITY_STATE = "RS";
+
+if (availabilityCityInput && !availabilityCityInput.value) {
+  availabilityCityInput.value = DEFAULT_AVAILABILITY_CITY;
+}
 let currentProfile = null;
 let fallbackProfileEmail = "";
+let availabilitySlots = [];
+let geocodeAbortController = null;
+let availabilityCoordinates = null;
+let availabilityGeocoder = null;
+let availabilityAutocomplete = null;
+
+const resolveServiceOrder = (service, fallback) => {
+  if (!service || typeof service !== "object") {
+    return fallback;
+  }
+  const candidates = [service.order, service.ordem, service.posicao, service.position, service.index];
+  for (const candidate of candidates) {
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+  return fallback;
+};
+
+const sortServicesByOrder = (items = []) => {
+  return items
+    .map((service, index) => {
+      const order = resolveServiceOrder(service, index);
+      return {
+        ...service,
+        ordem: typeof order === "number" && Number.isFinite(order) ? order : index,
+        order: typeof order === "number" && Number.isFinite(order) ? order : index,
+      };
+    })
+    .sort((a, b) => a.order - b.order);
+};
+
+const getExistingServiceEntry = (index) => {
+  const sources = [
+    currentProfile?.catalogoPadrao,
+    currentProfile?.catalogDefaults,
+    currentProfile?.catalog?.servicos,
+    currentProfile?.catalog?.services,
+    currentProfile?.catalogo?.servicos,
+    currentProfile?.catalogo?.services,
+    currentProfile?.servicos,
+    currentProfile?.services,
+    currentProfile?.pricing?.catalog,
+    currentProfile?.pricing?.catalogo,
+    currentProfile?.pricing?.servicos,
+    currentProfile?.pricing?.services,
+  ];
+  for (const source of sources) {
+    if (!Array.isArray(source)) {
+      continue;
+    }
+    const direct = source[index];
+    if (direct) {
+      return direct;
+    }
+    const match = source.find((entry, position) => {
+      const order = resolveServiceOrder(entry, position);
+      if (typeof order === "number" && Number.isFinite(order) && order === index) {
+        return true;
+      }
+      const name = (entry?.name || entry?.nome || "").toString().trim().toLowerCase();
+      return name === getFixedServiceName(index).toLowerCase();
+    });
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+};
+
+let serviceSelections = new Map();
+
+const resetServiceSelections = () => {
+  serviceSelections = new Map();
+};
+
+const isServiceSelected = (index) => {
+  if (serviceSelections.has(index)) {
+    return Boolean(serviceSelections.get(index));
+  }
+  return true;
+};
+
+const setServiceSelection = (index, selected) => {
+  serviceSelections.set(index, Boolean(selected));
+};
+
+const parseBoolean = (value) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    if (Number.isNaN(value)) {
+      return null;
+    }
+    if (value === 1) {
+      return true;
+    }
+    if (value === 0) {
+      return false;
+    }
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return null;
+    }
+    if (["true", "1", "sim", "ativo", "ativa", "habilitado", "habilitada", "yes", "on", "disponivel", "disponível"].includes(normalized)) {
+      return true;
+    }
+    if (["false", "0", "nao", "não", "inativo", "inativa", "desabilitado", "desabilitada", "no", "off"].includes(normalized)) {
+      return false;
+    }
+  }
+  return null;
+};
+
+const resolveServiceActiveFlag = (service) => {
+  if (!service || typeof service !== "object") {
+    return null;
+  }
+  const candidates = [
+    service.active,
+    service.ativo,
+    service.ativa,
+    service.disponivel,
+    service.disponível,
+    service.available,
+    service.enabled,
+    service.habilitado,
+    service.habilitada,
+    service.status,
+  ];
+  for (const candidate of candidates) {
+    const parsed = parseBoolean(candidate);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const cloneServiceList = (services = []) => services.map((service) => ({ ...service }));
 
 const appointmentCollections = {
   pending: "solicitacoes",
@@ -68,6 +263,30 @@ const appointmentStatusLabels = {
   confirmed: "Confirmado",
   cancelled: "Cancelado",
 };
+
+const isGoogleMapsAvailable = () => Boolean(window.google?.maps);
+
+const ensureAvailabilityGeocoder = () => {
+  if (availabilityGeocoder) {
+    return availabilityGeocoder;
+  }
+  if (!isGoogleMapsAvailable()) {
+    return null;
+  }
+  availabilityGeocoder = new google.maps.Geocoder();
+  return availabilityGeocoder;
+};
+
+const WEEKDAY_OPTIONS = [
+  { value: "monday", label: "Seg" },
+  { value: "tuesday", label: "Ter" },
+  { value: "wednesday", label: "Qua" },
+  { value: "thursday", label: "Qui" },
+  { value: "friday", label: "Sex" },
+  { value: "saturday", label: "Sáb" },
+  { value: "sunday", label: "Dom" },
+];
+const WEEKDAY_LABEL_LOOKUP = new Map(WEEKDAY_OPTIONS.map(({ value, label }) => [value, label]));
 
 const resolveStatusLabel = (status) => {
   const normalized = (status || "").toString().toLowerCase();
@@ -99,16 +318,35 @@ const setStatus = (message, type = "") => {
 };
 
 const resetDashboard = () => {
-  pendingList.innerHTML = "";
-  confirmedList.innerHTML = "";
-  cancelledList.innerHTML = "";
-  updateMetrics([], [], []);
+  if (pendingList) {
+    pendingList.innerHTML = "";
+  }
+  if (confirmedList) {
+    confirmedList.innerHTML = "";
+  }
+  updateMetrics([], []);
   if (servicesList) {
     servicesList.innerHTML = "";
   }
   if (servicesEmpty) {
     servicesEmpty.hidden = false;
   }
+  if (availabilityForm) {
+    availabilityForm.reset();
+  }
+  servicePriceInputs.forEach((input, index) => {
+    if (input) {
+      const defaultPrice = getFixedServicePrice(index);
+      input.value = typeof defaultPrice === "number" ? formatPriceInputValue(defaultPrice) : "";
+    }
+  });
+  availabilitySlots = [];
+  renderAvailabilitySlots();
+  resetServiceSelections();
+  renderAvailabilityServiceSummary();
+  setAvailabilityStatus("");
+  setAvailabilityFeedback("");
+  availabilityCoordinates = null;
   currentProfile = null;
   fallbackProfileEmail = "";
 };
@@ -120,6 +358,103 @@ const formatCurrency = (value) => {
   if (!value) return "—";
   return value;
 };
+
+const buildDefaultServiceEntry = (index) => {
+  const name = getFixedServiceName(index);
+  const amount = getFixedServicePrice(index);
+  const priceLabel = typeof amount === "number" ? formatCurrency(amount) : "Sob consulta";
+  return {
+    id: `default-service-${index + 1}`,
+    name,
+    price: typeof amount === "number" ? amount : null,
+    priceLabel,
+    duration: getFixedServiceDuration(index),
+    order: index,
+    active: isServiceSelected(index),
+  };
+};
+
+const getDefaultServices = () => FIXED_SERVICE_NAMES.map((_, index) => buildDefaultServiceEntry(index));
+
+const renderAvailabilityServiceSummary = () => {
+  if (!availabilityServicesList) {
+    return;
+  }
+  availabilityServicesList.innerHTML = "";
+  getDefaultServices().forEach((service, index) => {
+    const selected = isServiceSelected(index);
+    const item = document.createElement("li");
+    item.className = "availability-service";
+    if (!selected) {
+      item.classList.add("availability-service--disabled");
+    }
+
+    const name = document.createElement("div");
+    name.className = "availability-service__name";
+
+    const badge = document.createElement("span");
+    badge.className = "availability-service__index";
+    badge.textContent = String(index + 1);
+
+    const title = document.createElement("span");
+    title.className = "availability-service__title";
+    title.textContent = service.name;
+
+    const toggleWrapper = document.createElement("label");
+    toggleWrapper.className = "availability-service__toggle";
+    const toggleId = `availability-service-toggle-${index}`;
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = toggleId;
+    checkbox.className = "availability-service__checkbox";
+    checkbox.checked = selected;
+    checkbox.dataset.serviceIndex = String(index);
+    checkbox.setAttribute("aria-label", `${service.name} — alternar disponibilidade`);
+
+    const toggleStatus = document.createElement("span");
+    toggleStatus.className = "availability-service__toggle-label";
+    toggleStatus.textContent = selected ? "Ofereço" : "Não ofereço";
+
+    toggleWrapper.appendChild(checkbox);
+    toggleWrapper.appendChild(toggleStatus);
+    toggleWrapper.classList.toggle("availability-service__toggle--active", selected);
+
+    checkbox.addEventListener("change", () => {
+      const isChecked = checkbox.checked;
+      setServiceSelection(index, isChecked);
+      toggleStatus.textContent = isChecked ? "Ofereço" : "Não ofereço";
+      item.classList.toggle("availability-service--disabled", !isChecked);
+      toggleWrapper.classList.toggle("availability-service__toggle--active", isChecked);
+    });
+
+    name.appendChild(badge);
+    name.appendChild(title);
+    name.appendChild(toggleWrapper);
+
+    const price = document.createElement("span");
+    price.className = "availability-service__price";
+    if (typeof service.price === "number") {
+      price.textContent = formatCurrency(service.price);
+    } else if (service.priceLabel) {
+      price.textContent = service.priceLabel;
+    } else {
+      price.textContent = "Sob consulta";
+    }
+
+    const duration = document.createElement("span");
+    duration.className = "availability-service__duration";
+    duration.textContent = service.duration || getFixedServiceDuration(index) || "";
+
+    item.appendChild(name);
+    item.appendChild(price);
+    item.appendChild(duration);
+
+    availabilityServicesList.appendChild(item);
+  });
+};
+
+renderAvailabilityServiceSummary();
 
 const parsePriceValue = (value) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -138,12 +473,14 @@ const renderServices = (services) => {
     return;
   }
   servicesList.innerHTML = "";
-  if (!Array.isArray(services) || services.length === 0) {
+  const list = Array.isArray(services) && services.length ? services : getDefaultServices();
+  const visible = list.filter((service) => service && service.active !== false);
+  if (!visible.length) {
     servicesEmpty.hidden = false;
     return;
   }
   servicesEmpty.hidden = true;
-  services.forEach((service) => {
+  visible.forEach((service) => {
     const item = document.createElement("li");
     item.className = "profile-services__item";
 
@@ -165,6 +502,9 @@ const renderServices = (services) => {
     price.className = "profile-services__price";
     if (typeof service.price === "number") {
       price.textContent = formatCurrency(service.price);
+    } else if (typeof service.priceLabel === "string") {
+      const trimmedLabel = service.priceLabel.trim();
+      price.textContent = trimmedLabel || "Sob consulta";
     } else if (service.priceLabel) {
       price.textContent = service.priceLabel;
     } else {
@@ -175,6 +515,1829 @@ const renderServices = (services) => {
     item.appendChild(price);
     servicesList.appendChild(item);
   });
+};
+
+
+const toNumberOrNull = (value) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const normalized = value.replace(/[^0-9,.-]+/g, "").replace(/,/g, ".");
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const normalizeWeekdayValue = (value) => {
+  const normalized = (value || "").toString().toLowerCase();
+  const mapping = {
+    monday: "monday",
+    mon: "monday",
+    segunda: "monday",
+    seg: "monday",
+    tuesday: "tuesday",
+    tue: "tuesday",
+    terça: "tuesday",
+    terca: "tuesday",
+    ter: "tuesday",
+    wednesday: "wednesday",
+    wed: "wednesday",
+    quarta: "wednesday",
+    qua: "wednesday",
+    thursday: "thursday",
+    thu: "thursday",
+    quinta: "thursday",
+    qui: "thursday",
+    friday: "friday",
+    fri: "friday",
+    sexta: "friday",
+    sex: "friday",
+    saturday: "saturday",
+    sat: "saturday",
+    sabado: "saturday",
+    sábado: "saturday",
+    sab: "saturday",
+    sunday: "sunday",
+    sun: "sunday",
+    domingo: "sunday",
+    dom: "sunday",
+  };
+  return mapping[normalized] || null;
+};
+
+const pickAddressComponent = (components, preferredTypes, options = {}) => {
+  const types = Array.isArray(preferredTypes) ? preferredTypes : [preferredTypes];
+  if (!Array.isArray(components) || !components.length || !types.length) {
+    return "";
+  }
+
+  for (const type of types) {
+    const component = components.find((item) => Array.isArray(item?.types) && item.types.includes(type));
+    if (component) {
+      if (options.useShortName && component.short_name) {
+        return component.short_name;
+      }
+      return component.long_name || component.short_name || "";
+    }
+  }
+
+  return "";
+};
+
+const formatPostalCode = (value) => {
+  if (!value) return "";
+  const digits = String(value).replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.length === 8) {
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }
+  if (digits.length === 7) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+  return value;
+};
+
+const getPostalCodeFromComponents = (components) => {
+  if (!Array.isArray(components) || !components.length) {
+    return "";
+  }
+
+  const base = pickAddressComponent(components, ["postal_code"]);
+  const suffix = pickAddressComponent(components, ["postal_code_suffix"]);
+  const combined = `${base || ""}${suffix ? suffix : ""}`;
+  const formatted = formatPostalCode(combined || base);
+  if (formatted) {
+    return formatted;
+  }
+  if (base) {
+    return formatPostalCode(base);
+  }
+  return "";
+};
+
+const getPostalCodeFromFormattedAddress = (address) => {
+  if (typeof address !== "string" || !address) {
+    return "";
+  }
+
+  const match = address.match(/\b\d{5}-?\d{3}\b/);
+  if (!match) {
+    return "";
+  }
+
+  return formatPostalCode(match[0]);
+};
+
+const formatPlaceAddressLabel = (place) => {
+  if (!place) return "";
+
+  const components = place.address_components;
+  if (!Array.isArray(components) || !components.length) {
+    return place.formatted_address || "";
+  }
+
+  const route = pickAddressComponent(components, ["route"]);
+  const streetNumber = pickAddressComponent(components, ["street_number"]);
+  const streetPart = [route, streetNumber].filter(Boolean).join(", ");
+
+  const area = pickAddressComponent(components, [
+    "sublocality",
+    "sublocality_level_1",
+    "neighborhood",
+    "political",
+  ]);
+  const city = pickAddressComponent(components, ["locality", "administrative_area_level_2"]);
+  const state = pickAddressComponent(components, ["administrative_area_level_1"], { useShortName: true });
+  const postalCode =
+    getPostalCodeFromFormattedAddress(place.formatted_address) ||
+    getPostalCodeFromComponents(components);
+
+  const leadingParts = [];
+  if (streetPart) {
+    leadingParts.push(streetPart);
+  }
+  if (area) {
+    leadingParts.push(area);
+  }
+
+  const trailingParts = [];
+  const cityState = [city, state].filter(Boolean).join(" - ");
+  if (cityState) {
+    trailingParts.push(cityState);
+  }
+  if (postalCode) {
+    trailingParts.push(postalCode);
+  }
+
+  const formatted = [];
+  if (leadingParts.length) {
+    formatted.push(leadingParts.join(" - "));
+  }
+  if (trailingParts.length) {
+    formatted.push(trailingParts.join(", "));
+  }
+
+  const label = formatted.join(", ");
+  return label || place.formatted_address || "";
+};
+
+const setAvailabilityStatus = (message, type = "") => {
+  if (!availabilityLocationStatus) {
+    return;
+  }
+  availabilityLocationStatus.textContent = message;
+  availabilityLocationStatus.hidden = !message;
+  availabilityLocationStatus.classList.remove("auth-status--error", "auth-status--success");
+  if (type) {
+    availabilityLocationStatus.classList.add(`auth-status--${type}`);
+  }
+};
+
+const setAvailabilityFeedback = (message, type = "") => {
+  if (!availabilityFeedback) {
+    return;
+  }
+  availabilityFeedback.textContent = message;
+  availabilityFeedback.hidden = !message;
+  availabilityFeedback.classList.remove("auth-status--error", "auth-status--success");
+  if (type) {
+    availabilityFeedback.classList.add(`auth-status--${type}`);
+  }
+};
+
+const getSelectedAvailabilityDays = () => {
+  if (!availabilityDaysContainer) {
+    return [];
+  }
+  return Array.from(availabilityDaysContainer.querySelectorAll('input[type="checkbox"]:checked')).map(
+    (input) => input.value,
+  );
+};
+
+const renderAvailabilitySlots = () => {
+  if (!availabilitySlotsList || !availabilitySlotsEmpty) {
+    return;
+  }
+  availabilitySlotsList.innerHTML = "";
+  if (!availabilitySlots.length) {
+    availabilitySlotsEmpty.hidden = false;
+    return;
+  }
+  availabilitySlotsEmpty.hidden = true;
+  availabilitySlots.forEach((slot, index) => {
+    const item = document.createElement("li");
+    item.className = "availability-slots__item";
+    const dayLabels = (slot.days || [])
+      .map((day) => WEEKDAY_LABEL_LOOKUP.get(day) || day)
+      .join(", ");
+    const label = document.createElement("span");
+    label.className = "availability-slots__label";
+    label.textContent = dayLabels || "Dias a combinar";
+    const time = document.createElement("span");
+    time.className = "availability-slots__time";
+    time.textContent = `${slot.start} – ${slot.end}`;
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "availability-slots__remove";
+    removeButton.textContent = "Remover";
+    removeButton.addEventListener("click", () => {
+      availabilitySlots.splice(index, 1);
+      renderAvailabilitySlots();
+    });
+    item.append(label, time, removeButton);
+    availabilitySlotsList.appendChild(item);
+  });
+};
+
+const applyAvailabilityCoordinates = (coords) => {
+  if (!coords) {
+    availabilityCoordinates = null;
+    updateAvailabilityMap();
+    return;
+  }
+  const latCandidate =
+    coords.latitude ?? coords.lat ?? coords._lat ?? coords.x ?? coords[0] ?? null;
+  const lngCandidate =
+    coords.longitude ?? coords.lng ?? coords._long ?? coords.lon ?? coords.y ?? coords[1] ?? null;
+  const latitude = Number.parseFloat(latCandidate);
+  const longitude = Number.parseFloat(lngCandidate);
+  if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    availabilityCoordinates = { latitude, longitude };
+  } else {
+    availabilityCoordinates = null;
+  }
+  updateAvailabilityMap();
+};
+
+const updateAvailabilityMap = () => {
+  if (!availabilityMapInstance || !isGoogleMapsAvailable()) {
+    return;
+  }
+  const coords = availabilityCoordinates;
+  if (coords && Number.isFinite(coords.latitude) && Number.isFinite(coords.longitude)) {
+    const position = { lat: coords.latitude, lng: coords.longitude };
+    availabilityMapInstance.setCenter(position);
+    availabilityMapInstance.setZoom(FOCUSED_MAP_ZOOM);
+    if (!availabilityMapMarker) {
+      availabilityMapMarker = new google.maps.Marker({
+        map: availabilityMapInstance,
+        position,
+      });
+    } else {
+      availabilityMapMarker.setPosition(position);
+      if (!availabilityMapMarker.getMap()) {
+        availabilityMapMarker.setMap(availabilityMapInstance);
+      }
+    }
+  } else {
+    availabilityMapInstance.setCenter(getDefaultMapLatLng());
+    availabilityMapInstance.setZoom(DEFAULT_MAP_ZOOM);
+    if (availabilityMapMarker && availabilityMapMarker.getMap()) {
+      availabilityMapMarker.setMap(null);
+    }
+  }
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const pickAddressComponent = (components, preferredTypes, options = {}) => {
+  const types = Array.isArray(preferredTypes) ? preferredTypes : [preferredTypes];
+  if (!Array.isArray(components) || !components.length || !types.length) {
+    return "";
+  }
+
+  for (const type of types) {
+    const component = components.find((item) => Array.isArray(item?.types) && item.types.includes(type));
+    if (component) {
+      if (options.useShortName && component.short_name) {
+        return component.short_name;
+      }
+      return component.long_name || component.short_name || "";
+    }
+  }
+
+  return "";
+};
+
+const formatPostalCode = (value) => {
+  if (!value) return "";
+  const digits = String(value).replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.length === 8) {
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }
+  if (digits.length === 7) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+  return value;
+};
+
+const getPostalCodeFromComponents = (components) => {
+  if (!Array.isArray(components) || !components.length) {
+    return "";
+  }
+
+  const base = pickAddressComponent(components, ["postal_code"]);
+  const suffix = pickAddressComponent(components, ["postal_code_suffix"]);
+  const combined = `${base || ""}${suffix ? suffix : ""}`;
+  const formatted = formatPostalCode(combined || base);
+  if (formatted) {
+    return formatted;
+  }
+  if (base) {
+    return formatPostalCode(base);
+  }
+  return "";
+};
+
+const getPostalCodeFromFormattedAddress = (address) => {
+  if (typeof address !== "string" || !address) {
+    return "";
+  }
+
+  const match = address.match(/\b\d{5}-?\d{3}\b/);
+  if (!match) {
+    return "";
+  }
+
+  return formatPostalCode(match[0]);
+};
+
+const formatPlaceAddressLabel = (place) => {
+  if (!place) return "";
+
+  const components = place.address_components;
+  if (!Array.isArray(components) || !components.length) {
+    return place.formatted_address || "";
+  }
+
+  const route = pickAddressComponent(components, ["route"]);
+  const streetNumber = pickAddressComponent(components, ["street_number"]);
+  const streetPart = [route, streetNumber].filter(Boolean).join(", ");
+
+  const area = pickAddressComponent(components, [
+    "sublocality",
+    "sublocality_level_1",
+    "neighborhood",
+    "political",
+  ]);
+  const city = pickAddressComponent(components, ["locality", "administrative_area_level_2"]);
+  const state = pickAddressComponent(components, ["administrative_area_level_1"], { useShortName: true });
+  const postalCode =
+    getPostalCodeFromFormattedAddress(place.formatted_address) ||
+    getPostalCodeFromComponents(components);
+
+  const leadingParts = [];
+  if (streetPart) {
+    leadingParts.push(streetPart);
+  }
+  if (area) {
+    leadingParts.push(area);
+  }
+
+  const trailingParts = [];
+  const cityState = [city, state].filter(Boolean).join(" - ");
+  if (cityState) {
+    trailingParts.push(cityState);
+  }
+  if (postalCode) {
+    trailingParts.push(postalCode);
+  }
+
+  const formatted = [];
+  if (leadingParts.length) {
+    formatted.push(leadingParts.join(" - "));
+  }
+  if (trailingParts.length) {
+    formatted.push(trailingParts.join(", "));
+  }
+
+  const label = formatted.join(", ");
+  return label || place.formatted_address || "";
+};
+
+const setAvailabilityStatus = (message, type = "") => {
+  if (!availabilityLocationStatus) {
+    return;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+};
+
+const findAddressComponent = (components, types) => {
+  if (!Array.isArray(components)) {
+    return null;
+  }
+  const lookup = Array.isArray(types) ? types : [types];
+  return components.find((component) => lookup.some((type) => component.types?.includes(type))) || null;
+};
+
+const resolveCityFromComponents = (components) => {
+  const locality = findAddressComponent(components, "locality");
+  if (locality?.long_name) {
+    return locality.long_name;
+  }
+  const subAdmin = findAddressComponent(components, "administrative_area_level_2");
+  if (subAdmin?.long_name) {
+    return subAdmin.long_name;
+  }
+  const neighborhood = findAddressComponent(components, ["sublocality", "sublocality_level_1"]);
+  if (neighborhood?.long_name) {
+    return neighborhood.long_name;
+  }
+  return "";
+};
+
+const handleAvailabilityPlaceSelection = () => {
+  if (!availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  const getPlace = availabilityAutocomplete.getPlace?.bind(availabilityAutocomplete);
+  const place = typeof getPlace === "function" ? getPlace() : null;
+  if (!place) {
+    return;
+  }
+
+  const formattedLabel = formatPlaceAddressLabel(place);
+  const fallbackLabel = formattedLabel || place.formatted_address || availabilityAddressInput.value.trim();
+  if (fallbackLabel) {
+    availabilityAddressInput.value = fallbackLabel;
+  }
+
+  const location = place.geometry?.location;
+  let coords = null;
+  if (location) {
+    const latitude = typeof location.lat === "function" ? location.lat() : location.lat;
+    const longitude = typeof location.lng === "function" ? location.lng() : location.lng;
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      coords = { latitude, longitude };
+    }
+  }
+
+  populateAddressFromGeocode({ coords, label: fallbackLabel, raw: place });
+
+  if (coords) {
+    setAvailabilityStatus("Endereço selecionado!", "success");
+  } else {
+    setAvailabilityStatus("Endereço sugerido atualizado. Confirme os detalhes.");
+  }
+};
+
+const ensureAvailabilityAutocomplete = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return availabilityAutocomplete;
+  }
+  if (!window.google?.maps?.places) {
+    return null;
+  }
+
+  availabilityAutocomplete = new google.maps.places.Autocomplete(availabilityAddressInput, {
+    types: ["geocode"],
+    componentRestrictions: { country: "br" },
+    fields: ["formatted_address", "geometry", "address_components", "place_id"],
+  });
+  availabilityAutocomplete.addListener("place_changed", handleAvailabilityPlaceSelection);
+  availabilityAddressInput.dataset.autocompleteInitialized = "true";
+  return availabilityAutocomplete;
+};
+
+const scheduleAvailabilityAutocompleteInit = () => {
+  if (availabilityAutocomplete || !availabilityAddressInput) {
+    return;
+  }
+  if (window.google?.maps?.places) {
+    ensureAvailabilityAutocomplete();
+    return;
+  }
+  setTimeout(scheduleAvailabilityAutocompleteInit, 400);
+};
+
+const runGeocoderRequest = (request, controller) => {
+  const geocoder = ensureAvailabilityGeocoder();
+  if (!geocoder) {
+    const error = new Error("geocoder-unavailable");
+    error.code = "geocoder-unavailable";
+    throw error;
+  }
+  if (controller?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      }
+    };
+    if (controller) {
+      controller.signal.addEventListener("abort", handleAbort, { once: true });
+    }
+    geocoder.geocode(request, (results, status) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (controller?.signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      const error = new Error(status || "geocode-failed");
+      error.code = status || "geocode-failed";
+      reject(error);
+    });
+  });
+};
+
+const populateAddressFromGeocode = (result) => {
+  if (!result) {
+    return;
+  }
+  const { coords, label, raw } = result;
+  if (availabilityAddressInput && label) {
+    availabilityAddressInput.value = label;
+  }
+  if (coords) {
+    applyAvailabilityCoordinates(coords);
+  }
+  if (!availabilityCityInput) {
+    return;
+  }
+  const components = raw?.address_components;
+  const resolvedCity = resolveCityFromComponents(components) || DEFAULT_AVAILABILITY_CITY;
+  const options = Array.from(availabilityCityInput.options || []);
+  const hasExactOption = options.some((option) => option.value === resolvedCity);
+  if (hasExactOption) {
+    availabilityCityInput.value = resolvedCity;
+  } else {
+    availabilityCityInput.value = DEFAULT_AVAILABILITY_CITY;
+  }
+};
+
+const geocodeAddress = async (query, signal) => {
+  const controller = signal ? { signal } : null;
+  const results = await runGeocoderRequest(
+    {
+      address: query,
+      componentRestrictions: { country: "BR" },
+    },
+    controller,
+  );
+  if (!Array.isArray(results) || !results.length) {
+    return null;
+  }
+  const candidate = results[0];
+  const location = candidate.geometry?.location;
+  const latitude = typeof location?.lat === "function" ? location.lat() : location?.lat;
+  const longitude = typeof location?.lng === "function" ? location.lng() : location?.lng;
+  const latNumber = Number.parseFloat(latitude);
+  const lngNumber = Number.parseFloat(longitude);
+  if (!Number.isFinite(latNumber) || !Number.isFinite(lngNumber)) {
+    return null;
+  }
+  return {
+    coords: { latitude: latNumber, longitude: lngNumber },
+    label: candidate.formatted_address || query,
+    raw: candidate,
+  };
+};
+
+const reverseGeocodeCoordinates = async (coords, signal) => {
+  const controller = signal ? { signal } : null;
+  const results = await runGeocoderRequest(
+    {
+      location: { lat: coords.latitude, lng: coords.longitude },
+    },
+    controller,
+  );
+  const candidate = Array.isArray(results) && results.length ? results[0] : null;
+  return {
+    label: candidate?.formatted_address || "",
+    raw: candidate,
+  };
+};
+
+const handleAvailabilityGeocode = async () => {
+  if (!availabilityAddressInput) {
+    return;
+  }
+  const query = availabilityAddressInput.value.trim();
+  if (!query) {
+    setAvailabilityStatus("Informe um endereço para buscar.", "error");
+    return;
+  }
+  if (geocodeAbortController) {
+    geocodeAbortController.abort();
+  }
+  if (!ensureAvailabilityGeocoder()) {
+    setAvailabilityStatus("O serviço de endereços ainda está carregando. Tente novamente em instantes.", "error");
+    return;
+  }
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  geocodeAbortController = controller;
+  setAvailabilityStatus("Buscando o endereço informado...");
+  try {
+    const result = await geocodeAddress(query, controller ? controller.signal : undefined);
+    if (!result) {
+      setAvailabilityStatus("Não encontramos esse endereço. Ajuste os detalhes e tente novamente.", "error");
+      return;
+    }
+    populateAddressFromGeocode(result);
+    setAvailabilityStatus("Endereço localizado!", "success");
+  } catch (error) {
+    if (error.name === "AbortError") {
+      return;
+    }
+    if (error.code === "geocoder-unavailable") {
+      setAvailabilityStatus("O serviço de endereços ainda está carregando. Tente novamente em instantes.", "error");
+      return;
+    }
+    console.warn("Falha ao buscar endereço da profissional", error);
+    setAvailabilityStatus("Não foi possível buscar o endereço agora. Tente novamente em instantes.", "error");
+  } finally {
+    if (geocodeAbortController === controller) {
+      geocodeAbortController = null;
+    }
+  }
+};
+
+const handleAvailabilityDetect = () => {
+  if (!navigator.geolocation) {
+    setAvailabilityStatus("Seu navegador não permite detectar a localização automaticamente.", "error");
+    return;
+  }
+  if (geocodeAbortController) {
+    geocodeAbortController.abort();
+    geocodeAbortController = null;
+  }
+  if (availabilityDetectButton) {
+    availabilityDetectButton.disabled = true;
+  }
+  setAvailabilityStatus("Buscando sua localização atual...");
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      if (availabilityDetectButton) {
+        availabilityDetectButton.disabled = false;
+      }
+      const coords = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      applyAvailabilityCoordinates(coords);
+      const fallbackLabel = `Coordenadas aproximadas (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`;
+      if (!ensureAvailabilityGeocoder()) {
+        populateAddressFromGeocode({ coords, label: fallbackLabel });
+        setAvailabilityStatus("Localização capturada! Ajuste o endereço se preferir.");
+        return;
+      }
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      geocodeAbortController = controller;
+      try {
+        const result = await reverseGeocodeCoordinates(coords, controller ? controller.signal : undefined);
+        const label = result?.label || fallbackLabel;
+        populateAddressFromGeocode({ coords, label, raw: result?.raw });
+        setAvailabilityStatus("Localização atual definida automaticamente!", "success");
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return;
+        }
+        console.warn("Falha ao identificar endereço da localização atual", error);
+        populateAddressFromGeocode({ coords, label: fallbackLabel });
+        setAvailabilityStatus("Localização capturada! Ajuste o endereço se preferir.");
+      } finally {
+        if (geocodeAbortController === controller) {
+          geocodeAbortController = null;
+        }
+      }
+    },
+    (error) => {
+      if (availabilityDetectButton) {
+        availabilityDetectButton.disabled = false;
+      }
+      let message = "Não foi possível obter sua localização.";
+      if (error.code === error.PERMISSION_DENIED) {
+        message = "Precisamos da sua permissão para usar a localização automática.";
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        message = "Não conseguimos acessar o serviço de localização. Tente novamente em instantes.";
+      } else if (error.code === error.TIMEOUT) {
+        message = "A busca pela localização demorou demais. Tente novamente.";
+      }
+      setAvailabilityStatus(message, "error");
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 0,
+    },
+  );
+};
+
+const handleAddAvailabilitySlot = () => {
+  const days = getSelectedAvailabilityDays()
+    .map((value) => normalizeWeekdayValue(value))
+    .filter(Boolean);
+  const start = availabilityStartInput?.value || "";
+  const end = availabilityEndInput?.value || "";
+  if (!days.length) {
+    setAvailabilityStatus("Selecione pelo menos um dia da semana.", "error");
+    return;
+  }
+  if (!start || !end) {
+    setAvailabilityStatus("Informe os horários inicial e final.", "error");
+    return;
+  }
+  if (start >= end) {
+    setAvailabilityStatus("O horário final deve ser maior que o inicial.", "error");
+    return;
+  }
+  availabilitySlots.push({
+    id: `slot-${Date.now()}-${availabilitySlots.length}`,
+    days,
+    start,
+    end,
+  });
+  if (availabilityDaysContainer) {
+    availabilityDaysContainer.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+      input.checked = false;
+    });
+  }
+  if (availabilityStartInput) {
+    availabilityStartInput.value = "";
+  }
+  if (availabilityEndInput) {
+    availabilityEndInput.value = "";
+  }
+  setAvailabilityStatus("Faixa de atendimento adicionada!", "success");
+  renderAvailabilitySlots();
+};
+
+const gatherServiceEntries = () => {
+  const services = [];
+  for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
+    const fixedName = getFixedServiceName(index);
+    if (!fixedName) {
+      continue;
+    }
+    const existing = getExistingServiceEntry(index);
+    const resolvedName = fixedName;
+    const resolvedDuration = getFixedServiceDuration(index);
+    const amount = getFixedServicePrice(index);
+    const numericPrice = typeof amount === "number" ? amount : null;
+    const finalPriceLabel = typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta";
+    const selected = isServiceSelected(index);
+    const id =
+      existing?.id ||
+      existing?.uid ||
+      existing?.slug ||
+      existing?.codigo ||
+      `service-${index + 1}`;
+    const order = index;
+    const amountValue = numericPrice;
+    const service = {
+      id,
+      ordem: order,
+      order,
+      nome: resolvedName,
+      name: resolvedName,
+      duracao: resolvedDuration,
+      duration: resolvedDuration,
+      price: typeof amountValue === "number" ? amountValue : null,
+      preco: typeof amountValue === "number" ? amountValue : null,
+      priceLabel: finalPriceLabel,
+      precoTexto: finalPriceLabel,
+      valorTexto: finalPriceLabel,
+      active: selected,
+      ativo: selected,
+      disponivel: selected,
+      available: selected,
+      enabled: selected,
+    };
+    services.push(service);
+  }
+  return sortServicesByOrder(services);
+};
+
+const createServiceStoragePayload = (service, index) => {
+  if (!service || typeof service !== "object") {
+    return null;
+  }
+  const order = resolveServiceOrder(service, index);
+  const name = getFixedServiceName(index);
+  const duration = getFixedServiceDuration(order);
+  const amount =
+    typeof service.price === "number"
+      ? service.price
+      : typeof service.preco === "number"
+      ? service.preco
+      : null;
+  const priceLabelSource =
+    service.priceLabel ||
+    service.precoTexto ||
+    service.valorTexto ||
+    (typeof amount === "number" ? formatCurrency(amount) : "");
+  const normalizedPriceLabel = priceLabelSource ? priceLabelSource.trim() : "";
+  const priceLabel = normalizedPriceLabel || "Sob consulta";
+  const activeFlag = resolveServiceActiveFlag(service);
+  const active = activeFlag === null ? service.active !== false : activeFlag;
+  return {
+    id: service.id || `service-${index + 1}`,
+    ordem: order,
+    order,
+    nome: name,
+    name,
+    duracao: duration,
+    duration,
+    preco: typeof amount === "number" ? amount : null,
+    price: typeof amount === "number" ? amount : null,
+    priceLabel,
+    precoTexto: priceLabel,
+    valorTexto: priceLabel,
+    active,
+    ativo: active,
+    disponivel: active,
+    available: active,
+    enabled: active,
+  };
+};
+
+const buildAvailabilityPayload = () => {
+  const address = availabilityAddressInput?.value?.trim() || "";
+  const city = availabilityCityInput?.value?.trim() || DEFAULT_AVAILABILITY_CITY;
+  const state = DEFAULT_AVAILABILITY_STATE;
+  const coords =
+    availabilityCoordinates &&
+    Number.isFinite(availabilityCoordinates.latitude) &&
+    Number.isFinite(availabilityCoordinates.longitude)
+      ? {
+          latitude: availabilityCoordinates.latitude,
+          longitude: availabilityCoordinates.longitude,
+        }
+      : null;
+
+  const atendimento = {
+    endereco: address,
+    cidade: city,
+    city,
+    estado: state,
+    state,
+    uf: state,
+  };
+  if (coords) {
+    atendimento.coordenadas = coords;
+    atendimento.coordinates = coords;
+  }
+
+  const areaParts = [];
+  if (address) {
+    areaParts.push(address);
+  }
+  const cityState = [city, state].filter(Boolean).join(" - ");
+  if (cityState) {
+    areaParts.push(cityState);
+  }
+
+  const catalogServices = sortServicesByOrder(gatherServiceEntries());
+  const catalogSnapshot = cloneServiceList(catalogServices);
+  const activeCatalog = catalogSnapshot.filter((service) => service.active !== false);
+  const activeServicesPayload = cloneServiceList(activeCatalog);
+  const activeServicesEnglishPayload = cloneServiceList(activeCatalog);
+  const catalogDefaults = cloneServiceList(catalogSnapshot);
+  const pricingCatalog = cloneServiceList(catalogSnapshot);
+  const pricingCatalogo = cloneServiceList(catalogSnapshot);
+  const pricingPayload = {
+    ...(currentProfile?.pricing && typeof currentProfile.pricing === "object" ? currentProfile.pricing : {}),
+    services: cloneServiceList(activeCatalog),
+    catalog: pricingCatalog,
+    catalogo: pricingCatalogo,
+    updatedAt: serverTimestamp(),
+  };
+  const catalogContainer = {
+    ...(currentProfile?.catalog && typeof currentProfile.catalog === "object" ? currentProfile.catalog : {}),
+    services: cloneServiceList(catalogSnapshot),
+  };
+  const catalogoContainer = {
+    ...(currentProfile?.catalogo && typeof currentProfile.catalogo === "object" ? currentProfile.catalogo : {}),
+    servicos: cloneServiceList(catalogSnapshot),
+  };
+  const availability = availabilitySlots.map((slot) => ({
+    id: slot.id,
+    dias: slot.days,
+    inicio: slot.start,
+    fim: slot.end,
+  }));
+
+  return {
+    atendimento,
+    area: areaParts.join(" • "),
+    servicos: activeServicesPayload,
+    services: activeServicesEnglishPayload,
+    catalogoPadrao: catalogDefaults,
+    catalogDefaults,
+    catalog: catalogContainer,
+    catalogo: catalogoContainer,
+    pricing: pricingPayload,
+    disponibilidade: availability,
+    updatedAt: serverTimestamp(),
+  };
+};
+
+const formatCoverageArea = (profile) => {
+  const source = profile?.atendimento;
+  if (source && typeof source === "object") {
+    const parts = [];
+    if (source.endereco) {
+      parts.push(source.endereco);
+    }
+    const cityState = [source.cidade || source.city, source.estado || source.state || source.uf]
+      .filter(Boolean)
+      .join(" - ");
+    if (cityState) {
+      parts.push(cityState);
+    }
+    return parts.join(" • ") || profile.area || profile.cidade || "Cadastre sua área de atendimento";
+  }
+  return profile?.area || profile?.cidade || "Cadastre sua área de atendimento";
+};
+
+const populateAvailabilityForm = (profile) => {
+  if (!availabilityForm) {
+    return;
+  }
+  const atendimento = profile?.atendimento && typeof profile.atendimento === "object" ? profile.atendimento : {};
+  if (availabilityAddressInput) {
+    availabilityAddressInput.value = atendimento.endereco || atendimento.address || "";
+  }
+  if (availabilityCityInput) {
+    const cityCandidate = atendimento.cidade || atendimento.city || DEFAULT_AVAILABILITY_CITY;
+    const options = Array.from(availabilityCityInput.options || []);
+    const hasOption = options.some((option) => option.value === cityCandidate);
+    availabilityCityInput.value = hasOption ? cityCandidate : DEFAULT_AVAILABILITY_CITY;
+  }
+  const coordinateSource =
+    atendimento.coordenadas ||
+    atendimento.coordinates ||
+    profile?.coordenadas ||
+    profile?.coordinates ||
+    null;
+  applyAvailabilityCoordinates(null);
+  if (coordinateSource) {
+    applyAvailabilityCoordinates({
+      latitude: coordinateSource.latitude ?? coordinateSource.lat ?? coordinateSource._lat,
+      longitude: coordinateSource.longitude ?? coordinateSource.lng ?? coordinateSource._long,
+    });
+  }
+  updateAvailabilityMap();
+  const slots = toArray(profile?.disponibilidade).map((entry, index) => {
+    const days = toArray(entry?.dias || entry?.days || entry?.semana || entry?.weekdays)
+      .map((value) => normalizeWeekdayValue(value))
+      .filter(Boolean);
+    const start = entry?.inicio || entry?.start || entry?.horaInicio || entry?.horarioInicio || "";
+    const end = entry?.fim || entry?.end || entry?.horaFim || entry?.horarioFim || "";
+    if (!days.length || !start || !end) {
+      return null;
+    }
+    return {
+      id: entry?.id || `slot-${index}`,
+      days,
+      start,
+      end,
+    };
+  });
+  availabilitySlots = slots.filter(Boolean);
+  renderAvailabilitySlots();
+  hydrateServiceSelections(profile);
+  setAvailabilityStatus("");
+  setAvailabilityFeedback("");
+};
+
+const handleAvailabilitySubmit = async (event) => {
+  event.preventDefault();
+  if (!currentProfile?.id) {
+    setAvailabilityFeedback("Sua sessão expirou. Faça login novamente.", "error");
+    return;
+  }
+  const payload = buildAvailabilityPayload();
+  const submitButton = availabilityForm?.querySelector('[type="submit"]');
+  if (submitButton) {
+    submitButton.disabled = true;
+  }
+  setAvailabilityFeedback("Salvando suas informações...");
+  try {
+    const collectionName = currentProfile.collection || PROFILE_COLLECTIONS[0];
+    const profileRef = doc(db, collectionName, currentProfile.id);
+    await setDoc(profileRef, payload, { merge: true });
+    await syncServicesSubcollection({ ...currentProfile, collection: collectionName }, payload.servicos);
+
+    const pricingBase =
+      payload.pricing && typeof payload.pricing === "object"
+        ? Object.fromEntries(
+            Object.entries(payload.pricing).filter(([key]) => key !== "updatedAt"),
+          )
+        : {};
+    const pricingState = {
+      ...(currentProfile?.pricing && typeof currentProfile.pricing === "object" ? currentProfile.pricing : {}),
+      ...pricingBase,
+    };
+    pricingState.services = payload.pricing?.services || payload.servicos;
+    if (payload.pricing?.catalog) {
+      pricingState.catalog = payload.pricing.catalog;
+    }
+    if (payload.pricing?.catalogo) {
+      pricingState.catalogo = payload.pricing.catalogo;
+    }
+
+    currentProfile = {
+      ...currentProfile,
+      atendimento: { ...(currentProfile.atendimento || {}), ...payload.atendimento },
+      disponibilidade: payload.disponibilidade,
+      servicos: payload.servicos,
+      services: payload.services || payload.servicos,
+      catalogoPadrao: payload.catalogoPadrao,
+      catalogDefaults: payload.catalogDefaults,
+      catalog: { ...(currentProfile.catalog || {}), ...(payload.catalog || {}) },
+      catalogo: { ...(currentProfile.catalogo || {}), ...(payload.catalogo || {}) },
+      pricing: pricingState,
+      area: payload.area || currentProfile.area,
+    };
+    hydrateServiceSelections(currentProfile);
+    setAvailabilityFeedback("Dados atualizados com sucesso!", "success");
+    if (profileArea) {
+      profileArea.textContent = formatCoverageArea(currentProfile);
+    }
+    if (profileSpecialties) {
+      const inlineServices = (currentProfile.servicos || collectInlineServices(currentProfile)).filter(
+        (service) => service && service.active !== false,
+      );
+      if (inlineServices.length) {
+        profileSpecialties.textContent = inlineServices
+          .slice(0, 3)
+          .map((service) => service.name)
+          .join(" · ");
+      } else if (currentProfile.especialidades || currentProfile.specialties) {
+        profileSpecialties.textContent =
+          currentProfile.especialidades || currentProfile.specialties || "Atualize seus serviços principais.";
+      } else {
+        profileSpecialties.textContent = "Atualize seus serviços principais.";
+      }
+    }
+    await loadServicesForProfile(currentProfile);
+  } catch (error) {
+    console.error("Não foi possível salvar a disponibilidade", error);
+    if (error.code === "permission-denied") {
+      setAvailabilityFeedback(
+        "Seu acesso não tem permissão para atualizar esses dados. Avise o suporte NailNow.",
+        "error",
+      );
+    } else {
+      setAvailabilityFeedback("Não foi possível salvar agora. Tente novamente em instantes.", "error");
+    }
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+    }
+  }
 };
 
 const parseDateValue = (rawDate, rawTime) => {
@@ -301,7 +2464,6 @@ const renderAppointments = (status, appointments, options = {}) => {
   const mapping = {
     pending: pendingList,
     confirmed: confirmedList,
-    cancelled: cancelledList,
   };
   const target = mapping[status];
   if (!target) {
@@ -322,7 +2484,6 @@ const renderAppointments = (status, appointments, options = {}) => {
     const emptyMessages = {
       pending: "Nenhuma solicitação aguardando resposta.",
       confirmed: "Nenhum atendimento confirmado por enquanto.",
-      cancelled: "Nenhuma solicitação cancelada registrada.",
     };
     empty.textContent = emptyMessages[status] || "Nenhum agendamento disponível no momento.";
     target.appendChild(empty);
@@ -451,13 +2612,21 @@ const handleAppointmentDecision = async (appointment, decision, actionsContainer
   }
 };
 
-const updateMetrics = (pending, confirmed, cancelled) => {
-  metricPending.textContent = pending.length;
-  badgePending.textContent = pending.length;
-  metricConfirmed.textContent = confirmed.length;
-  badgeConfirmed.textContent = confirmed.length;
-  metricCancelled.textContent = cancelled.length;
-  badgeCancelled.textContent = cancelled.length;
+const updateMetrics = (pending = [], confirmed = []) => {
+  const pendingCount = Array.isArray(pending) ? pending.length : 0;
+  const confirmedCount = Array.isArray(confirmed) ? confirmed.length : 0;
+  if (metricPending) {
+    metricPending.textContent = pendingCount;
+  }
+  if (badgePending) {
+    badgePending.textContent = pendingCount;
+  }
+  if (metricConfirmed) {
+    metricConfirmed.textContent = confirmedCount;
+  }
+  if (badgeConfirmed) {
+    badgeConfirmed.textContent = confirmedCount;
+  }
 };
 
 const buildLookupCandidates = (rawEmail) => {
@@ -521,6 +2690,7 @@ const normalizeServiceEntry = (entry, index = 0) => {
       price: null,
       priceLabel: "Sob consulta",
       duration: "",
+      order: index,
     };
   }
   if (typeof entry === "object") {
@@ -532,6 +2702,14 @@ const normalizeServiceEntry = (entry, index = 0) => {
       entry.servico ||
       entry.service ||
       `Serviço ${index + 1}`;
+    const orderCandidates = [entry.ordem, entry.order, entry.posicao, entry.position, entry.index];
+    let order = index;
+    for (const candidate of orderCandidates) {
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        order = candidate;
+        break;
+      }
+    }
     const rawPrice =
       entry.preco ??
       entry.price ??
@@ -549,14 +2727,24 @@ const normalizeServiceEntry = (entry, index = 0) => {
     } else if (rawPrice) {
       priceLabel = typeof rawPrice === "string" ? rawPrice : String(rawPrice);
     }
-    const duration = entry.duracao || entry.duration || entry.tempo || entry.time || "";
+    const duration =
+      order < MAX_SERVICE_ENTRIES
+        ? getFixedServiceDuration(order)
+        : entry.duracao || entry.duration || entry.tempo || entry.time || "";
     const id = entry.id || entry.uid || entry.slug || entry.codigo || `service-${index}`;
+    const normalizedLabel = typeof priceLabel === "string" ? priceLabel.trim() : "";
+    const finalPriceLabel = normalizedLabel || (typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta");
+    const fixedName = order < MAX_SERVICE_ENTRIES ? getFixedServiceName(order) : null;
+    const displayName = fixedName || name;
+    const activeFlag = resolveServiceActiveFlag(entry);
     return {
       id,
-      name,
+      name: displayName,
       price: typeof numericPrice === "number" ? numericPrice : null,
-      priceLabel,
+      priceLabel: finalPriceLabel,
       duration,
+      order,
+      ...(activeFlag === null ? {} : { active: activeFlag }),
     };
   }
   return null;
@@ -564,6 +2752,10 @@ const normalizeServiceEntry = (entry, index = 0) => {
 
 const collectInlineServices = (profile) => {
   const candidateFields = [
+    "catalogoPadrao",
+    "catalogDefaults",
+    "catalog.services",
+    "catalog.servicos",
     "servicos",
     "services",
     "catalogo.servicos",
@@ -575,6 +2767,8 @@ const collectInlineServices = (profile) => {
     "serviceList",
     "pricing.servicos",
     "pricing.services",
+    "pricing.catalog",
+    "pricing.catalogo",
   ];
 
   const services = [];
@@ -594,6 +2788,126 @@ const collectInlineServices = (profile) => {
   return services;
 };
 
+const hydrateServiceSelections = (profile) => {
+  resetServiceSelections();
+  if (!profile || typeof profile !== "object") {
+    renderAvailabilityServiceSummary();
+    return;
+  }
+
+  const catalogCandidates = [
+    getNestedValue(profile, "catalogoPadrao"),
+    getNestedValue(profile, "catalogDefaults"),
+    getNestedValue(profile, "catalog.services"),
+    getNestedValue(profile, "catalog.servicos"),
+    getNestedValue(profile, "catalogo.services"),
+    getNestedValue(profile, "catalogo.servicos"),
+    getNestedValue(profile, "pricing.catalog"),
+    getNestedValue(profile, "pricing.catalogo"),
+  ];
+
+  const catalogServices = [];
+  catalogCandidates.forEach((value) => {
+    toArray(value).forEach((entry, index) => {
+      const normalized = normalizeServiceEntry(entry, catalogServices.length + index);
+      if (normalized) {
+        const activeFlag = resolveServiceActiveFlag(entry);
+        if (activeFlag !== null) {
+          normalized.active = activeFlag;
+        }
+        catalogServices.push(normalized);
+      }
+    });
+  });
+
+  if (!catalogServices.length) {
+    collectInlineServices(profile).forEach((service) => {
+      catalogServices.push(service);
+    });
+  }
+
+  const orderedCatalog = sortServicesByOrder(catalogServices);
+  const hasCatalog = orderedCatalog.length > 0;
+  const byOrder = new Map();
+  const byName = new Map();
+
+  orderedCatalog.forEach((service, index) => {
+    const order = resolveServiceOrder(service, index);
+    if (typeof order === "number" && Number.isFinite(order)) {
+      byOrder.set(order, service);
+    }
+    const normalizedName = (service.name || service.nome || "").toString().trim().toLowerCase();
+    if (normalizedName) {
+      byName.set(normalizedName, service);
+    }
+  });
+
+  for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
+    let entry = byOrder.get(index) || null;
+    if (!entry) {
+      entry = byName.get(getFixedServiceName(index).toLowerCase()) || null;
+    }
+    if (entry) {
+      const activeFlag = resolveServiceActiveFlag(entry);
+      setServiceSelection(index, activeFlag === null ? true : activeFlag);
+    } else if (hasCatalog) {
+      setServiceSelection(index, false);
+    }
+  }
+
+  if (!hasCatalog) {
+    for (let index = 0; index < MAX_SERVICE_ENTRIES; index += 1) {
+      if (!serviceSelections.has(index)) {
+        setServiceSelection(index, true);
+      }
+    }
+  }
+
+  renderAvailabilityServiceSummary();
+};
+
+const syncServicesSubcollection = async (profile, services) => {
+  if (!profile?.id) {
+    return;
+  }
+  const collectionName = profile.collection || PROFILE_COLLECTIONS[0];
+  const professionalRef = doc(db, collectionName, profile.id);
+  const servicesCollectionRef = collection(professionalRef, "servicos");
+
+  try {
+    const desired = new Map();
+    const batch = writeBatch(db);
+    let hasOperations = false;
+
+    (services || []).forEach((service, index) => {
+      const payload = createServiceStoragePayload(service, index);
+      if (!payload) {
+        return;
+      }
+      const serviceId = payload.id || `service-${index + 1}`;
+      desired.set(serviceId, payload);
+      const serviceRef = doc(servicesCollectionRef, serviceId);
+      batch.set(serviceRef, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+      hasOperations = true;
+    });
+
+    const snapshot = await getDocs(servicesCollectionRef);
+    snapshot.forEach((docSnap) => {
+      if (!desired.has(docSnap.id)) {
+        batch.delete(docSnap.ref);
+        hasOperations = true;
+      }
+    });
+
+    if (hasOperations) {
+      await batch.commit();
+    }
+  } catch (error) {
+    console.warn("Não foi possível sincronizar os serviços cadastrados", error);
+    throw error;
+  }
+};
+
 const fetchServicesSubcollection = async (profile) => {
   if (!profile?.id || !profile?.collection) {
     return [];
@@ -604,12 +2918,13 @@ const fetchServicesSubcollection = async (profile) => {
     if (snapshot.empty) {
       return [];
     }
-    return snapshot.docs
+    const services = snapshot.docs
       .map((docSnap, index) => {
         const normalized = normalizeServiceEntry({ id: docSnap.id, ...docSnap.data() }, index);
         return normalized;
       })
       .filter(Boolean);
+    return sortServicesByOrder(services);
   } catch (error) {
     console.warn("Não foi possível carregar os serviços cadastrados", error);
     return [];
@@ -637,7 +2952,37 @@ const loadServicesForProfile = async (profile) => {
     services = Array.from(map.values());
   }
 
-  renderServices(services);
+  const orderedServices = sortServicesByOrder(services);
+  const activeServices = orderedServices.filter((service) => service.active !== false);
+  renderServices(activeServices);
+
+  if (profile && typeof profile === "object") {
+    const catalogSnapshot = cloneServiceList(orderedServices);
+    const activeSnapshot = cloneServiceList(activeServices);
+    profile.catalogoPadrao = catalogSnapshot;
+    profile.catalogDefaults = cloneServiceList(orderedServices);
+    profile.catalog = { ...(profile.catalog || {}), services: cloneServiceList(orderedServices) };
+    profile.catalogo = { ...(profile.catalogo || {}), servicos: cloneServiceList(orderedServices) };
+    profile.servicos = activeSnapshot;
+    profile.services = cloneServiceList(activeServices);
+    profile.pricing = {
+      ...(profile.pricing || {}),
+      services: cloneServiceList(activeServices),
+      catalog: cloneServiceList(orderedServices),
+      catalogo: cloneServiceList(orderedServices),
+    };
+  }
+  if (currentProfile && profile && currentProfile.id === profile.id) {
+    currentProfile.catalogoPadrao = profile.catalogoPadrao;
+    currentProfile.catalogDefaults = profile.catalogDefaults;
+    currentProfile.catalog = profile.catalog;
+    currentProfile.catalogo = profile.catalogo;
+    currentProfile.servicos = profile.servicos;
+    currentProfile.services = profile.services;
+    currentProfile.pricing = profile.pricing;
+  }
+
+  hydrateServiceSelections(profile);
 };
 
 const resolveStatusValue = (data) => {
@@ -832,12 +3177,11 @@ const loadAppointmentsForProfile = async (profile) => {
   if (!profile?.id) {
     renderAppointments("pending", []);
     renderAppointments("confirmed", []);
-    renderAppointments("cancelled", []);
-    updateMetrics([], [], []);
+    updateMetrics([], []);
     return { permissionIssue: false };
   }
 
-  const keys = ["pending", "confirmed", "cancelled"];
+  const keys = ["pending", "confirmed"];
   const profileCollection = profile.collection || PROFILE_COLLECTIONS[0];
   const results = await Promise.allSettled(keys.map((key) => fetchAppointments(key, profile.id, profileCollection)));
 
@@ -861,8 +3205,8 @@ const loadAppointmentsForProfile = async (profile) => {
     return [];
   });
 
-  const [pendingAppointments, confirmedAppointments, cancelledAppointments] = datasets;
-  updateMetrics(pendingAppointments, confirmedAppointments, cancelledAppointments);
+  const [pendingAppointments = [], confirmedAppointments = []] = datasets;
+  updateMetrics(pendingAppointments, confirmedAppointments);
 
   const fallbackNotice = permissionIssue
     ? "Não conseguimos carregar toda a agenda agora. Atualize a página ou fale com o suporte NailNow."
@@ -887,20 +3231,121 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
   currentProfile = profile;
   fallbackProfileEmail = fallbackEmail;
 
-  const displayName = profile.nome || profile.name || profile.displayName || profile.email || fallbackEmail || "manicure";
+  const nameCandidates = [
+    profile.nome,
+    profile.nomeCompleto,
+    profile.nome_completo,
+    profile.nomeSocial,
+    profile.nome_social,
+    profile.displayName,
+    profile.name,
+    profile?.dados?.nome,
+    profile?.dados?.nomeCompleto,
+    profile?.dados?.nome_completo,
+    profile?.dadosPessoais?.nome,
+    profile?.dadosPessoais?.nomeCompleto,
+    profile.email,
+    profile.emailLowercase,
+    fallbackEmail,
+  ]
+    .filter(Boolean)
+    .map((value) => value.toString().trim())
+    .filter((value, index, array) => value && array.indexOf(value) === index);
+  const displayName = nameCandidates[0] || "Nome da manicure";
   profileNameElements.forEach((element) => {
     element.textContent = displayName;
   });
-  profileDisplay.textContent = displayName;
-  profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
-  profileSpecialties.textContent =
-    profile.especialidades || profile.specialties || "Alongamento em fibra · Spa das mãos";
-  profileArea.textContent =
-    profile.atendimento || profile.area || profile.cidade || "São Paulo e região metropolitana";
+  if (profileDisplay) {
+    profileDisplay.textContent = displayName;
+  }
+  if (profileEmail) {
+    profileEmail.textContent = profile.email || profile.emailLowercase || fallbackEmail || "—";
+  }
+  if (profileSpecialties) {
+    const inlineServices = collectInlineServices(profile).filter((service) => service.active !== false);
+    if (inlineServices.length) {
+      profileSpecialties.textContent = inlineServices
+        .slice(0, 3)
+        .map((service) => service.name)
+        .join(" · ");
+    } else if (profile.especialidades || profile.specialties) {
+      profileSpecialties.textContent = profile.especialidades || profile.specialties;
+    } else {
+      profileSpecialties.textContent = FIXED_SERVICE_NAMES.slice(0, 3).join(" · ");
+    }
+  }
+  if (profileArea) {
+    profileArea.textContent = formatCoverageArea(profile);
+  }
 
+  populateAvailabilityForm(profile);
   await loadServicesForProfile(profile);
   return loadAppointmentsForProfile(profile);
 };
+
+const initAvailabilityMap = () => {
+  if (availabilityMapReady || !isGoogleMapsAvailable()) {
+    return;
+  }
+  const mapElement = document.getElementById("availability-map");
+  if (!mapElement) {
+    return;
+  }
+  availabilityMapInstance = new google.maps.Map(mapElement, {
+    center: getDefaultMapLatLng(),
+    zoom: DEFAULT_MAP_ZOOM,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControl: true,
+  });
+  availabilityMapReady = true;
+  updateAvailabilityMap();
+};
+
+const scheduleAvailabilityMapInit = () => {
+  if (availabilityMapReady) {
+    return;
+  }
+  if (isGoogleMapsAvailable()) {
+    initAvailabilityMap();
+    return;
+  }
+  setTimeout(scheduleAvailabilityMapInit, 400);
+};
+
+availabilityAddSlotButton?.addEventListener("click", handleAddAvailabilitySlot);
+availabilityForm?.addEventListener("submit", handleAvailabilitySubmit);
+availabilityDetectButton?.addEventListener("click", handleAvailabilityDetect);
+availabilityGeocodeButton?.addEventListener("click", handleAvailabilityGeocode);
+availabilityAddressInput?.addEventListener("focus", () => {
+  if (!availabilityAutocomplete) {
+    const instance = ensureAvailabilityAutocomplete();
+    if (!instance) {
+      scheduleAvailabilityAutocompleteInit();
+    }
+  }
+});
+availabilityAddressInput?.addEventListener("input", () => {
+  setAvailabilityStatus("");
+  applyAvailabilityCoordinates(null);
+  if (!availabilityAutocomplete) {
+    scheduleAvailabilityAutocompleteInit();
+  }
+});
+availabilityCityInput?.addEventListener("change", () => {
+  setAvailabilityStatus("");
+  applyAvailabilityCoordinates(availabilityCoordinates);
+});
+availabilityStartInput?.addEventListener("input", () => setAvailabilityStatus(""));
+availabilityEndInput?.addEventListener("input", () => setAvailabilityStatus(""));
+
+if (typeof window !== "undefined") {
+  window.addEventListener("load", scheduleAvailabilityAutocompleteInit);
+  if (document.readyState === "complete") {
+    scheduleAvailabilityAutocompleteInit();
+  }
+}
 
 const handleAuthError = (error) => {
   const code = error.code || error.message;
@@ -966,7 +3411,7 @@ signOutButton.addEventListener("click", async () => {
   clearSession();
   dashboard.hidden = true;
   resetDashboard();
-  window.location.href = "/profissional/index.html";
+  window.location.href = HOME_URL;
 });
 
 onAuthStateChanged(auth, async (user) => {
@@ -975,7 +3420,7 @@ onAuthStateChanged(auth, async (user) => {
     dashboard.hidden = true;
     resetDashboard();
     setStatus("");
-    window.location.replace("/profissional/index.html");
+    window.location.replace(HOME_URL);
     return;
   }
 

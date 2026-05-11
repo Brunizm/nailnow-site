@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
   Timestamp,
   collection,
@@ -11,16 +11,17 @@ import {
   serverTimestamp,
   setDoc,
   where,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBHVZ9M6btJemXCIG-g5dG0xWq_jy50H7o",
-  authDomain: "nailnow-site.firebaseapp.com",
-  projectId: "nailnow-site",
-  storageBucket: "nailnow-site.appspot.com",
-  messagingSenderId: "726392294571",
-  appId: "1:726392294571:web:a363a40231f7ac162e7bee",
+  apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+  authDomain: "nailnow-7546c.firebaseapp.com",
+  projectId: "nailnow-7546c",
+  storageBucket: "nailnow-7546c.firebasestorage.app",
+  messagingSenderId: "413820353687",
+  appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+  measurementId: "G-2YEGPEG0E1",
 };
 
 const SESSION_KEY = "nailnowClienteSession";
@@ -50,6 +51,13 @@ const cancelledList = document.getElementById("cancelled-list");
 const professionalSearchInput = document.getElementById("professional-search");
 const professionalResults = document.getElementById("professional-results");
 const professionalResultsEmpty = document.getElementById("professional-results-empty");
+const searchLocationInput = document.getElementById("search-location");
+const searchLocationNumberInput = document.getElementById("search-location-number");
+const searchLocationComplementInput = document.getElementById("search-location-complement");
+const detectLocationButton = document.getElementById("detect-location");
+const searchLocationStatus = document.getElementById("search-location-status");
+const searchRadiusSelect = document.getElementById("search-radius");
+const searchServiceSelect = document.getElementById("search-service");
 const requestForm = document.getElementById("service-request-form");
 const requestFormEmpty = document.getElementById("request-form-empty");
 const requestFields = document.querySelectorAll("[data-request-field]");
@@ -58,18 +66,222 @@ const requestServiceSelect = document.getElementById("request-service");
 const requestPriceInput = document.getElementById("request-price");
 const requestDateInput = document.getElementById("request-date");
 const requestTimeInput = document.getElementById("request-time");
+const requestDatePickerButton = document.getElementById("request-date-picker");
 const requestLocationInput = document.getElementById("request-location");
+const requestLocationNumberInput = document.getElementById("request-location-number");
+const requestLocationComplementInput = document.getElementById("request-location-complement");
 const requestNotesInput = document.getElementById("request-notes");
 const requestSubmitButton = document.getElementById("submit-request");
 const requestFeedback = document.getElementById("request-feedback");
+const requestServiceOptions = document.getElementById("request-service-options");
+const requestServiceEmpty = document.getElementById("request-service-empty");
+const searchChipLocation = document.getElementById("search-chip-location");
+const searchChipService = document.getElementById("search-chip-service");
+const searchChipDate = document.getElementById("search-chip-date");
+const searchProgress = document.getElementById("search-progress");
+const journeyRecommendations = document.getElementById("journey-recommendations");
+const journeyRecommendationsEmpty = document.getElementById("journey-recommendations-empty");
+const journeyProfileBadge = document.getElementById("journey-profile-badge");
+const journeyProfileAvatar = document.getElementById("journey-profile-avatar");
+const journeyProfileName = document.getElementById("journey-profile-name");
+const journeyProfileMeta = document.getElementById("journey-profile-meta");
+const journeyProfileRating = document.getElementById("journey-profile-rating");
+const journeyProfilePortfolio = document.getElementById("journey-profile-portfolio");
+const journeyProfileDistance = document.getElementById("journey-profile-distance");
+const journeyProfileServices = document.getElementById("journey-profile-services");
+const journeyProfileNote = document.getElementById("journey-profile-note");
+const journeySummaryStatus = document.getElementById("journey-summary-status");
+const journeySummaryProfessional = document.getElementById("journey-summary-professional");
+const journeySummaryService = document.getElementById("journey-summary-service");
+const journeySummarySlot = document.getElementById("journey-summary-slot");
+const journeySummaryAddress = document.getElementById("journey-summary-address");
+const journeySummaryTotal = document.getElementById("journey-summary-total");
+const journeySummaryHint = document.getElementById("journey-summary-hint");
+const journeySummaryEmpty = document.getElementById("journey-summary-empty");
+const journeySummarySubmit = document.getElementById("journey-summary-submit");
+const isGoogleMapsAvailable = () => Boolean(window.google?.maps);
 let currentProfile = null;
 let fallbackProfileEmail = "";
 let professionalsCatalog = [];
 let filteredProfessionals = [];
 let selectedProfessional = null;
 let selectedService = null;
+let customerLocation = { coords: null, label: "" };
+let activeRadiusKm = 10;
+let activeServiceFilter = "";
+let currentSearchTerm = "";
+let currentSearchTokens = [];
+let geocodeAbortController = null;
+let mapsGeocoder = null;
+const MAX_SERVICE_OPTIONS = 5;
+
+const getInitials = (name = "") => {
+  const parts = name.trim().split(/\s+/);
+  if (!parts.length) return "N";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+};
+
+const resolveServiceOrder = (service, fallback) => {
+  if (!service || typeof service !== "object") {
+    return fallback;
+  }
+  const candidates = [service.order, service.ordem, service.posicao, service.position, service.index];
+  for (const candidate of candidates) {
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+  return fallback;
+};
+
+const sortServicesByOrder = (items = []) => {
+  return items
+    .map((service, index) => ({ service, index, order: resolveServiceOrder(service, index) }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry, index) => ({ ...entry.service, ordem: index, order: index }));
+};
+const dateChipFormatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
+const timeChipFormatter = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+const TIME_SLOT_START_HOUR = 7;
+const TIME_SLOT_END_HOUR = 22;
+const TIME_SLOT_INTERVAL_MINUTES = 30;
+
+const formatTimeSlot = (hour, minute) => {
+  return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+};
+
+const ensureRequestTimeOptions = () => {
+  if (!requestTimeInput || requestTimeInput.tagName !== "SELECT") {
+    return;
+  }
+
+  const hasSlots = requestTimeInput.querySelector("option[data-slot='time']");
+  if (hasSlots) {
+    return;
+  }
+
+  let placeholderOption = requestTimeInput.querySelector("option[value='']");
+  if (!placeholderOption) {
+    placeholderOption = document.createElement("option");
+    placeholderOption.value = "";
+    requestTimeInput.prepend(placeholderOption);
+  }
+  placeholderOption.textContent = "Selecione um horário";
+  placeholderOption.dataset.placeholder = "true";
+  placeholderOption.disabled = true;
+
+  const fragment = document.createDocumentFragment();
+  for (let hour = TIME_SLOT_START_HOUR; hour <= TIME_SLOT_END_HOUR; hour += 1) {
+    for (let minute = 0; minute < 60; minute += TIME_SLOT_INTERVAL_MINUTES) {
+      if (hour === TIME_SLOT_END_HOUR && minute > 0) {
+        break;
+      }
+      const option = document.createElement("option");
+      const value = formatTimeSlot(hour, minute);
+      option.value = value;
+      option.textContent = value;
+      option.dataset.slot = "time";
+      fragment.appendChild(option);
+    }
+  }
+
+  requestTimeInput.appendChild(fragment);
+};
+
+const resetRequestTimeSelect = () => {
+  if (!requestTimeInput || requestTimeInput.tagName !== "SELECT") {
+    return;
+  }
+  const placeholderOption = requestTimeInput.querySelector("option[data-placeholder='true']");
+  if (placeholderOption) {
+    placeholderOption.selected = true;
+    requestTimeInput.value = "";
+  } else {
+    requestTimeInput.selectedIndex = 0;
+  }
+};
+
+ensureRequestTimeOptions();
+resetRequestTimeSelect();
+
+const openRequestDatePicker = () => {
+  if (!requestDateInput) {
+    return;
+  }
+  if (typeof requestDateInput.showPicker === "function") {
+    requestDateInput.showPicker();
+  } else {
+    requestDateInput.focus();
+    requestDateInput.click();
+  }
+};
+
+if (searchRadiusSelect) {
+  const initialRadius = Number.parseFloat(searchRadiusSelect.value || "10");
+  if (Number.isFinite(initialRadius)) {
+    activeRadiusKm = initialRadius;
+  }
+}
 
 const POSTAL_CODE_REGEX = /\b\d{5}-?\d{3}\b/g;
+const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
+const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
+const NOMINATIM_EMAIL = "suporte@nailnow.app";
+
+const ensureMapsGeocoder = () => {
+  if (mapsGeocoder) {
+    return mapsGeocoder;
+  }
+  if (!isGoogleMapsAvailable()) {
+    return null;
+  }
+  mapsGeocoder = new google.maps.Geocoder();
+  return mapsGeocoder;
+};
+
+const runGoogleGeocode = (request) => {
+  const geocoder = ensureMapsGeocoder();
+  if (!geocoder) {
+    return null;
+  }
+
+  return new Promise((resolve, reject) => {
+    geocoder.geocode(request, (results, status) => {
+      if (status === "OK" && Array.isArray(results)) {
+        resolve(results);
+        return;
+      }
+      if (status === "ZERO_RESULTS") {
+        resolve([]);
+        return;
+      }
+      reject(new Error(`google-geocode-${status || "error"}`));
+    });
+  });
+};
+
+const normalizeGoogleGeocodeResult = (result, fallbackLabel = "") => {
+  if (!result || typeof result !== "object") {
+    return null;
+  }
+  const location = result.geometry?.location;
+  if (!location || typeof location.lat !== "function" || typeof location.lng !== "function") {
+    return null;
+  }
+  const latitude = location.lat();
+  const longitude = location.lng();
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  return {
+    coords: { latitude, longitude },
+    label: result.formatted_address || fallbackLabel,
+    raw: result,
+  };
+};
 
 const stripPostalCode = (value = "") => {
   if (typeof value !== "string") {
@@ -89,6 +301,190 @@ const sanitizeAreaParts = (parts = []) => {
     .map((part) => stripPostalCode(part))
     .map((part) => part.replace(/\s{2,}/g, " ").trim())
     .filter(Boolean);
+};
+
+const toFiniteNumber = (value) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const normalized = value.replace(/[^0-9,.-]+/g, " ").trim().replace(/,/g, ".");
+    if (!normalized) {
+      return null;
+    }
+    const tokens = normalized.split(/\s+/).filter((token) => /^-?\d+(?:\.\d+)?$/.test(token));
+    const target = tokens.length ? tokens[0] : normalized;
+    const parsed = Number.parseFloat(target);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const parseCoordinateString = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const matches = value.match(/-?\d{1,3}(?:\.\d+)?/g);
+  if (!matches || matches.length < 2) {
+    return null;
+  }
+  const hasDecimal = matches.some((match) => match.includes("."));
+  if (!hasDecimal) {
+    return null;
+  }
+  const latitude = Number.parseFloat(matches[0]);
+  const longitude = Number.parseFloat(matches[1]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+  return { latitude, longitude };
+};
+
+const extractCoordinatePair = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return parseCoordinateString(value);
+  }
+  if (Array.isArray(value) && value.length >= 2) {
+    const latitude = toFiniteNumber(value[0]);
+    const longitude = toFiniteNumber(value[1]);
+    if (latitude !== null && longitude !== null) {
+      return { latitude, longitude };
+    }
+  }
+  if (typeof value === "object") {
+    const latitude =
+      toFiniteNumber(value.latitude ?? value.lat ?? value.Latitude ?? value.Lat ?? value._lat ?? value.x ?? value.X) ??
+      null;
+    const longitude =
+      toFiniteNumber(value.longitude ?? value.lng ?? value.lon ?? value.Longitude ?? value.Long ?? value._long ?? value.y ?? value.Y) ??
+      null;
+    if (latitude !== null && longitude !== null) {
+      return { latitude, longitude };
+    }
+    if (typeof value.toJSON === "function") {
+      return extractCoordinatePair(value.toJSON());
+    }
+  }
+  return null;
+};
+
+const coordinateCandidateKeys = [
+  "coordenadas",
+  "coordinates",
+  "coordenadasAtendimento",
+  "localizacao",
+  "localization",
+  "location",
+  "posicao",
+  "position",
+  "geo",
+  "geopoint",
+  "geolocation",
+  "centro",
+  "center",
+  "centroAtendimento",
+  "ponto",
+  "pontoAtendimento",
+  "address",
+  "endereco",
+  "atendimento",
+  "area",
+];
+
+const extractCoordinates = (source, depth = 0, visited = new Set()) => {
+  if (!source || depth > 4) {
+    return null;
+  }
+  const direct = extractCoordinatePair(source);
+  if (direct) {
+    return direct;
+  }
+  if (typeof source !== "object") {
+    return null;
+  }
+  for (const key of coordinateCandidateKeys) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
+    }
+    const value = source[key];
+    if (!value || visited.has(value)) {
+      continue;
+    }
+    visited.add(value);
+    const nested = extractCoordinates(value, depth + 1, visited);
+    if (nested) {
+      return nested;
+    }
+  }
+  return null;
+};
+
+const parseRadiusValue = (value) => {
+  const numeric = toFiniteNumber(value);
+  if (numeric === null) {
+    return null;
+  }
+  if (numeric > 500) {
+    return numeric / 1000;
+  }
+  return numeric;
+};
+
+const formatDistance = (distanceKm) => {
+  if (!Number.isFinite(distanceKm)) {
+    return "";
+  }
+  if (distanceKm < 1) {
+    const meters = Math.round(distanceKm * 1000);
+    if (meters < 100) {
+      return `${meters} m`;
+    }
+    const rounded = Math.round(meters / 10) * 10;
+    return `${rounded} m`;
+  }
+  if (distanceKm < 10) {
+    return `${distanceKm.toFixed(1).replace(".", ",")} km`;
+  }
+  return `${Math.round(distanceKm)} km`;
+};
+
+const haversineDistanceKm = (origin, target) => {
+  if (!origin || !target) {
+    return null;
+  }
+  const { latitude: lat1, longitude: lon1 } = origin;
+  const { latitude: lat2, longitude: lon2 } = target;
+  if ([lat1, lon1, lat2, lon2].some((value) => !Number.isFinite(value))) {
+    return null;
+  }
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const deltaLat = toRadians(lat2 - lat1);
+  const deltaLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
+const updateProfessionalDistances = () => {
+  professionalsCatalog.forEach((professional) => {
+    if (customerLocation.coords && professional.coordinates) {
+      const distance = haversineDistanceKm(customerLocation.coords, professional.coordinates);
+      professional.distanceKm = Number.isFinite(distance) ? distance : null;
+    } else {
+      professional.distanceKm = null;
+    }
+    if (typeof professional.coverageRadiusKm === "number" && Number.isFinite(professional.distanceKm)) {
+      professional.isOutsideCoverage = professional.distanceKm > professional.coverageRadiusKm + 0.1;
+    } else {
+      professional.isOutsideCoverage = false;
+    }
+  });
 };
 
 const appointmentCollections = {
@@ -168,6 +564,274 @@ const setRequestFeedback = (message, type = "") => {
   }
 };
 
+const setLocationStatus = (message, type = "") => {
+  if (!searchLocationStatus) {
+    return;
+  }
+  searchLocationStatus.textContent = message;
+  searchLocationStatus.hidden = !message;
+  searchLocationStatus.classList.remove("auth-status--error", "auth-status--success");
+  if (type) {
+    searchLocationStatus.classList.add(`auth-status--${type}`);
+  }
+};
+
+const setSearchLoading = (loading) => {
+  if (!searchProgress) {
+    return;
+  }
+  searchProgress.hidden = !loading;
+};
+
+const markRequestFieldModified = (field) => {
+  if (!field) {
+    return;
+  }
+  if ((field.value || "").trim()) {
+    field.dataset.userModified = "true";
+  } else {
+    delete field.dataset.userModified;
+  }
+};
+
+const syncRequestLocationFromSearch = () => {
+  if (requestLocationInput && !requestLocationInput.dataset.userModified) {
+    const existing = requestLocationInput.value || "";
+    const sourceValue =
+      (searchLocationInput?.value && searchLocationInput.value) ||
+      customerLocation.label ||
+      existing;
+    requestLocationInput.value = sourceValue;
+  }
+  if (requestLocationNumberInput && !requestLocationNumberInput.dataset.userModified) {
+    const existing = requestLocationNumberInput.value || "";
+    const numberValue = searchLocationNumberInput?.value || existing;
+    requestLocationNumberInput.value = numberValue;
+  }
+  if (requestLocationComplementInput && !requestLocationComplementInput.dataset.userModified) {
+    const existing = requestLocationComplementInput.value || "";
+    const complementValue = searchLocationComplementInput?.value || existing;
+    requestLocationComplementInput.value = complementValue;
+  }
+};
+
+const buildFullLocationLabel = (street, number, complement) => {
+  const parts = [];
+  const base = (street || "").trim();
+  const numberPart = (number || "").trim();
+  const complementPart = (complement || "").trim();
+  if (base) {
+    parts.push(base);
+  }
+  if (numberPart) {
+    parts.push(`nº ${numberPart}`);
+  }
+  if (complementPart) {
+    parts.push(complementPart);
+  }
+  return parts.join(", ");
+};
+
+const formatDateChipValue = () => {
+  if (!requestDateInput?.value) {
+    return "";
+  }
+  const base = `${requestDateInput.value}T${requestTimeInput?.value || "12:00"}`;
+  const date = new Date(base);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const dateLabel = dateChipFormatter.format(date);
+  if (!requestTimeInput?.value) {
+    return dateLabel;
+  }
+  const timeLabel = timeChipFormatter.format(date).replace(":", "h");
+  return `${dateLabel} · ${timeLabel}`;
+};
+
+const updateSearchChips = () => {
+  if (searchChipLocation) {
+    const locationLabel =
+      (searchLocationInput?.value && searchLocationInput.value.trim()) ||
+      customerLocation.label ||
+      currentProfile?.endereco ||
+      "";
+    searchChipLocation.textContent = locationLabel || "Defina o endereço";
+    searchChipLocation.classList.toggle("request-toolbar__chip--muted", !locationLabel);
+  }
+
+  if (searchChipService) {
+    let serviceLabel = "Todos os serviços";
+    if (selectedService?.name) {
+      serviceLabel = selectedService.name;
+    } else if (activeServiceFilter && searchServiceSelect) {
+      const selectedOption = searchServiceSelect.selectedOptions?.[0];
+      serviceLabel = selectedOption?.textContent?.trim() || serviceLabel;
+    }
+    searchChipService.textContent = serviceLabel;
+    searchChipService.classList.toggle(
+      "request-toolbar__chip--muted",
+      !(selectedService?.name || activeServiceFilter),
+    );
+  }
+
+  if (searchChipDate) {
+    const dateLabel = formatDateChipValue();
+    if (dateLabel) {
+      searchChipDate.textContent = dateLabel;
+      searchChipDate.classList.remove("request-toolbar__chip--muted");
+    } else {
+      searchChipDate.textContent = "Data flexível";
+      searchChipDate.classList.add("request-toolbar__chip--muted");
+    }
+  }
+};
+
+const syncServiceRadios = (serviceIndex) => {
+  if (!requestServiceOptions) {
+    return;
+  }
+  const radios = requestServiceOptions.querySelectorAll('input[type="radio"]');
+  radios.forEach((input) => {
+    const index = Number.parseInt(input.dataset.serviceIndex || "-1", 10);
+    input.checked = index === serviceIndex;
+  });
+};
+
+const updateSelectedServiceDetails = (professional = selectedProfessional) => {
+  if (requestPriceInput) {
+    if (selectedService?.priceLabel) {
+      requestPriceInput.value = selectedService.priceLabel;
+    } else if (typeof selectedService?.price === "number") {
+      requestPriceInput.value = formatCurrency(selectedService.price);
+    } else if (selectedService?.name) {
+      requestPriceInput.value = "Sob consulta";
+    } else {
+      requestPriceInput.value = "";
+    }
+  }
+
+  if (requestServiceEmpty) {
+    const hasServices = Array.isArray(professional?.servicos) && professional.servicos.length > 0;
+    requestServiceEmpty.hidden = hasServices;
+  }
+
+  updateRequestSubmitState();
+  updateJourneySummary();
+};
+
+const applySelectedService = (serviceIndex, professional = selectedProfessional) => {
+  if (!professional || !Array.isArray(professional.servicos) || !professional.servicos.length) {
+    selectedService = null;
+    syncServiceRadios(-1);
+    updateSelectedServiceDetails(professional);
+    return -1;
+  }
+
+  const services = professional.servicos;
+  const normalizedIndex = serviceIndex >= 0 && serviceIndex < services.length ? serviceIndex : 0;
+  selectedService = services[normalizedIndex];
+
+  if (requestServiceSelect) {
+    const matchingOption = requestServiceSelect.querySelector(
+      `option[data-service-index="${normalizedIndex}"]`,
+    );
+    if (matchingOption) {
+      requestServiceSelect.value = matchingOption.value;
+    }
+  }
+
+  syncServiceRadios(normalizedIndex);
+  updateSelectedServiceDetails(professional);
+  return normalizedIndex;
+};
+
+const renderRequestServiceOptions = (professional, preferredIndex = 0) => {
+  if (!requestServiceOptions) {
+    return;
+  }
+
+  requestServiceOptions.innerHTML = "";
+
+  if (!professional || !Array.isArray(professional.servicos) || !professional.servicos.length) {
+    requestServiceOptions.hidden = true;
+    if (requestServiceEmpty) {
+      requestServiceEmpty.hidden = false;
+    }
+    if (requestServiceSelect) {
+      requestServiceSelect.classList.remove("sr-only");
+    }
+    return;
+  }
+
+  const entries = professional.servicos
+    .map((service, index) => ({ service, index }))
+    .slice(0, MAX_SERVICE_OPTIONS);
+
+  if (!entries.length) {
+    requestServiceOptions.hidden = true;
+    if (requestServiceSelect) {
+      requestServiceSelect.classList.remove("sr-only");
+    }
+    return;
+  }
+
+  const highlight = entries.find((entry) => entry.index === preferredIndex) || entries[0];
+
+  requestServiceOptions.hidden = false;
+  if (requestServiceEmpty) {
+    requestServiceEmpty.hidden = true;
+  }
+
+  entries.forEach(({ service, index }) => {
+    const optionId = `service-option-${professional.id || "prof"}-${index}`;
+    const wrapper = document.createElement("label");
+    wrapper.className = "service-option";
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "request-service-option";
+    input.value = service.id || `service-${index}`;
+    input.dataset.serviceIndex = String(index);
+    input.id = optionId;
+    if (highlight && highlight.index === index) {
+      input.checked = true;
+    }
+    input.addEventListener("change", () => {
+      if (input.checked) {
+        applySelectedService(index, professional);
+      }
+    });
+
+    const content = document.createElement("span");
+    content.className = "service-option__content";
+    const priceLabel =
+      service.priceLabel ||
+      (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+    content.innerHTML = `<strong>${service.name}</strong><small>${priceLabel}</small>`;
+
+    wrapper.appendChild(input);
+    wrapper.appendChild(content);
+    requestServiceOptions.appendChild(wrapper);
+  });
+
+  if (professional.servicos.length > entries.length) {
+    const notice = document.createElement("p");
+    notice.className = "service-options__notice";
+    notice.textContent = "Precisa de outro serviço? Utilize a lista completa abaixo.";
+    requestServiceOptions.appendChild(notice);
+    if (requestServiceSelect) {
+      requestServiceSelect.classList.remove("sr-only");
+    }
+  } else if (requestServiceSelect) {
+    requestServiceSelect.classList.add("sr-only");
+  }
+
+  if (highlight) {
+    syncServiceRadios(highlight.index);
+  }
+};
+
 const resetDashboard = () => {
   pendingList.innerHTML = "";
   confirmedList.innerHTML = "";
@@ -178,10 +842,18 @@ const resetDashboard = () => {
   profileNameElements.forEach((element) => {
     element.textContent = "cliente";
   });
-  profileDisplay.textContent = "—";
-  profileEmail.textContent = "—";
-  profilePhone.textContent = "—";
-  profileAddress.textContent = "—";
+  if (profileDisplay) {
+    profileDisplay.textContent = "—";
+  }
+  if (profileEmail) {
+    profileEmail.textContent = "—";
+  }
+  if (profilePhone) {
+    profilePhone.textContent = "—";
+  }
+  if (profileAddress) {
+    profileAddress.textContent = "—";
+  }
   if (professionalResults) {
     professionalResults.innerHTML = "";
   }
@@ -199,6 +871,13 @@ const resetDashboard = () => {
   requestFields.forEach((field) => {
     field.hidden = true;
   });
+  if (requestServiceOptions) {
+    requestServiceOptions.innerHTML = "";
+    requestServiceOptions.hidden = true;
+  }
+  if (requestServiceEmpty) {
+    requestServiceEmpty.hidden = true;
+  }
   if (requestSubmitButton) {
     requestSubmitButton.disabled = true;
   }
@@ -206,6 +885,23 @@ const resetDashboard = () => {
   selectedService = null;
   professionalsCatalog = [];
   filteredProfessionals = [];
+  customerLocation = { coords: null, label: "" };
+  currentSearchTerm = "";
+  activeServiceFilter = "";
+  if (searchRadiusSelect) {
+    const radiusValue = Number.parseFloat(searchRadiusSelect.value || "10");
+    activeRadiusKm = Number.isFinite(radiusValue) ? radiusValue : 10;
+  }
+  if (searchLocationInput) {
+    searchLocationInput.value = "";
+  }
+  if (searchServiceSelect) {
+    searchServiceSelect.value = "";
+  }
+  setLocationStatus("");
+  updateSearchChips();
+  updateJourneyProfile(null);
+  updateJourneySummary();
 };
 
 const formatCurrency = (value) => {
@@ -249,6 +945,7 @@ const normalizeServiceEntry = (entry, index = 0) => {
       price: null,
       priceLabel: "Sob consulta",
       duration: "",
+      order: index,
     };
   }
   if (typeof entry === "object") {
@@ -279,15 +976,33 @@ const normalizeServiceEntry = (entry, index = 0) => {
     }
     const duration = entry.duracao || entry.duration || entry.tempo || entry.time || "";
     const id = entry.id || entry.uid || entry.slug || entry.codigo || `service-${index}`;
+    const orderCandidates = [entry.ordem, entry.order, entry.posicao, entry.position, entry.index];
+    let order = index;
+    for (const candidate of orderCandidates) {
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        order = candidate;
+        break;
+      }
+    }
+    const normalizedLabel = typeof priceLabel === "string" ? priceLabel.trim() : "";
+    const finalPriceLabel = normalizedLabel || (typeof numericPrice === "number" ? formatCurrency(numericPrice) : "Sob consulta");
     return {
       id,
       name,
       price: typeof numericPrice === "number" ? numericPrice : null,
-      priceLabel,
+      priceLabel: finalPriceLabel,
       duration,
+      order,
     };
   }
   return null;
+};
+
+const normalizeServiceName = (name) => {
+  if (typeof name !== "string") {
+    return "";
+  }
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 };
 
 const parseDateValue = (rawDate, rawTime) => {
@@ -455,6 +1170,31 @@ const normalizeProfessionalProfile = (snapshot) => {
   const ratingRaw = data.avaliacao || data.rating || data.nota || data.mediaAvaliacoes;
   const rating = typeof ratingRaw === "number" ? ratingRaw.toFixed(1) : ratingRaw;
   const collectionName = snapshot.ref?.parent?.id || data.collection || "profissionais";
+  const coordinates = extractCoordinates(data);
+  const coverageCandidates = [
+    data.raioAtendimento,
+    data.raio_atendimento,
+    data.raio,
+    data.radius,
+    data.maxDistance,
+    data.distanciaMaxima,
+    data.distancia_maxima,
+    data.cobertura?.raio,
+    data.cobertura?.radius,
+    data.cobertura?.distancia,
+    data.area?.raio,
+    data.area?.radius,
+    data.atendimento?.raio,
+    data.atendimento?.radius,
+  ];
+  let coverageRadiusKm = null;
+  for (const candidate of coverageCandidates) {
+    const parsed = parseRadiusValue(candidate);
+    if (parsed !== null && parsed > 0) {
+      coverageRadiusKm = parsed;
+      break;
+    }
+  }
 
   return {
     id,
@@ -465,8 +1205,235 @@ const normalizeProfessionalProfile = (snapshot) => {
     collection: collectionName,
     email: data.email || data.emailLowercase || data.contato?.email || "",
     telefone: data.telefone || data.phone || data.celular || "",
+    coordinates,
+    coverageRadiusKm,
     raw: data,
   };
+};
+
+const resolveReviewCount = (professional) => {
+  const candidates = [
+    professional?.reviews,
+    professional?.reviewsCount,
+    professional?.reviewCount,
+    professional?.totalAvaliacoes,
+    professional?.avaliacoes,
+    professional?.avaliacoesCount,
+    professional?.qtdAvaliacoes,
+  ];
+  for (const candidate of candidates) {
+    const value = Number.parseInt(candidate, 10);
+    if (Number.isFinite(value) && value >= 0) {
+      return value;
+    }
+  }
+  return null;
+};
+
+const formatReviewLabel = (professional) => {
+  const count = resolveReviewCount(professional);
+  if (count === null) {
+    return "Avaliações em coleta";
+  }
+  if (count === 1) {
+    return "1 avaliação";
+  }
+  return `${count} avaliações`;
+};
+
+const renderJourneyRecommendations = (items = []) => {
+  if (!journeyRecommendations || !journeyRecommendationsEmpty) {
+    return;
+  }
+  journeyRecommendations.innerHTML = "";
+
+  const shortlist = items.slice(0, 3);
+  if (!shortlist.length) {
+    journeyRecommendationsEmpty.hidden = false;
+    return;
+  }
+  journeyRecommendationsEmpty.hidden = true;
+
+  shortlist.forEach((professional, index) => {
+    const wrapper = document.createElement("article");
+    wrapper.className = "journey-recommendation";
+
+    const head = document.createElement("div");
+    head.className = "journey-recommendation__head";
+    const name = document.createElement("div");
+    const title = document.createElement("p");
+    title.className = "journey-recommendation__name";
+    title.textContent = getPublicProfessionalLabel(professional);
+    const meta = document.createElement("p");
+    meta.className = "journey-recommendation__meta";
+    const metaParts = [professional.area, professional.rating ? `${professional.rating} ★` : "nota em coleta"]
+      .filter(Boolean)
+      .join(" • ");
+    meta.textContent = metaParts || "Área em confirmação";
+    name.append(title, meta);
+    head.appendChild(name);
+
+    if (index === 0) {
+      const badge = document.createElement("span");
+      badge.className = "journey-badge";
+      badge.textContent = "Mais escolhida";
+      head.appendChild(badge);
+    }
+
+    wrapper.appendChild(head);
+
+    const services = document.createElement("div");
+    services.className = "journey-services";
+    const serviceList = Array.isArray(professional.servicos)
+      ? professional.servicos.slice(0, 2)
+      : [];
+    if (serviceList.length) {
+      serviceList.forEach((service) => {
+        const tag = document.createElement("span");
+        tag.className = "journey-service-tag";
+        const priceLabel =
+          service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+        tag.innerHTML = `<strong>${service.name}</strong><span class="journey-service-price">${priceLabel}</span>`;
+        services.appendChild(tag);
+      });
+    } else {
+      const tag = document.createElement("span");
+      tag.className = "journey-service-tag";
+      tag.textContent = "Serviços confirmados ao selecionar";
+      services.appendChild(tag);
+    }
+    wrapper.appendChild(services);
+
+    const footer = document.createElement("div");
+    footer.className = "journey-recommendation__footer";
+    const distance = document.createElement("p");
+    distance.className = "journey-distance";
+    if (Number.isFinite(professional.distanceKm)) {
+      distance.textContent = `${formatDistance(professional.distanceKm)} de você`;
+    } else {
+      distance.textContent = customerLocation.coords ? "Distância não informada" : "Defina o endereço";
+      distance.classList.add("journey-distance--muted");
+    }
+    const cta = document.createElement("button");
+    cta.type = "button";
+    cta.className = "journey-cta";
+    cta.textContent = "Ver horários";
+    cta.addEventListener("click", () => selectProfessional(professional));
+
+    footer.append(distance, cta);
+    wrapper.appendChild(footer);
+
+    journeyRecommendations.appendChild(wrapper);
+  });
+};
+
+const updateJourneyProfile = (professional) => {
+  if (!journeyProfileName || !journeyProfileBadge || !journeyProfileServices) {
+    return;
+  }
+
+  if (!professional) {
+    journeyProfileBadge.textContent = "Escolha uma manicure";
+    journeyProfileName.textContent = "Nenhuma selecionada";
+    journeyProfileMeta.textContent = "Escolha uma profissional na lista ao lado.";
+    journeyProfileRating.textContent = "—";
+    journeyProfilePortfolio.textContent = "—";
+    journeyProfileDistance.textContent = "—";
+    journeyProfileServices.innerHTML = "";
+    journeyProfileNote.textContent =
+      "Selecione uma manicure para ver serviços, valores e avaliações antes de enviar a solicitação.";
+    if (journeyProfileAvatar) {
+      journeyProfileAvatar.textContent = "N";
+    }
+    return;
+  }
+
+  const displayName = getPublicProfessionalLabel(professional);
+  journeyProfileName.textContent = displayName;
+  if (journeyProfileAvatar) {
+    journeyProfileAvatar.textContent = getInitials(displayName);
+  }
+  journeyProfileMeta.textContent = professional.area || "Área a combinar";
+  journeyProfileRating.textContent = professional.rating ? `${professional.rating} ★` : "Avaliação em coleta";
+  const portfolioSize =
+    professional.portfolioSize ||
+    professional.portfolioCount ||
+    (Array.isArray(professional.portfolio) ? professional.portfolio.length : null);
+  journeyProfilePortfolio.textContent = Number.isFinite(portfolioSize) ? `${portfolioSize} criações` : "Portfólio em coleta";
+  journeyProfileDistance.textContent = Number.isFinite(professional.distanceKm)
+    ? `${formatDistance(professional.distanceKm)} de você`
+    : customerLocation.coords
+      ? "Distância a confirmar"
+      : "Defina o endereço";
+
+  journeyProfileServices.innerHTML = "";
+  if (professional.servicos && professional.servicos.length) {
+    professional.servicos.slice(0, 3).forEach((service) => {
+      const chip = document.createElement("span");
+      chip.className = "journey-profile__service";
+      const priceLabel =
+        service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+      chip.innerHTML = `<strong>${service.name}</strong><span class="journey-service-price">${priceLabel}</span>`;
+      journeyProfileServices.appendChild(chip);
+    });
+  }
+
+  if (!professional.servicos || !professional.servicos.length) {
+    const chip = document.createElement("span");
+    chip.className = "journey-profile__service";
+    chip.textContent = "Serviços combinados após seleção";
+    journeyProfileServices.appendChild(chip);
+  }
+
+  journeyProfileBadge.textContent = formatReviewLabel(professional);
+  journeyProfileNote.textContent =
+    professional.isOutsideCoverage
+      ? "Essa manicure está fora do raio informado. Confirme disponibilidade ao solicitar."
+      : "Revise o portfólio e finalize o pedido com horário e endereço.";
+};
+
+const updateJourneySummary = () => {
+  if (!journeySummaryProfessional || !journeySummarySubmit) {
+    return;
+  }
+
+  const hasSelection = Boolean(selectedProfessional && selectedService);
+  const hasSchedule = Boolean(requestDateInput?.value && requestTimeInput?.value);
+  const addressCandidate =
+    (requestLocationInput?.value || searchLocationInput?.value || customerLocation.label || currentProfile?.endereco || "").trim();
+  const hasAddress = Boolean(addressCandidate);
+
+  journeySummaryProfessional.textContent = hasSelection
+    ? getPublicProfessionalLabel(selectedProfessional)
+    : "Selecione na lista";
+
+  const priceLabel = selectedService
+    ? selectedService.priceLabel ||
+      (typeof selectedService.price === "number" ? formatCurrency(selectedService.price) : "Sob consulta")
+    : "—";
+
+  journeySummaryService.textContent = selectedService?.name || "Escolha um serviço";
+  journeySummaryTotal.textContent = priceLabel;
+  journeySummaryAddress.textContent = hasAddress ? addressCandidate : "Informe onde prefere ser atendida";
+
+  if (hasSchedule) {
+    const base = `${requestDateInput.value}T${requestTimeInput.value}`;
+    const parsed = new Date(base);
+    const formattedDate = Number.isNaN(parsed.getTime())
+      ? `${requestDateInput.value} às ${requestTimeInput.value}`
+      : `${dateFormatter.format(parsed)} · ${timeFormatter.format(parsed)}`;
+    journeySummarySlot.textContent = formattedDate;
+  } else {
+    journeySummarySlot.textContent = "Defina data e horário";
+  }
+
+  const ready = hasSelection && hasSchedule;
+  journeySummarySubmit.disabled = !ready;
+  journeySummaryStatus.textContent = ready ? "Pronto para enviar" : "Montando";
+  journeySummaryHint.textContent = hasSelection
+    ? "Confirme os detalhes e envie o pedido para a manicure responder."
+    : "Selecione uma manicure para liberar o pedido.";
+  journeySummaryEmpty.hidden = ready;
 };
 
 const renderProfessionalResults = (items = []) => {
@@ -475,7 +1442,19 @@ const renderProfessionalResults = (items = []) => {
   }
   professionalResults.innerHTML = "";
 
+  renderJourneyRecommendations(items);
+
   if (!items.length) {
+    if (customerLocation.coords) {
+      professionalResultsEmpty.textContent =
+        "Não encontramos manicures dentro desse raio agora. Ajuste a distância ou tente outro serviço.";
+    } else if (currentSearchTerm) {
+      professionalResultsEmpty.textContent =
+        "Nenhuma manicure corresponde aos termos informados. Revise a busca ou informe outro endereço.";
+    } else {
+      professionalResultsEmpty.textContent =
+        "Informe seu endereço e ajuste os filtros acima para encontrar manicures próximas a você.";
+    }
     professionalResultsEmpty.hidden = false;
     return;
   }
@@ -506,10 +1485,29 @@ const renderProfessionalResults = (items = []) => {
     meta.textContent = metaParts.join(" • ") || "Área a combinar";
     card.appendChild(meta);
 
+    if (Number.isFinite(professional.distanceKm)) {
+      const distance = document.createElement("p");
+      distance.className = "request-card__distance";
+      distance.textContent = `A ${formatDistance(professional.distanceKm)} de você`;
+      card.appendChild(distance);
+    } else if (customerLocation.coords) {
+      const distance = document.createElement("p");
+      distance.className = "request-card__distance request-card__distance--muted";
+      distance.textContent = "Distância indisponível";
+      card.appendChild(distance);
+    }
+
     const servicesHint = document.createElement("p");
     servicesHint.className = "request-card__hint";
+    const hasMatchingService = Boolean(
+      activeServiceFilter && professional.servicos?.some((service) => normalizeServiceName(service.name) === activeServiceFilter),
+    );
     if (selectedProfessional && selectedProfessional.id === professional.id) {
-      servicesHint.textContent = "Confira os serviços e valores no formulário ao lado.";
+      servicesHint.textContent = "Confira os serviços e finalize sua solicitação ao lado.";
+    } else if (professional.isOutsideCoverage) {
+      servicesHint.textContent = "Fora do raio informado pela manicure — confirme a disponibilidade ao selecionar.";
+    } else if (hasMatchingService) {
+      servicesHint.textContent = "Oferece o serviço escolhido.";
     } else if (professional.servicos && professional.servicos.length) {
       const count = professional.servicos.length;
       servicesHint.textContent =
@@ -521,6 +1519,31 @@ const renderProfessionalResults = (items = []) => {
     }
 
     card.appendChild(servicesHint);
+
+    if (professional.servicos && professional.servicos.length) {
+      const servicesList = document.createElement("ul");
+      servicesList.className = "request-card__services";
+      professional.servicos.slice(0, 3).forEach((service) => {
+        const item = document.createElement("li");
+        item.className = "request-card__service";
+        if (activeServiceFilter && normalizeServiceName(service.name) === activeServiceFilter) {
+          item.classList.add("request-card__service--highlight");
+        }
+        const priceLabel =
+          service.priceLabel ||
+          (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+        item.innerHTML = `<span>${service.name}</span><span>${priceLabel}</span>`;
+        servicesList.appendChild(item);
+      });
+      card.appendChild(servicesList);
+    }
+
+    if (typeof professional.coverageRadiusKm === "number" && !professional.isOutsideCoverage) {
+      const coverageNote = document.createElement("p");
+      coverageNote.className = "request-card__hint";
+      coverageNote.textContent = `Atende até ${formatDistance(professional.coverageRadiusKm)} a partir do ponto informado.`;
+      card.appendChild(coverageNote);
+    }
 
     const selectButton = document.createElement("button");
     selectButton.type = "button";
@@ -536,16 +1559,64 @@ const renderProfessionalResults = (items = []) => {
 };
 
 const updateRequestSubmitState = () => {
-  if (!requestSubmitButton) {
-    return;
+  if (requestSubmitButton) {
+    const hasSchedule = Boolean(requestDateInput?.value && requestTimeInput?.value);
+    const hasSelection = Boolean(selectedProfessional && selectedService);
+    requestSubmitButton.disabled = !(hasSchedule && hasSelection);
   }
-  const hasSchedule = Boolean(requestDateInput?.value && requestTimeInput?.value);
-  const hasSelection = Boolean(selectedProfessional && selectedService);
-  requestSubmitButton.disabled = !(hasSchedule && hasSelection);
+  updateSearchChips();
+  updateJourneySummary();
 };
 
 const populateRequestForm = (professional) => {
   if (!requestForm || !requestProfessionalInput) {
+    return;
+  }
+
+  if (!professional) {
+    requestFields.forEach((field) => {
+      field.hidden = true;
+    });
+    if (requestFormEmpty) {
+      requestFormEmpty.hidden = false;
+    }
+    if (requestProfessionalInput) {
+      requestProfessionalInput.value = "";
+    }
+    if (requestServiceSelect) {
+      requestServiceSelect.innerHTML = "";
+      requestServiceSelect.disabled = true;
+      requestServiceSelect.classList.remove("sr-only");
+    }
+    if (requestServiceOptions) {
+      requestServiceOptions.innerHTML = "";
+      requestServiceOptions.hidden = true;
+    }
+    if (requestServiceEmpty) {
+      requestServiceEmpty.hidden = true;
+    }
+    if (requestPriceInput) {
+      requestPriceInput.value = "";
+    }
+    if (requestDateInput) {
+      requestDateInput.value = "";
+    }
+    if (requestLocationInput) {
+      requestLocationInput.value = "";
+      delete requestLocationInput.dataset.userModified;
+    }
+    if (requestLocationNumberInput) {
+      requestLocationNumberInput.value = "";
+      delete requestLocationNumberInput.dataset.userModified;
+    }
+    if (requestLocationComplementInput) {
+      requestLocationComplementInput.value = "";
+      delete requestLocationComplementInput.dataset.userModified;
+    }
+    resetRequestTimeSelect();
+    selectedService = null;
+    setRequestFeedback("");
+    updateSelectedServiceDetails();
     return;
   }
 
@@ -563,16 +1634,29 @@ const populateRequestForm = (professional) => {
   if (requestServiceSelect) {
     requestServiceSelect.innerHTML = "";
     if (professional.servicos && professional.servicos.length) {
+      const preferredIndex = (() => {
+        if (!activeServiceFilter) {
+          return 0;
+        }
+        const matchIndex = professional.servicos.findIndex(
+          (service) => normalizeServiceName(service.name) === activeServiceFilter,
+        );
+        return matchIndex >= 0 ? matchIndex : 0;
+      })();
+
       professional.servicos.forEach((service, index) => {
         const option = document.createElement("option");
         option.value = service.id || `service-${index}`;
-        option.textContent = `${service.name} — ${service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta")}`;
+        const priceLabel =
+          service.priceLabel || (typeof service.price === "number" ? formatCurrency(service.price) : "Sob consulta");
+        option.textContent = `${service.name} — ${priceLabel}`;
         option.dataset.serviceIndex = String(index);
         requestServiceSelect.appendChild(option);
       });
       requestServiceSelect.disabled = false;
-      requestServiceSelect.selectedIndex = 0;
-      selectedService = professional.servicos[0];
+      const appliedIndex = applySelectedService(preferredIndex, professional);
+      requestServiceSelect.selectedIndex = appliedIndex >= 0 ? appliedIndex : 0;
+      renderRequestServiceOptions(professional, appliedIndex >= 0 ? appliedIndex : 0);
     } else {
       const option = document.createElement("option");
       option.value = "";
@@ -586,40 +1670,81 @@ const populateRequestForm = (professional) => {
         priceLabel: "Sob consulta",
         duration: "",
       };
+      renderRequestServiceOptions(professional, 0);
+      updateSelectedServiceDetails(professional);
+    }
+  } else {
+    renderRequestServiceOptions(professional, 0);
+  }
+
+  if (requestLocationInput && !requestLocationInput.value) {
+    if (currentProfile?.endereco) {
+      requestLocationInput.value = currentProfile.endereco;
+    } else if (customerLocation.label) {
+      requestLocationInput.value = customerLocation.label;
     }
   }
 
-  if (requestPriceInput) {
-    if (selectedService?.priceLabel) {
-      requestPriceInput.value = selectedService.priceLabel;
-    } else if (typeof selectedService?.price === "number") {
-      requestPriceInput.value = formatCurrency(selectedService.price);
-    } else {
-      requestPriceInput.value = "Sob consulta";
-    }
+  if (requestLocationNumberInput && !requestLocationNumberInput.value && searchLocationNumberInput?.value) {
+    requestLocationNumberInput.value = searchLocationNumberInput.value;
+  }
+  if (
+    requestLocationComplementInput &&
+    !requestLocationComplementInput.value &&
+    searchLocationComplementInput?.value
+  ) {
+    requestLocationComplementInput.value = searchLocationComplementInput.value;
   }
 
-  if (requestLocationInput && !requestLocationInput.value && currentProfile?.endereco) {
-    requestLocationInput.value = currentProfile.endereco;
-  }
+  syncRequestLocationFromSearch();
 
   setRequestFeedback("");
   updateRequestSubmitState();
+  updateJourneyProfile(professional);
+  updateJourneySummary();
 };
 
 const selectProfessional = (professional) => {
   selectedProfessional = professional;
-  selectedService = professional.servicos?.[0] || null;
+  if (!professional) {
+    populateRequestForm(null);
+    renderProfessionalResults(filteredProfessionals);
+    updateJourneyProfile(null);
+    updateJourneySummary();
+    return;
+  }
+  if (professional.servicos && professional.servicos.length) {
+    const preferredIndex = activeServiceFilter
+      ? professional.servicos.findIndex((service) => normalizeServiceName(service.name) === activeServiceFilter)
+      : 0;
+    selectedService =
+      professional.servicos[preferredIndex >= 0 ? preferredIndex : 0] || professional.servicos[0] || null;
+  } else {
+    selectedService = null;
+  }
   renderProfessionalResults(filteredProfessionals);
   populateRequestForm(professional);
+  updateJourneyProfile(professional);
+  updateJourneySummary();
 };
 
 const filterProfessionals = (term) => {
   if (!term) {
-    filteredProfessionals = [...professionalsCatalog];
+    currentSearchTerm = "";
+    currentSearchTokens = [];
   } else {
-    const normalized = term.trim().toLowerCase();
-    filteredProfessionals = professionalsCatalog.filter((professional) => {
+    const normalized = term.toLowerCase().trim();
+    currentSearchTerm = normalized;
+    currentSearchTokens = normalized.split(/\s+/).filter(Boolean);
+  }
+  applyProfessionalFilters();
+};
+
+const applyProfessionalFilters = () => {
+  let list = [...professionalsCatalog];
+
+  if (currentSearchTokens.length) {
+    list = list.filter((professional) => {
       const keywords = [
         professional.nome,
         professional.area,
@@ -628,10 +1753,403 @@ const filterProfessionals = (term) => {
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-      return keywords.includes(normalized);
+      return currentSearchTokens.every((token) => keywords.includes(token));
     });
   }
-  renderProfessionalResults(filteredProfessionals);
+
+  if (activeServiceFilter) {
+    list = list.filter((professional) =>
+      professional.servicos?.some((service) => normalizeServiceName(service.name) === activeServiceFilter),
+    );
+  }
+
+  if (customerLocation.coords) {
+    updateProfessionalDistances();
+    if (Number.isFinite(activeRadiusKm)) {
+      list = list.filter((professional) => Number.isFinite(professional.distanceKm) && professional.distanceKm <= activeRadiusKm + 0.05);
+    }
+  } else {
+    professionalsCatalog.forEach((professional) => {
+      professional.distanceKm = null;
+      professional.isOutsideCoverage = false;
+    });
+  }
+
+  list.sort((a, b) => {
+    const distanceA = Number.isFinite(a.distanceKm) ? a.distanceKm : null;
+    const distanceB = Number.isFinite(b.distanceKm) ? b.distanceKm : null;
+    if (distanceA !== null && distanceB !== null) {
+      return distanceA - distanceB;
+    }
+    if (distanceA !== null) {
+      return -1;
+    }
+    if (distanceB !== null) {
+      return 1;
+    }
+    const nameA = getProfessionalDisplayName(a).toLowerCase();
+    const nameB = getProfessionalDisplayName(b).toLowerCase();
+    return nameA.localeCompare(nameB, "pt-BR");
+  });
+
+  filteredProfessionals = list;
+
+  const selectionStillVisible =
+    selectedProfessional && list.some((professional) => professional.id === selectedProfessional.id);
+  if (!selectionStillVisible && selectedProfessional) {
+    selectedProfessional = null;
+    selectedService = null;
+    populateRequestForm(null);
+  }
+
+  renderProfessionalResults(list);
+  updateRequestSubmitState();
+};
+
+const setCustomerLocation = (coords, label = "", options = {}) => {
+  if (!coords || !Number.isFinite(coords.latitude) || !Number.isFinite(coords.longitude)) {
+    customerLocation = { coords: null, label: "" };
+    if (!options.preserveInput && searchLocationInput) {
+      searchLocationInput.value = "";
+    }
+    updateProfessionalDistances();
+    applyProfessionalFilters();
+    updateSearchChips();
+    syncRequestLocationFromSearch();
+    updateJourneySummary();
+    return;
+  }
+
+  const normalized = {
+    latitude: Number(coords.latitude),
+    longitude: Number(coords.longitude),
+  };
+
+  customerLocation = {
+    coords: normalized,
+    label: label || customerLocation.label || "",
+  };
+
+  if (!options.preserveInput && searchLocationInput && label) {
+    searchLocationInput.value = label;
+  }
+
+  updateProfessionalDistances();
+  applyProfessionalFilters();
+  updateSearchChips();
+  syncRequestLocationFromSearch();
+  updateJourneySummary();
+};
+
+const populateServiceFilterOptions = (catalog = []) => {
+  if (!searchServiceSelect) {
+    return;
+  }
+
+  const serviceMap = new Map();
+
+  catalog.forEach((professional) => {
+    (professional.servicos || []).forEach((service) => {
+      const normalizedName = normalizeServiceName(service.name);
+      if (!normalizedName) {
+        return;
+      }
+      const existing = serviceMap.get(normalizedName) || { name: service.name, count: 0 };
+      existing.count += 1;
+      if (!existing.name || existing.name.length < service.name.length) {
+        existing.name = service.name;
+      }
+      serviceMap.set(normalizedName, existing);
+    });
+  });
+
+  const entries = Array.from(serviceMap.entries()).sort((a, b) => {
+    const nameA = a[1].name.toLowerCase();
+    const nameB = b[1].name.toLowerCase();
+    return nameA.localeCompare(nameB, "pt-BR");
+  });
+
+  searchServiceSelect.innerHTML = "";
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "Todos os serviços";
+  searchServiceSelect.appendChild(defaultOption);
+
+  entries.forEach(([value, info]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = info.count > 1 ? `${info.name} (${info.count})` : info.name;
+    searchServiceSelect.appendChild(option);
+  });
+
+  if (activeServiceFilter && !serviceMap.has(activeServiceFilter)) {
+    activeServiceFilter = "";
+  }
+
+  searchServiceSelect.value = activeServiceFilter || "";
+};
+
+const geocodeAddress = async (query, signal) => {
+  try {
+    const googleResults = await runGoogleGeocode({ address: query, region: "BR", language: "pt-BR" });
+    if (googleResults && googleResults.length) {
+      const normalized = normalizeGoogleGeocodeResult(googleResults[0], query);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  } catch (error) {
+    console.warn("Falha ao geocodificar endereço via Google Maps", error);
+  }
+
+  const params = new URLSearchParams({
+    format: "json",
+    addressdetails: "1",
+    limit: "1",
+    q: query,
+    email: NOMINATIM_EMAIL,
+  });
+
+  const fetchOptions = { headers: { "Accept-Language": "pt-BR" } };
+  if (signal) {
+    fetchOptions.signal = signal;
+  }
+
+  const response = await fetch(`${NOMINATIM_SEARCH_URL}?${params.toString()}`, fetchOptions);
+
+  if (!response.ok) {
+    const error = new Error("geocode-failed");
+    error.status = response.status;
+    throw error;
+  }
+
+  const payload = await response.json();
+  if (!Array.isArray(payload) || !payload.length) {
+    return null;
+  }
+
+  const candidate = payload[0];
+  const latitude = Number.parseFloat(candidate.lat);
+  const longitude = Number.parseFloat(candidate.lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  return {
+    coords: { latitude, longitude },
+    label: candidate.display_name || query,
+    raw: candidate,
+  };
+};
+
+const reverseGeocodeCoordinates = async (coords, signal) => {
+  try {
+    const googleResults = await runGoogleGeocode({
+      location: { lat: coords.latitude, lng: coords.longitude },
+      region: "BR",
+      language: "pt-BR",
+    });
+    if (googleResults && googleResults.length) {
+      const normalized = normalizeGoogleGeocodeResult(googleResults[0]);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  } catch (error) {
+    console.warn("Falha ao buscar endereço no Google Maps", error);
+  }
+
+  const params = new URLSearchParams({
+    format: "json",
+    addressdetails: "1",
+    zoom: "16",
+    lat: String(coords.latitude),
+    lon: String(coords.longitude),
+    email: NOMINATIM_EMAIL,
+  });
+
+  const fetchOptions = { headers: { "Accept-Language": "pt-BR" } };
+  if (signal) {
+    fetchOptions.signal = signal;
+  }
+
+  const response = await fetch(`${NOMINATIM_REVERSE_URL}?${params.toString()}`, fetchOptions);
+
+  if (!response.ok) {
+    const error = new Error("reverse-geocode-failed");
+    error.status = response.status;
+    throw error;
+  }
+
+  const payload = await response.json();
+  return {
+    label: payload.display_name || "",
+    raw: payload,
+  };
+};
+
+const geocodeAndApplyLocation = async (query, options = {}) => {
+  const trimmed = (query || "").trim();
+  if (!trimmed) {
+    setCustomerLocation(null);
+    setLocationStatus("Informe um endereço para localizar manicures próximas.");
+    return;
+  }
+
+  if (geocodeAbortController && typeof geocodeAbortController.abort === "function") {
+    geocodeAbortController.abort();
+  }
+
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  geocodeAbortController = controller;
+
+  if (!options.silent) {
+    setLocationStatus("Buscando o endereço informado...");
+    setSearchLoading(true);
+  }
+
+  try {
+    const result = await geocodeAddress(trimmed, controller ? controller.signal : undefined);
+    if (!result) {
+      if (!options.silent) {
+        setLocationStatus("Não encontramos esse endereço. Ajuste os detalhes e tente novamente.", "error");
+      }
+      return;
+    }
+    setCustomerLocation(result.coords, result.label, { preserveInput: options.preserveInput });
+    if (!options.silent) {
+      setLocationStatus("Endereço localizado! Ajustamos a lista de manicures para você.", "success");
+    }
+  } catch (error) {
+    if (error.name === "AbortError") {
+      return;
+    }
+    console.warn("Falha ao geocodificar endereço", error);
+    if (!options.silent) {
+      setLocationStatus("Não foi possível buscar o endereço agora. Tente novamente em instantes.", "error");
+    }
+  } finally {
+    if (geocodeAbortController === controller) {
+      geocodeAbortController = null;
+    }
+    if (!options.silent) {
+      setSearchLoading(false);
+    }
+  }
+};
+
+const handleManualLocationLookup = () => {
+  if (!searchLocationInput) {
+    return;
+  }
+  geocodeAndApplyLocation(searchLocationInput.value);
+};
+
+const handleDetectLocation = () => {
+  if (!navigator.geolocation) {
+    setLocationStatus("Seu navegador não permite detectar a localização automaticamente.", "error");
+    return;
+  }
+
+  if (geocodeAbortController) {
+    geocodeAbortController.abort();
+    geocodeAbortController = null;
+  }
+
+  if (detectLocationButton) {
+    detectLocationButton.disabled = true;
+  }
+  setLocationStatus("Buscando sua localização atual...");
+  setSearchLoading(true);
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      if (detectLocationButton) {
+        detectLocationButton.disabled = false;
+      }
+
+      const coords = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+
+      const fallbackLabel = `Coordenadas aproximadas (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`;
+      setCustomerLocation(coords, fallbackLabel, { preserveInput: true });
+
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      geocodeAbortController = controller;
+
+      try {
+        const result = await reverseGeocodeCoordinates(coords, controller ? controller.signal : undefined);
+        const label = result?.label || fallbackLabel;
+        setCustomerLocation(coords, label);
+        setLocationStatus("Localização atual definida automaticamente!", "success");
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return;
+        }
+        console.warn("Falha ao identificar endereço da localização atual", error);
+        setCustomerLocation(coords, fallbackLabel);
+        setLocationStatus("Localização capturada! Ajuste o endereço se preferir.");
+      } finally {
+        if (geocodeAbortController === controller) {
+          geocodeAbortController = null;
+        }
+        setSearchLoading(false);
+      }
+    },
+    (error) => {
+      if (detectLocationButton) {
+        detectLocationButton.disabled = false;
+      }
+      let message = "Não foi possível obter sua localização.";
+      if (error.code === error.PERMISSION_DENIED) {
+        message = "Precisamos da sua permissão para usar a localização automática.";
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        message = "Não conseguimos acessar o serviço de localização. Tente novamente em instantes.";
+      } else if (error.code === error.TIMEOUT) {
+        message = "A busca pela localização demorou demais. Tente novamente.";
+      }
+      setLocationStatus(message, "error");
+      setSearchLoading(false);
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 0,
+    },
+  );
+};
+
+const attemptPrefillLocationFromProfile = async (profile) => {
+  if (!profile || customerLocation.coords) {
+    return;
+  }
+
+  const existingCoords = extractCoordinates(profile);
+  const profileLabel = profile.endereco || profile.address || profile.endereco_formatado || "Localização cadastrada";
+
+  if (existingCoords && Number.isFinite(existingCoords.latitude) && Number.isFinite(existingCoords.longitude)) {
+    setCustomerLocation(existingCoords, profileLabel);
+    setLocationStatus("Usamos o endereço do seu cadastro para calcular as distâncias.", "success");
+    return;
+  }
+
+  const addressCandidate = (profile.endereco || profile.address || profile.endereco_formatado || "").trim();
+  if (addressCandidate.length < 6) {
+    return;
+  }
+
+  if (searchLocationInput && !searchLocationInput.value) {
+    searchLocationInput.value = addressCandidate;
+  }
+
+  await geocodeAndApplyLocation(addressCandidate, { silent: true });
+  if (customerLocation.coords) {
+    setLocationStatus("Encontramos manicures próximas ao endereço do seu cadastro!", "success");
+  } else {
+    setLocationStatus("Ajuste o endereço acima para encontrar manicures próximas.");
+  }
 };
 
 const loadProfessionalsCatalog = async () => {
@@ -640,6 +2158,7 @@ const loadProfessionalsCatalog = async () => {
   }
 
   setRequestFeedback("");
+  setSearchLoading(true);
 
   let catalog = [];
   try {
@@ -656,6 +2175,8 @@ const loadProfessionalsCatalog = async () => {
         "error",
       );
     }
+  } finally {
+    setSearchLoading(false);
   }
 
   catalog.sort((a, b) => {
@@ -665,25 +2186,24 @@ const loadProfessionalsCatalog = async () => {
   });
 
   professionalsCatalog = catalog;
-  if (!catalog.some((professional) => professional.id === selectedProfessional?.id)) {
-    selectedProfessional = null;
-    selectedService = null;
-    requestFields.forEach((field) => {
-      field.hidden = true;
-    });
-    if (requestFormEmpty) {
-      requestFormEmpty.hidden = false;
+  populateServiceFilterOptions(professionalsCatalog);
+  updateProfessionalDistances();
+
+  if (selectedProfessional) {
+    const updatedSelection = professionalsCatalog.find((professional) => professional.id === selectedProfessional.id);
+    if (updatedSelection) {
+      selectedProfessional = updatedSelection;
+      populateRequestForm(updatedSelection);
+    } else {
+      selectedProfessional = null;
+      selectedService = null;
+      populateRequestForm(null);
     }
-    if (requestProfessionalInput) {
-      requestProfessionalInput.value = "";
-    }
-    if (requestPriceInput) {
-      requestPriceInput.value = "";
-    }
+  } else {
+    populateRequestForm(null);
   }
-  filteredProfessionals = [...catalog];
-  renderProfessionalResults(filteredProfessionals);
-  updateRequestSubmitState();
+
+  applyProfessionalFilters();
 };
 
 const handleServiceSelectionChange = () => {
@@ -692,24 +2212,17 @@ const handleServiceSelectionChange = () => {
   }
   const selectedOption = requestServiceSelect.selectedOptions?.[0];
   const index = selectedOption ? Number.parseInt(selectedOption.dataset.serviceIndex || "-1", 10) : -1;
-  if (!Number.isNaN(index) && selectedProfessional.servicos?.[index]) {
-    selectedService = selectedProfessional.servicos[index];
-  }
-
-  if (requestPriceInput) {
-    if (selectedService?.priceLabel) {
-      requestPriceInput.value = selectedService.priceLabel;
-    } else if (typeof selectedService?.price === "number") {
-      requestPriceInput.value = formatCurrency(selectedService.price);
-    } else {
-      requestPriceInput.value = "Sob consulta";
-    }
-  }
-
-  updateRequestSubmitState();
+  applySelectedService(index, selectedProfessional);
 };
 
-const buildRequestPayload = (requestId, location, notes) => {
+const buildRequestPayload = (
+  requestId,
+  location,
+  notes,
+  locationStreet,
+  locationNumber,
+  locationComplement,
+) => {
   const professionalCollection = selectedProfessional.collection || "profissionais";
   const clientCollection = currentProfile.collection || PROFILE_COLLECTIONS[0];
   const priceLabel =
@@ -734,6 +2247,9 @@ const buildRequestPayload = (requestId, location, notes) => {
     date: requestDateInput.value,
     time: requestTimeInput.value,
     location,
+    locationStreet: locationStreet || location,
+    locationNumber: locationNumber || "",
+    locationComplement: locationComplement || "",
     note: notes,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -755,7 +2271,24 @@ const handleRequestSubmission = async (event) => {
     return;
   }
 
-  const location = (requestLocationInput?.value || currentProfile?.endereco || "").trim();
+  const locationStreet = (
+    requestLocationInput?.value ||
+    searchLocationInput?.value ||
+    customerLocation.label ||
+    currentProfile?.endereco ||
+    ""
+  ).trim();
+  const locationNumber = (
+    requestLocationNumberInput?.value ||
+    searchLocationNumberInput?.value ||
+    ""
+  ).trim();
+  const locationComplement = (
+    requestLocationComplementInput?.value ||
+    searchLocationComplementInput?.value ||
+    ""
+  ).trim();
+  const location = buildFullLocationLabel(locationStreet, locationNumber, locationComplement) || locationStreet;
   const notes = (requestNotesInput?.value || "").trim();
 
   if (requestSubmitButton) {
@@ -773,7 +2306,14 @@ const handleRequestSubmission = async (event) => {
     const clientRef = doc(db, clientCollection, currentProfile.id);
     const clientPendingRef = doc(collection(clientRef, appointmentCollections.pending), requestId);
 
-    const payload = buildRequestPayload(requestId, location, notes);
+    const payload = buildRequestPayload(
+      requestId,
+      location,
+      notes,
+      locationStreet,
+      locationNumber,
+      locationComplement,
+    );
 
     await Promise.all([
       setDoc(professionalPendingRef, payload),
@@ -787,6 +2327,7 @@ const handleRequestSubmission = async (event) => {
     }
     if (requestTimeInput) {
       requestTimeInput.value = "";
+      resetRequestTimeSelect();
     }
     if (requestNotesInput) {
       requestNotesInput.value = "";
@@ -815,12 +2356,95 @@ professionalSearchInput?.addEventListener("input", (event) => {
   filterProfessionals(event.target.value);
 });
 
+searchLocationInput?.addEventListener("input", () => {
+  syncRequestLocationFromSearch();
+});
+searchLocationInput?.addEventListener("change", handleManualLocationLookup);
+searchLocationInput?.addEventListener("search", handleManualLocationLookup);
+searchLocationInput?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    handleManualLocationLookup();
+  }
+});
+
+const handleSearchExtrasInput = () => {
+  syncRequestLocationFromSearch();
+};
+
+searchLocationNumberInput?.addEventListener("input", handleSearchExtrasInput);
+searchLocationComplementInput?.addEventListener("input", handleSearchExtrasInput);
+
+detectLocationButton?.addEventListener("click", handleDetectLocation);
+
+searchRadiusSelect?.addEventListener("change", (event) => {
+  const nextRadius = Number.parseFloat(event.target.value);
+  if (Number.isFinite(nextRadius)) {
+    activeRadiusKm = nextRadius;
+  }
+  applyProfessionalFilters();
+});
+
+searchServiceSelect?.addEventListener("change", (event) => {
+  const value = event.target.value;
+  activeServiceFilter = value ? value : "";
+  if (
+    selectedProfessional &&
+    activeServiceFilter &&
+    !selectedProfessional.servicos?.some((service) => normalizeServiceName(service.name) === activeServiceFilter)
+  ) {
+    selectProfessional(null);
+  } else if (selectedProfessional) {
+    if (activeServiceFilter) {
+      const matchIndex = selectedProfessional.servicos?.findIndex(
+        (service) => normalizeServiceName(service.name) === activeServiceFilter,
+      );
+      if (typeof matchIndex === "number" && matchIndex >= 0) {
+        selectedService = selectedProfessional.servicos?.[matchIndex] || selectedService;
+      }
+    }
+    populateRequestForm(selectedProfessional);
+  }
+  applyProfessionalFilters();
+});
+
 requestServiceSelect?.addEventListener("change", handleServiceSelectionChange);
 requestDateInput?.addEventListener("change", updateRequestSubmitState);
 requestTimeInput?.addEventListener("change", updateRequestSubmitState);
-requestLocationInput?.addEventListener("input", () => setRequestFeedback(""));
+requestDatePickerButton?.addEventListener("click", (event) => {
+  event.preventDefault();
+  openRequestDatePicker();
+});
+requestLocationInput?.addEventListener("input", (event) => {
+  markRequestFieldModified(event.target);
+  setRequestFeedback("");
+  updateJourneySummary();
+});
+requestLocationNumberInput?.addEventListener("input", (event) => {
+  markRequestFieldModified(event.target);
+  setRequestFeedback("");
+  updateJourneySummary();
+});
+requestLocationComplementInput?.addEventListener("input", (event) => {
+  markRequestFieldModified(event.target);
+  setRequestFeedback("");
+  updateJourneySummary();
+});
 requestNotesInput?.addEventListener("input", () => setRequestFeedback(""));
 requestForm?.addEventListener("submit", handleRequestSubmission);
+
+journeySummarySubmit?.addEventListener("click", () => {
+  if (!requestForm) return;
+  if (typeof requestForm.requestSubmit === "function") {
+    requestForm.requestSubmit();
+  } else {
+    requestForm.submit();
+  }
+});
+
+syncRequestLocationFromSearch();
+updateSearchChips();
+updateJourneySummary();
 
 const updateMetrics = (pending, confirmed, cancelled) => {
   metricPending.textContent = pending.length;
@@ -954,7 +2578,7 @@ const collectProfessionalServices = (profile) => {
     });
   });
 
-  return services;
+  return sortServicesByOrder(services);
 };
 
 const resolveStatusValue = (data) => {
@@ -984,6 +2608,20 @@ const getStoredSession = () => {
     console.warn("Não foi possível ler a sessão salva", error);
     return null;
   }
+};
+
+const buildProfileFromSession = (session, user) => {
+  if (!session) return null;
+  return {
+    id: session.id,
+    email: session.email || user?.email || "",
+    nome: session.nome || session.name || user?.displayName || "cliente",
+    telefone: session.telefone || session.phone || "",
+    endereco: session.endereco || session.address || "",
+    collection: session.collection || PROFILE_COLLECTIONS[0],
+    status: session.status || "",
+    sessionOnly: true,
+  };
 };
 
 const persistSession = (profile, user) => {
@@ -1161,10 +2799,18 @@ const updateProfileDisplay = (profile, fallbackEmail = "") => {
   profileNameElements.forEach((element) => {
     element.textContent = displayName;
   });
-  profileDisplay.textContent = displayName;
-  profileEmail.textContent = emailForDisplay || "—";
-  profilePhone.textContent = phoneForDisplay || "Atualize seu telefone";
-  profileAddress.textContent = addressForDisplay || "Atualize seu endereço preferido";
+  if (profileDisplay) {
+    profileDisplay.textContent = displayName;
+  }
+  if (profileEmail) {
+    profileEmail.textContent = emailForDisplay || "—";
+  }
+  if (profilePhone) {
+    profilePhone.textContent = phoneForDisplay || "Atualize seu telefone";
+  }
+  if (profileAddress) {
+    profileAddress.textContent = addressForDisplay || "Atualize seu endereço preferido";
+  }
 };
 
 const hydrateDashboard = async (profile, fallbackEmail = "") => {
@@ -1179,6 +2825,7 @@ const hydrateDashboard = async (profile, fallbackEmail = "") => {
 
   updateProfileDisplay(currentProfile, fallbackEmail);
   await loadProfessionalsCatalog();
+  await attemptPrefillLocationFromProfile(currentProfile);
   return loadAppointmentsForProfile(currentProfile);
 };
 
@@ -1205,19 +2852,46 @@ const handleAuthError = (error) => {
   }
 };
 
-const ensureDashboardForUser = async (user, emailHint = "") => {
+const ensureDashboardForUser = async (user, emailHint = "", session = null) => {
   dashboard.hidden = false;
   setStatus("Carregando seu painel...");
 
-  const profile = await resolveProfileForUser(user, emailHint);
+  let profile = null;
+  let wasRecoveredFromSession = false;
+
+  try {
+    profile = await resolveProfileForUser(user, emailHint);
+  } catch (error) {
+    const fallbackProfile = buildProfileFromSession(session, user);
+    if (fallbackProfile && (error.code === "profile-not-found" || error.message?.includes("profile-not-found"))) {
+      profile = fallbackProfile;
+      wasRecoveredFromSession = true;
+    } else {
+      throw error;
+    }
+  }
+
+  if (!profile && session) {
+    profile = buildProfileFromSession(session, user);
+    wasRecoveredFromSession = Boolean(profile);
+  }
+
+  if (!profile) {
+    const missing = new Error("profile-not-found");
+    missing.code = "profile-not-found";
+    throw missing;
+  }
+
   persistSession(profile, user);
-  const { permissionIssue } = await hydrateDashboard(profile, emailHint || user.email || "");
+  const { permissionIssue } = await hydrateDashboard(profile, emailHint || user.email || session?.email || "");
 
   if (permissionIssue) {
     setStatus(
       "Seu acesso foi confirmado, mas não conseguimos carregar todas as informações da agenda agora.",
       "error",
     );
+  } else if (wasRecoveredFromSession || profile.sessionOnly) {
+    setStatus("Carregamos seus dados básicos. Atualize seu cadastro para sincronizar tudo.", "success");
   } else {
     setStatus("Bem-vinda de volta!", "success");
   }
@@ -1245,22 +2919,41 @@ signOutButton?.addEventListener("click", async () => {
 });
 
 onAuthStateChanged(auth, async (user) => {
+  const session = getStoredSession();
+
   if (!user) {
+    if (session) {
+      dashboard.hidden = false;
+      resetDashboard();
+      const fallbackProfile = buildProfileFromSession(session, null) || session;
+      updateProfileDisplay(fallbackProfile, session.email || "");
+      setStatus("Sua sessão expirou. Entre novamente para sincronizar o portal.", "error");
+      return;
+    }
+
     clearSession();
     dashboard.hidden = true;
     resetDashboard();
     setStatus("");
-    window.location.replace("/cliente/index.html");
+    window.location.replace("/cliente/index.html?loggedOut=1");
     return;
   }
 
   try {
-    const session = getStoredSession();
     const emailHint = session?.email || user.email || "";
-    await ensureDashboardForUser(user, emailHint);
+    await ensureDashboardForUser(user, emailHint, session);
   } catch (error) {
     console.error("Não foi possível carregar o painel autenticado", error);
     handleAuthError(error);
+
+    const fallbackProfile = buildProfileFromSession(session, user);
+    if (fallbackProfile) {
+      persistSession(fallbackProfile, user);
+      await hydrateDashboard(fallbackProfile, fallbackProfile.email || fallbackProfile.nome || "");
+      setStatus("Carregamos seu portal com dados salvos. Entre novamente para sincronizar tudo.", "error");
+      return;
+    }
+
     try {
       await signOut(auth);
     } catch (signOutError) {

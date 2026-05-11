@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <script src="/assets/js/force-https.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auth - NailNow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: #f6f7fb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(69, 39, 160, 0.12);
+        padding: 2rem 2.5rem;
+        max-width: 420px;
+        width: 100%;
+      }
+      h2 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        font-size: 1.75rem;
+        color: #4527a0;
+        text-align: center;
+      }
+      label,
+      input,
+      button {
+        display: block;
+        width: 100%;
+      }
+      input {
+        margin-bottom: 1rem;
+        padding: 0.85rem 1rem;
+        border-radius: 12px;
+        border: 1px solid #d7d6e6;
+        font-size: 1rem;
+      }
+      input:focus {
+        outline: none;
+        border-color: #4527a0;
+        box-shadow: 0 0 0 3px rgba(69, 39, 160, 0.15);
+      }
+      .radio-group {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .radio-group label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.95rem;
+        color: #2f2d3d;
+      }
+      .radio-group input {
+        width: auto;
+        margin: 0;
+      }
+      button {
+        background: #4527a0;
+        color: #ffffff;
+        border: none;
+        border-radius: 999px;
+        padding: 0.9rem 1rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(69, 39, 160, 0.18);
+      }
+      button:active {
+        transform: translateY(0);
+        box-shadow: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h2>Criar conta</h2>
+      <input id="nome" placeholder="Nome" required />
+      <input id="email" placeholder="E-mail" required />
+      <input id="senha" placeholder="Senha" type="password" required />
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="tipo" value="cliente" checked />
+          Cliente
+        </label>
+        <label>
+          <input type="radio" name="tipo" value="profissional" />
+          Profissional
+        </label>
+      </div>
+      <button id="botaoCadastrar">Cadastrar</button>
+    </main>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import {
+        getAuth,
+        createUserWithEmailAndPassword,
+        signInWithEmailAndPassword,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        serverTimestamp,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCFLccZ3khmT8uqoye6n6kfbqMFRzeXybE",
+        authDomain: "nailnow-7546c.firebaseapp.com",
+        projectId: "nailnow-7546c",
+        storageBucket: "nailnow-7546c.firebasestorage.app",
+        messagingSenderId: "413820353687",
+        appId: "1:413820353687:web:ad92108dbea59f7749fdd2",
+        measurementId: "G-2YEGPEG0E1",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      async function registrarUsuario(nome, email, senha, role) {
+        try {
+          const senhaLimpa = (senha ?? "").trim();
+          const cred = await createUserWithEmailAndPassword(auth, email, senhaLimpa);
+          const uid = cred.user.uid;
+
+          await setDoc(doc(db, role, uid), {
+            authUid: uid,
+            name: nome,
+            email,
+            senha: senhaLimpa,
+            senhaAtualizadaEm: serverTimestamp(),
+            role,
+            createdAt: serverTimestamp(),
+            status: "ativo",
+          });
+
+          alert("Usuário criado com sucesso!");
+        } catch (err) {
+          alert("Erro: " + err.message);
+        }
+      }
+
+      document
+        .getElementById("botaoCadastrar")
+        .addEventListener("click", async () => {
+          const nome = document.getElementById("nome").value;
+          const email = document.getElementById("email").value;
+          const senha = document.getElementById("senha").value;
+          const role = document.querySelector('input[name="tipo"]:checked').value;
+          await registrarUsuario(nome, email, senha, role);
+        });
+    </script>
+    <a
+    class="whatsapp-widget"
+    href="https://wa.me/555191518097"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Fale com a NailNow pelo WhatsApp"
+  >
+    <span class="whatsapp-widget__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+        <path
+          d="M12 2a10 10 0 0 0-8.66 15l-1.2 4.4 4.5-1.18A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-2.67.7.72-2.6-.2-.31A8.2 8.2 0 1 1 12 20.2Zm4.5-6.16c-.24-.12-1.4-.7-1.62-.77-.22-.08-.38-.12-.54.12-.16.23-.62.77-.76.93-.14.15-.28.17-.52.06-.24-.12-1-.37-1.9-1.17-.7-.62-1.18-1.38-1.32-1.62-.14-.23-.02-.36.1-.48.1-.1.24-.27.36-.4.12-.14.16-.23.24-.39.08-.15.04-.29-.02-.4-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.4-.54-.4h-.46c-.16 0-.4.06-.6.29-.2.23-.8.78-.8 1.9s.82 2.2.94 2.35c.12.16 1.62 2.48 3.93 3.38.55.24.98.38 1.31.48.55.18 1.05.15 1.44.09.44-.07 1.4-.57 1.6-1.13.2-.56.2-1.03.14-1.13-.06-.1-.22-.16-.46-.28Z"
+        />
+      </svg>
+    </span>
+    <span class="whatsapp-widget__text">WhatsApp</span>
+  </a>
+</body>
+</html>

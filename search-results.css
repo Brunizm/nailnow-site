@@ -1,0 +1,68 @@
+
+.search-results {
+    margin-top: 2rem;
+}
+
+.search-results__title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.manicurist-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.manicurist-card {
+    background-color: var(--surface);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.manicurist-card__image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+}
+
+.manicurist-card__info {
+    padding: 1rem;
+}
+
+.manicurist-card__name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.manicurist-card__rating {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.manicurist-card__distance {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.service-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.service-card {
+    background-color: var(--pink-secondary);
+    color: var(--pink-primary);
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
