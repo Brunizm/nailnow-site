@@ -178,17 +178,15 @@
       };
 
       const openApp = () => {
-        window.location = "nailnow://email-confirmed";
-        // Fallback: if app doesn't open in 1.5s, show web button
-        setTimeout(() => {
-          actionsEl.innerHTML = "";
-          const btn = document.createElement("a");
-          btn.className = "auth-link-button auth-link-button--primary";
-          btn.href = "nailnow://email-confirmed";
-          btn.textContent = "Abrir app NailNow";
-          actionsEl.appendChild(btn);
-          actionsEl.hidden = false;
-        }, 1500);
+        // iOS Safari blocks window.location for custom schemes without user gesture.
+        // Show a clickable button instead — user tap triggers the deep link reliably.
+        actionsEl.innerHTML = "";
+        const btn = document.createElement("a");
+        btn.className = "auth-link-button auth-link-button--primary";
+        btn.href = "nailnow://email-confirmed";
+        btn.textContent = "Abrir app NailNow";
+        actionsEl.appendChild(btn);
+        actionsEl.hidden = false;
       };
 
       // New flow: ?code= param → calls backend directly
@@ -204,8 +202,8 @@
           });
 
           if (response.ok || response.status === 204) {
-            setStatus("success", "Cadastro confirmado! Abrindo o app...");
-            detailsEl.textContent = "Sua conta está ativa. Você será redirecionada para o app NailNow automaticamente.";
+            setStatus("success", "Cadastro confirmado com sucesso!");
+            detailsEl.textContent = "Sua conta está ativa. Toque no botão abaixo para abrir o app NailNow.";
             openApp();
             return;
           }
