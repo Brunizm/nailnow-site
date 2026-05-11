@@ -154,20 +154,12 @@
       const detailsEl = document.getElementById("confirmation-details");
       const actionsEl = document.getElementById("confirmation-actions");
       const params = new URLSearchParams(window.location.search);
+      const code = params.get("code") || "";
       const profile = params.get("profile") || "";
       const token = params.get("token") || "";
       const APP_URL = "https://www.nailnow.app";
+      const API_URL = "https://nailnow.vercel.app";
       const FUNCTION_URL = "https://southamerica-east1-nailnow-site.cloudfunctions.net/verifySignupConfirmation";
-
-      const ERROR_MESSAGES = {
-        "missing-parameters": "O link de confirmação está incompleto. Solicite um novo e-mail de confirmação.",
-        "invalid-profile-path": "Não identificamos qual cadastro deve ser confirmado. Peça um novo link.",
-        "unsupported-profile": "Este link não corresponde a um cadastro de cliente ou profissional válido.",
-        "profile-not-found": "Não encontramos o cadastro relacionado a este link. Verifique se já foi removido ou cadastre-se novamente.",
-        "confirmation-missing": "Ainda não geramos um token de confirmação para este perfil. Aguarde alguns minutos e tente novamente.",
-        "invalid-token": "Este link de confirmação já foi utilizado ou está incorreto. Solicite um novo e-mail de confirmação.",
-        "internal-error": "Não foi possível validar o cadastro agora. Tente novamente em instantes.",
-      };
 
       const setStatus = (type, message) => {
         statusEl.textContent = message;
@@ -185,13 +177,50 @@
         actionsEl.hidden = false;
       };
 
-      const confirmSignup = async () => {
-        if (!profile || !token) {
-          setStatus("error", "Link de confirmação inválido. Solicite um novo e-mail ou fale com o suporte NailNow.");
-          detailsEl.textContent = "Certifique-se de abrir o link completo recebido no e-mail.";
-          return;
-        }
+      // New flow: ?code= param → calls backend directly
+      const confirmWithCode = async () => {
+        setStatus("info", "Confirmando seu cadastro...");
+        detailsEl.textContent = "Estamos validando o código enviado pelo seu e-mail.";
 
+        try {
+          const response = await fetch(`${API_URL}/v1/users/activate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code }),
+          });
+
+          if (response.ok || response.status === 204) {
+            setStatus("success", "Cadastro confirmado com sucesso!");
+            detailsEl.textContent = "Agora você já pode acessar o portal e aproveitar todos os recursos da NailNow.";
+            showActions(`${APP_URL}/cliente/index.html`, "cliente");
+            return;
+          }
+
+          const payload = await response.json().catch(() => ({}));
+          const msg = Array.isArray(payload?.message)
+            ? payload.message[0]
+            : (payload?.message || "");
+
+          if (msg.toLowerCase().includes("expirado")) {
+            setStatus("error", "Este link de confirmação expirou. Solicite um novo e-mail de confirmação no app.");
+            detailsEl.textContent = "Acesse o app NailNow, faça login e solicite o reenvio do e-mail de ativação.";
+          } else if (msg.toLowerCase().includes("ativada")) {
+            setStatus("success", "Cadastro já confirmado.");
+            detailsEl.textContent = "Sua conta já estava ativa. Faça login no portal para continuar.";
+            showActions(`${APP_URL}/cliente/index.html`, "cliente");
+          } else {
+            setStatus("error", "Não foi possível confirmar seu cadastro. Tente novamente ou fale com o suporte.");
+            detailsEl.textContent = "Se o problema persistir, envie um e-mail para suporte@nailnow.app.";
+          }
+        } catch (error) {
+          console.error("Falha ao confirmar cadastro", error);
+          setStatus("error", "Não foi possível validar seu cadastro agora. Tente novamente em instantes.");
+          detailsEl.textContent = "Caso o erro continue, fale com suporte@nailnow.app informando que o link de confirmação falhou.";
+        }
+      };
+
+      // Legacy flow: ?profile=&token= → calls Cloud Function
+      const confirmWithToken = async () => {
         setStatus("info", "Confirmando seu cadastro...");
         detailsEl.textContent = "Estamos validando o token enviado pelo seu e-mail.";
 
@@ -209,38 +238,29 @@
               (payload.role === "profissional"
                 ? `${APP_URL}/profissional/index.html`
                 : `${APP_URL}/cliente/index.html`);
-
-            if (payload.status === "confirmed") {
-              setStatus("success", "Cadastro confirmado com sucesso!" );
-              detailsEl.textContent = "Agora você já pode acessar o portal e aproveitar todos os recursos da NailNow.";
-              showActions(loginUrl, payload.role);
-              return;
-            }
-
-            if (payload.status === "already-confirmed") {
-              setStatus("success", "Cadastro já estava confirmado." );
-              detailsEl.textContent = "Você já tem acesso liberado. Se preferir, faça login novamente pelo portal.";
-              showActions(loginUrl, payload.role);
-              return;
-            }
-
-            setStatus("success", "Confirmação concluída." );
-            detailsEl.textContent = "Tudo certo! Caso não consiga acessar o portal, fale com o suporte NailNow.";
-            showActions(loginUrl, payload.role);
+            setStatus("success", payload.status === "already-confirmed" ? "Cadastro já estava confirmado." : "Cadastro confirmado com sucesso!");
+            detailsEl.textContent = "Agora você já pode acessar o portal e aproveitar todos os recursos da NailNow.";
+            showActions(loginUrl, payload.role || "cliente");
             return;
           }
 
-          const errorKey = payload?.error || "internal-error";
-          setStatus("error", ERROR_MESSAGES[errorKey] || ERROR_MESSAGES["internal-error"]);
-          detailsEl.textContent = "Se o problema persistir, envie um e-mail para suporte@nailnow.app com este código: " + errorKey;
+          setStatus("error", "Não foi possível confirmar seu cadastro. Tente novamente ou fale com o suporte.");
+          detailsEl.textContent = "Se o problema persistir, envie um e-mail para suporte@nailnow.app.";
         } catch (error) {
           console.error("Falha ao confirmar cadastro", error);
-          setStatus("error", "Não foi possível validar seu cadastro agora. Tente novamente em instantes." );
+          setStatus("error", "Não foi possível validar seu cadastro agora. Tente novamente em instantes.");
           detailsEl.textContent = "Caso o erro continue, fale com suporte@nailnow.app informando que o link de confirmação falhou.";
         }
       };
 
-      confirmSignup();
+      if (code) {
+        confirmWithCode();
+      } else if (profile && token) {
+        confirmWithToken();
+      } else {
+        setStatus("error", "Link de confirmação inválido. Solicite um novo e-mail ou fale com o suporte NailNow.");
+        detailsEl.textContent = "Certifique-se de abrir o link completo recebido no e-mail.";
+      }
     </script>
   </body>
 </html>
