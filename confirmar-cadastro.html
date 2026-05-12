@@ -178,18 +178,23 @@
       };
 
       const openApp = (token) => {
-        // iOS Safari blocks window.location for custom schemes without user gesture.
-        // Show a clickable button — user tap triggers the deep link reliably.
         const deepLink = token
           ? `nailnow://email-confirmed?token=${encodeURIComponent(token)}`
           : "nailnow://email-confirmed";
+
+        // Show button immediately — user needs to see it before we try the redirect
         actionsEl.innerHTML = "";
         const btn = document.createElement("a");
         btn.className = "auth-link-button auth-link-button--primary";
         btn.href = deepLink;
-        btn.textContent = "Abrir app NailNow";
+        btn.textContent = "Toque aqui para entrar no app NailNow";
+        btn.style.cssText = "font-size:1.1em;padding:18px 32px;display:block;text-align:center;";
         actionsEl.appendChild(btn);
         actionsEl.hidden = false;
+
+        // Also try to redirect automatically — works in some browsers/versions
+        try { window.location.href = deepLink; } catch (_) {}
+        setTimeout(() => { try { window.location.href = deepLink; } catch (_) {} }, 300);
       };
 
       // New flow: ?code= param → calls backend directly
