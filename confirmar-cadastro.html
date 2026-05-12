@@ -177,13 +177,16 @@
         actionsEl.hidden = false;
       };
 
-      const openApp = () => {
+      const openApp = (token) => {
         // iOS Safari blocks window.location for custom schemes without user gesture.
-        // Show a clickable button instead — user tap triggers the deep link reliably.
+        // Show a clickable button — user tap triggers the deep link reliably.
+        const deepLink = token
+          ? `nailnow://email-confirmed?token=${encodeURIComponent(token)}`
+          : "nailnow://email-confirmed";
         actionsEl.innerHTML = "";
         const btn = document.createElement("a");
         btn.className = "auth-link-button auth-link-button--primary";
-        btn.href = "nailnow://email-confirmed";
+        btn.href = deepLink;
         btn.textContent = "Abrir app NailNow";
         actionsEl.appendChild(btn);
         actionsEl.hidden = false;
@@ -202,9 +205,10 @@
           });
 
           if (response.ok || response.status === 204) {
+            const result = await response.json().catch(() => ({}));
             setStatus("success", "Cadastro confirmado com sucesso!");
             detailsEl.textContent = "Sua conta está ativa. Toque no botão abaixo para abrir o app NailNow.";
-            openApp();
+            openApp(result?.token ?? null);
             return;
           }
 
