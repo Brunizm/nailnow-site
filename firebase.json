@@ -1,4 +1,27 @@
 {
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "functions/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/.well-known/apple-app-site-association",
+        "destination": "/apple-app-site-association.json"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/apple-app-site-association.json",
+        "headers": [
+          { "key": "Content-Type", "value": "application/json" }
+        ]
+      }
+    ]
+  },
   "functions": [
     {
       "codebase": "default",

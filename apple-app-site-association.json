@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "B6JV9XF578.br.com.nailnow.nailnow",
+        "paths": [
+          "/confirmar-cadastro.html",
+          "/app-cliente.html",
+          "/app-profissional.html"
+        ]
+      }
+    ]
+  }
+}
