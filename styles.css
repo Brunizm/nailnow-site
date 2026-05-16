@@ -44094,3 +44094,136 @@ body.portal .request-toolbar {
     display: none;
   }
 }
+
+.nn-hero {
+  padding: 120px 28px 100px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+}
+
+.nn-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffe3f1;
+  color: #814d68;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 32px;
+}
+
+.nn-hero__badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f45ca2;
+}
+
+.nn-hero__title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 80px;
+  line-height: 1;
+  color: #814d68;
+  margin: 0 0 24px;
+  font-weight: 400;
+  letter-spacing: -2.5px;
+}
+
+.nn-hero__title em {
+  color: #f45ca2;
+  font-style: italic;
+}
+
+.nn-hero__subtitle {
+  font-size: 18px;
+  line-height: 1.6;
+  color: #814d68;
+  margin: 0 auto 48px;
+  max-width: 520px;
+}
+
+.nn-hero__ctas {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.nn-store {
+  background: #814d68;
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.nn-store__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.nn-store small {
+  display: block;
+  font-size: 10px;
+  opacity: 0.8;
+  font-weight: 400;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.nn-store strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.nn-hero__trust {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  font-size: 13px;
+  color: #814d68;
+  flex-wrap: wrap;
+}
+
+.nn-hero__trust-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .nn-hero {
+    padding: 64px 20px 56px;
+  }
+
+  .nn-hero__title {
+    font-size: 48px;
+    letter-spacing: -1.5px;
+  }
+
+  .nn-hero__subtitle {
+    font-size: 16px;
+  }
+
+  .nn-hero__ctas {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .nn-hero__trust {
+    gap: 16px;
+    flex-direction: column;
+  }
+}
