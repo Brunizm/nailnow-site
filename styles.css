@@ -40308,16 +40308,16 @@ main {
 
 .hero--home-fullpage {
   position: relative;
-  min-height: calc(100vh - 150px);
+  min-height: clamp(560px, 78vh, 760px);
   width: min(100%, 1280px);
   border-radius: 0;
-  padding: clamp(2.5rem, 6vw, 5rem) clamp(1.2rem, 4vw, 3rem);
+  padding: clamp(2rem, 5vw, 3.25rem) clamp(1.2rem, 4vw, 3rem);
   display: grid;
   place-items: center;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(24, 15, 20, 0.52), rgba(24, 15, 20, 0.58)),
-    url("assets/nail1.png") center / cover no-repeat;
+    linear-gradient(180deg, rgba(24, 15, 20, 0.42), rgba(24, 15, 20, 0.48)),
+    url("assets/nail1.png") center 22% / cover no-repeat;
   box-shadow: none;
   border: 0;
 }
@@ -40333,7 +40333,7 @@ main {
 .hero--home.hero--home-fullpage .hero-copy {
   position: relative;
   z-index: 1;
-  width: min(100%, 880px);
+  width: min(100%, 1080px);
   text-align: center;
   align-items: center;
 }
@@ -44096,9 +44096,14 @@ body.portal .request-toolbar {
 }
 
 .nn-hero {
-  padding: 120px 28px 100px;
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: clamp(2.5rem, 5vw, 4rem) clamp(1.5rem, 3vw, 3rem);
   text-align: center;
   font-family: 'Inter', sans-serif;
+  background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.5);
 }
 
 .nn-hero__badge {
@@ -44123,7 +44128,7 @@ body.portal .request-toolbar {
 
 .nn-hero__title {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 80px;
+  font-size: clamp(3.6rem, 8vw, 6rem);
   line-height: 1;
   color: #814d68;
   margin: 0 0 24px;
@@ -44205,7 +44210,9 @@ body.portal .request-toolbar {
 
 @media (max-width: 640px) {
   .nn-hero {
-    padding: 64px 20px 56px;
+    width: min(100%, 94vw);
+    padding: 2rem 1.1rem;
+    border-radius: 20px;
   }
 
   .nn-hero__title {
