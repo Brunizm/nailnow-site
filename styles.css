@@ -40883,6 +40883,63 @@ main {
   box-shadow: var(--shadow-md);
 }
 
+
+.booking-card--store {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.booking-card--store:hover,
+.booking-card--store:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.booking-card__qr-placeholder {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: #111;
+  flex-shrink: 0;
+}
+
+.booking-card__store-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.booking-card__store-copy strong {
+  font-size: 1.05rem;
+  color: #111;
+}
+
+.booking-card__store-copy span {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.booking-card__store-arrow {
+  margin-left: auto;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #111;
+}
+
+@media (max-width: 540px) {
+  .booking-card--store {
+    align-items: flex-start;
+  }
+
+  .booking-card__store-arrow {
+    font-size: 1.3rem;
+  }
+}
+
 .booking-card__row {
   display: grid;
   gap: clamp(0.85rem, 2.5vw, 1.25rem);
