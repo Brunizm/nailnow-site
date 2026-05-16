@@ -40883,6 +40883,35 @@ main {
   box-shadow: var(--shadow-md);
 }
 
+
+.booking-card--store {
+  gap: 0.85rem;
+}
+
+.booking-card__store-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.booking-card__store-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 140px;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 92, 162, 0.35);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--pink-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.booking-card__store-link[aria-disabled='true'] {
+  cursor: default;
+}
+
 .booking-card__row {
   display: grid;
   gap: clamp(0.85rem, 2.5vw, 1.25rem);
