@@ -40308,16 +40308,16 @@ main {
 
 .hero--home-fullpage {
   position: relative;
-  min-height: calc(100vh - 150px);
+  min-height: clamp(560px, 78vh, 760px);
   width: min(100%, 1280px);
   border-radius: 0;
-  padding: clamp(2.5rem, 6vw, 5rem) clamp(1.2rem, 4vw, 3rem);
+  padding: clamp(2rem, 5vw, 3.25rem) clamp(1.2rem, 4vw, 3rem);
   display: grid;
   place-items: center;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(24, 15, 20, 0.52), rgba(24, 15, 20, 0.58)),
-    url("assets/nail1.png") center / cover no-repeat;
+    linear-gradient(180deg, rgba(24, 15, 20, 0.42), rgba(24, 15, 20, 0.48)),
+    url("assets/nail1.png") center 22% / cover no-repeat;
   box-shadow: none;
   border: 0;
 }
@@ -40333,7 +40333,7 @@ main {
 .hero--home.hero--home-fullpage .hero-copy {
   position: relative;
   z-index: 1;
-  width: min(100%, 880px);
+  width: min(100%, 1080px);
   text-align: center;
   align-items: center;
 }
@@ -40881,6 +40881,63 @@ main {
   margin-top: 0;
   width: min(100%, 520px);
   box-shadow: var(--shadow-md);
+}
+
+
+.booking-card--store {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.booking-card--store:hover,
+.booking-card--store:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.booking-card__qr-placeholder {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: #111;
+  flex-shrink: 0;
+}
+
+.booking-card__store-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.booking-card__store-copy strong {
+  font-size: 1.05rem;
+  color: #111;
+}
+
+.booking-card__store-copy span {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.booking-card__store-arrow {
+  margin-left: auto;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #111;
+}
+
+@media (max-width: 540px) {
+  .booking-card--store {
+    align-items: flex-start;
+  }
+
+  .booking-card__store-arrow {
+    font-size: 1.3rem;
+  }
 }
 
 .booking-card__row {
@@ -44035,5 +44092,145 @@ body.portal .request-toolbar {
 
   .whatsapp-widget__text {
     display: none;
+  }
+}
+
+.nn-hero {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: clamp(2.5rem, 5vw, 4rem) clamp(1.5rem, 3vw, 3rem);
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.5);
+}
+
+.nn-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffe3f1;
+  color: #814d68;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 32px;
+}
+
+.nn-hero__badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f45ca2;
+}
+
+.nn-hero__title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(3.6rem, 8vw, 6rem);
+  line-height: 1;
+  color: #814d68;
+  margin: 0 0 24px;
+  font-weight: 400;
+  letter-spacing: -2.5px;
+}
+
+.nn-hero__title em {
+  color: #f45ca2;
+  font-style: italic;
+}
+
+.nn-hero__subtitle {
+  font-size: 18px;
+  line-height: 1.6;
+  color: #814d68;
+  margin: 0 auto 48px;
+  max-width: 520px;
+}
+
+.nn-hero__ctas {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.nn-store {
+  background: #814d68;
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.nn-store__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.nn-store small {
+  display: block;
+  font-size: 10px;
+  opacity: 0.8;
+  font-weight: 400;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.nn-store strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.nn-hero__trust {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  font-size: 13px;
+  color: #814d68;
+  flex-wrap: wrap;
+}
+
+.nn-hero__trust-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .nn-hero {
+    width: min(100%, 94vw);
+    padding: 2rem 1.1rem;
+    border-radius: 20px;
+  }
+
+  .nn-hero__title {
+    font-size: 48px;
+    letter-spacing: -1.5px;
+  }
+
+  .nn-hero__subtitle {
+    font-size: 16px;
+  }
+
+  .nn-hero__ctas {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .nn-hero__trust {
+    gap: 16px;
+    flex-direction: column;
   }
 }
