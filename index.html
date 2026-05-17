@@ -3161,6 +3161,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="nn-spinner"></span> Enviando...';
             try {
+              await ensureAnonymousAccess();
               await addDoc(collection(db, "b2b"), {
                 nome: inputs.nome.value.trim(), celular: inputs.celular.value, celularRaw: inputs.celular.value.replace(/\D/g, ""),
                 email: inputs.email.value.trim().toLowerCase(), empresa: inputs.empresa.value.trim(), cnpj: inputs.cnpj.value, cnpjRaw: inputs.cnpj.value.replace(/\D/g, ""),
@@ -3173,7 +3174,13 @@
               console.error("Erro ao salvar lead:", err);
               btn.disabled = false;
               btn.textContent = "Enviar Solicitação";
-              if (errBox) { errBox.textContent = "Não foi possível enviar agora. Tente novamente em instantes."; errBox.style.display = "block"; }
+              if (errBox) {
+                const code = err?.code || "";
+                errBox.textContent = code.includes("permission-denied")
+                  ? "Não foi possível enviar (permissão do Firestore). Ajuste as regras da coleção b2b e tente novamente."
+                  : "Não foi possível enviar agora. Tente novamente em instantes.";
+                errBox.style.display = "block";
+              }
             }
           });
         }
