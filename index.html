@@ -1607,6 +1607,28 @@
         return authReadyPromise;
       }
 
+
+      async function saveB2BLead(payload) {
+        const writeAttempt = async () => addDoc(collection(db, "b2b"), payload);
+
+        try {
+          return await writeAttempt();
+        } catch (error) {
+          if (error?.code !== "permission-denied") {
+            throw error;
+          }
+
+          try {
+            await ensureAnonymousAccess();
+          } catch (authError) {
+            authError.message = "auth-failed:" + (authError.message || "");
+            throw authError;
+          }
+
+          return writeAttempt();
+        }
+      }
+
       let selectedServices = new Set();
       let serviceDropdownElement = null;
       let serviceToggleButton = null;
@@ -3090,9 +3112,6 @@
             }
           });
         }
-        ensureAnonymousAccess().catch((error) => {
-          console.error("Erro ao preparar autenticação anônima", error);
-        });
         ensureProfessionalsLoaded().catch((error) => {
           console.error("Erro inicial ao carregar profissionais", error);
         });
@@ -3161,8 +3180,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="nn-spinner"></span> Enviando...';
             try {
-              await ensureAnonymousAccess();
-              await addDoc(collection(db, "b2b"), {
+              await saveB2BLead({
                 nome: inputs.nome.value.trim(), celular: inputs.celular.value, celularRaw: inputs.celular.value.replace(/\D/g, ""),
                 email: inputs.email.value.trim().toLowerCase(), empresa: inputs.empresa.value.trim(), cnpj: inputs.cnpj.value, cnpjRaw: inputs.cnpj.value.replace(/\D/g, ""),
                 origem: "site_b2b", status: "novo", createdAt: serverTimestamp(), userAgent: navigator.userAgent,
@@ -3176,9 +3194,14 @@
               btn.textContent = "Enviar Solicitação";
               if (errBox) {
                 const code = err?.code || "";
-                errBox.textContent = code.includes("permission-denied")
-                  ? "Não foi possível enviar (permissão do Firestore). Ajuste as regras da coleção b2b e tente novamente."
-                  : "Não foi possível enviar agora. Tente novamente em instantes.";
+                const message = String(err?.message || "");
+                if (message.startsWith("auth-failed:")) {
+                  errBox.textContent = "Não foi possível autenticar no Firebase. Ative o login anônimo em Authentication > Sign-in method e tente novamente.";
+                } else if (code.includes("permission-denied")) {
+                  errBox.textContent = "Não foi possível enviar (permissão do Firestore). Libere escrita autenticada na coleção b2b nas regras do Firestore.";
+                } else {
+                  errBox.textContent = "Não foi possível enviar agora. Tente novamente em instantes.";
+                }
                 errBox.style.display = "block";
               }
             }
