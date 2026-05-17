@@ -44096,9 +44096,9 @@ body.portal .request-toolbar {
 
 .nn-hero {
   width: min(100%, 1080px);
-  margin: 0 auto;
-  min-height: clamp(500px, 68vh, 700px);
-  padding: clamp(2.5rem, 5vw, 4rem) clamp(1.5rem, 3vw, 3rem);
+  margin: clamp(2rem, 6vh, 3.5rem) auto 0;
+  min-height: clamp(520px, 70vh, 740px);
+  padding: clamp(2.75rem, 5vw, 4.25rem) clamp(1.5rem, 3vw, 3rem);
   text-align: center;
   font-family: 'Inter', sans-serif;
   background: rgba(129, 77, 104, 0.92);
@@ -44119,6 +44119,9 @@ body.portal .request-toolbar {
 
 .nn-hero__content {
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .nn-hero__badge {
@@ -44160,40 +44163,52 @@ body.portal .request-toolbar {
   font-size: 18px;
   line-height: 1.6;
   color: rgba(255, 244, 250, 0.94);
-  margin: 0 auto 48px;
+  margin: 0 auto 2.35rem;
   max-width: 520px;
+  text-align: center;
 }
 
 .nn-hero__ctas {
   display: flex;
-  justify-content: flex-start;
-  gap: 12px;
-  margin-bottom: 40px;
+  justify-content: center;
+  gap: 16px;
+  margin: 1.15rem 0 1.65rem;
+  width: 100%;
 }
 
 .nn-store {
-  background: #fff;
-  color: #814d68;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 12px;
+  background: linear-gradient(180deg, #fff9fd 0%, #ffeef8 100%);
+  color: #6e3f59;
+  border: 1px solid rgba(255, 208, 230, 0.75);
+  padding: 16px 28px;
+  border-radius: 16px;
   font-family: 'Inter', sans-serif;
   text-decoration: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-align: left;
+  min-width: 220px;
+  box-shadow: 0 16px 30px -22px rgba(0, 0, 0, 0.5), 0 8px 16px -12px rgba(244, 92, 162, 0.55);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
+}
+
+.nn-store:hover,
+.nn-store:focus-visible {
+  transform: translateY(-2px);
+  filter: brightness(1.02);
+  box-shadow: 0 20px 34px -20px rgba(0, 0, 0, 0.5), 0 12px 22px -12px rgba(244, 92, 162, 0.6);
 }
 
 .nn-store__icon {
-  font-size: 18px;
+  font-size: 24px;
   line-height: 1;
 }
 
 .nn-store small {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   opacity: 0.8;
   font-weight: 400;
   line-height: 1;
@@ -44202,30 +44217,37 @@ body.portal .request-toolbar {
 
 .nn-store strong {
   display: block;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 18px;
+  font-weight: 600;
   line-height: 1.2;
 }
 
 .nn-hero__trust {
-  display: flex;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
-  gap: 32px;
-  font-size: 13px;
+  gap: 14px;
+  width: 100%;
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 227, 241, 0.26);
+  font-size: 14px;
   color: #fff;
-  flex-wrap: wrap;
 }
 
 .nn-hero__trust-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  justify-content: center;
+  text-align: center;
 }
 
 .nn-hero__image-wrap {
   display: flex;
   justify-content: center;
+  align-items: center;
+  transform: translateY(-10px);
 }
 
 .nn-hero__image {
@@ -44258,12 +44280,19 @@ body.portal .request-toolbar {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    margin: 1.1rem 0 1.35rem;
+  }
+
+  .nn-store {
+    min-width: min(100%, 280px);
+    justify-content: center;
   }
 
   .nn-hero__trust {
-    gap: 16px;
-    flex-direction: column;
-    justify-content: center;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 1rem;
+    padding-top: 0.85rem;
   }
 
   .nn-hero__layout {
