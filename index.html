@@ -1261,19 +1261,16 @@
     </header>
 
     <main>
-      <div class="home-hero-stack">
-        <section class="hero hero--home hero--home-fullpage">
-          <div class="hero-copy">
-            <section class="nn-hero" aria-label="Lançamento do app NailNow">
-              <div class="nn-hero__layout">
-                <div class="nn-hero__content">
+      <section class="nn-hero" aria-label="Lançamento do app NailNow">
+        <div class="nn-hero__layout">
+          <div class="nn-hero__content">
                   <h1 class="nn-hero__title">
                     Do seu jeito.<br />
                     <em>No seu tempo.</em>
                   </h1>
 
                   <p class="nn-hero__subtitle">
-                    Unhas perfeitas sem sair de casa. Agende pelo app com profissionais verificadas.
+                    <br />Unhas perfeitas sem sair de casa.<br />Agende pelo app com profissionais verificadas.
                   </p>
 
                   <div class="nn-hero__ctas">
@@ -1293,26 +1290,79 @@
                     </a>
                   </div>
 
-                  <div class="nn-hero__trust">
-                    <div class="nn-hero__trust-item">
-                      <span aria-hidden="true">✓</span> Profissionais verificadas
-                    </div>
-                    <div class="nn-hero__trust-item">
-                      <span aria-hidden="true">🔒</span> Pagamento seguro
-                    </div>
-                    <div class="nn-hero__trust-item">
-                      <span aria-hidden="true">🏠</span> Atendimento a domicílio
-                    </div>
-                  </div>
-                </div>
-                <div class="nn-hero__image-wrap">
-                  <img class="nn-hero__image" src="assets/nail1.png" alt="Manicure NailNow atendendo cliente" loading="lazy" />
-                </div>
-              </div>
-            </section>
           </div>
-        </section>
-      </div>
+          <div class="nn-hero__image-wrap">
+            <img class="nn-hero__image" src="assets/nail1.png" alt="Manicure NailNow atendendo cliente" loading="lazy" />
+          </div>
+        </div>
+
+        <div class="nn-hero__trust" role="list" aria-label="Diferenciais NailNow">
+          <div class="nn-hero__trust-item" role="listitem">
+            <span aria-hidden="true">✓</span>
+            <span>Profissionais verificadas</span>
+          </div>
+          <div class="nn-hero__trust-item" role="listitem">
+            <span aria-hidden="true">🔒</span>
+            <span>Pagamento seguro</span>
+          </div>
+          <div class="nn-hero__trust-item" role="listitem">
+            <span aria-hidden="true">🏠</span>
+            <span>Atendimento a domicílio</span>
+          </div>
+        </div>
+      </section>
+
+    <section class="nn-b2b-wrap" aria-label="NailNow para empresas">
+        <div class="nn-b2b-card" id="nn-form-card">
+          <div class="nn-b2b-eyebrow">
+            <span class="dot" aria-hidden="true"></span>
+            NailNow para empresas
+          </div>
+
+          <h2 class="nn-b2b-title">Beleza como<br /><em>benefício corporativo.</em></h2>
+
+          <p class="nn-b2b-sub">
+            Oferecer cuidado às suas colaboradoras nunca foi tão simples. Conte para a gente sobre sua empresa e nosso time entra em contato.
+          </p>
+
+          <form id="nn-b2b-form" novalidate>
+            <div class="nn-field">
+              <label class="nn-label" for="nn-nome">Nome completo</label>
+              <input class="nn-input" id="nn-nome" name="nome" type="text" placeholder="Como podemos te chamar?" required />
+            </div>
+
+            <div class="nn-row">
+              <div class="nn-field">
+                <label class="nn-label" for="nn-celular">Celular</label>
+                <input class="nn-input" id="nn-celular" name="celular" type="tel" placeholder="(11) 99999-9999" maxlength="15" required />
+              </div>
+              <div class="nn-field">
+                <label class="nn-label" for="nn-email">E-mail corporativo</label>
+                <input class="nn-input" id="nn-email" name="email" type="email" placeholder="voce@empresa.com" required />
+              </div>
+            </div>
+
+            <div class="nn-field">
+              <label class="nn-label" for="nn-empresa">Empresa</label>
+              <input class="nn-input" id="nn-empresa" name="empresa" type="text" placeholder="Nome da empresa" required />
+            </div>
+
+            <div class="nn-field">
+              <label class="nn-label" for="nn-cnpj">CNPJ</label>
+              <input class="nn-input" id="nn-cnpj" name="cnpj" type="text" placeholder="00.000.000/0000-00" maxlength="18" required />
+            </div>
+
+            <button type="submit" class="nn-cta-pill" id="nn-submit-btn">Enviar Solicitação</button>
+
+            <div id="nn-error" class="nn-error-msg" style="display:none;"></div>
+
+            <p class="nn-disclaimer">
+              Ao enviar, você concorda com nossa política de privacidade.<br />
+              Sem spam — só respondemos quando faz sentido.
+            </p>
+          </form>
+        </div>
+      </section>
 
     <section class="instagram-feed-strip" aria-label="Feed do Instagram da NailNow">
       <div class="instagram-feed-strip__inner">
@@ -1382,9 +1432,12 @@
           </header>
           <ul class="match-results__list" id="match-results-list" role="list"></ul>
         </div>
+
       </section>
 
 
+
+      
 
       <section class="cta-profissional" id="profissionais">
         <div class="cta-content">
@@ -1444,6 +1497,8 @@
         getFirestore,
         collection,
         getDocs,
+        addDoc,
+        serverTimestamp,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -3042,6 +3097,86 @@
           console.error("Erro inicial ao carregar profissionais", error);
         });
         initBookingPickerButtons();
+
+        const nnB2BForm = document.getElementById("nn-b2b-form");
+        if (nnB2BForm) {
+          const maskPhone = (v) => {
+            v = v.replace(/\D/g, "").slice(0, 11);
+            if (v.length > 10) return v.replace(/(\d{2})(\d{5})(\d{0,4}).*/, "($1) $2-$3");
+            if (v.length > 6) return v.replace(/(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+            if (v.length > 2) return v.replace(/(\d{2})(\d{0,5}).*/, "($1) $2");
+            if (v.length > 0) return v.replace(/(\d{0,2}).*/, "($1");
+            return "";
+          };
+          const maskCNPJ = (v) => {
+            v = v.replace(/\D/g, "").slice(0, 14);
+            v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+            v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+            v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+            v = v.replace(/(\d{4})(\d)/, "$1-$2");
+            return v;
+          };
+          const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+          const isValidCNPJ = (cnpjValue) => {
+            const cnpj = cnpjValue.replace(/\D/g, "");
+            if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
+            let t = cnpj.length - 2; let n = cnpj.substring(0, t); const d = cnpj.substring(t);
+            let s = 0; let m = t - 7;
+            for (let i = t; i >= 1; i -= 1) { s += Number(n.charAt(t - i)) * m; m -= 1; if (m < 2) m = 9; }
+            let r = s % 11 < 2 ? 0 : 11 - (s % 11);
+            if (r !== Number(d.charAt(0))) return false;
+            t += 1; n = cnpj.substring(0, t); s = 0; m = t - 7;
+            for (let i = t; i >= 1; i -= 1) { s += Number(n.charAt(t - i)) * m; m -= 1; if (m < 2) m = 9; }
+            r = s % 11 < 2 ? 0 : 11 - (s % 11);
+            return r === Number(d.charAt(1));
+          };
+
+          const inputs = {
+            nome: document.getElementById("nn-nome"), celular: document.getElementById("nn-celular"), email: document.getElementById("nn-email"), empresa: document.getElementById("nn-empresa"), cnpj: document.getElementById("nn-cnpj"),
+          };
+          const btn = document.getElementById("nn-submit-btn");
+          const errBox = document.getElementById("nn-error");
+          const formCard = document.getElementById("nn-form-card");
+          inputs.celular?.addEventListener("input", (e) => { e.target.value = maskPhone(e.target.value); });
+          inputs.cnpj?.addEventListener("input", (e) => { e.target.value = maskCNPJ(e.target.value); });
+
+          const validateB2B = () => {
+            let ok = true;
+            Object.values(inputs).forEach((i) => i?.classList.remove("is-error"));
+            if (!inputs.nome.value.trim() || inputs.nome.value.trim().split(" ").length < 2) { inputs.nome.classList.add("is-error"); ok = false; }
+            if (inputs.celular.value.replace(/\D/g, "").length < 10) { inputs.celular.classList.add("is-error"); ok = false; }
+            if (!isValidEmail(inputs.email.value)) { inputs.email.classList.add("is-error"); ok = false; }
+            if (!inputs.empresa.value.trim()) { inputs.empresa.classList.add("is-error"); ok = false; }
+            if (!isValidCNPJ(inputs.cnpj.value)) { inputs.cnpj.classList.add("is-error"); ok = false; }
+            return ok;
+          };
+
+          nnB2BForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (errBox) errBox.style.display = "none";
+            if (!validateB2B()) {
+              if (errBox) { errBox.textContent = "Por favor, confira os campos destacados."; errBox.style.display = "block"; }
+              return;
+            }
+            btn.disabled = true;
+            btn.innerHTML = '<span class="nn-spinner"></span> Enviando...';
+            try {
+              await addDoc(collection(db, "leads_b2b"), {
+                nome: inputs.nome.value.trim(), celular: inputs.celular.value, celularRaw: inputs.celular.value.replace(/\D/g, ""),
+                email: inputs.email.value.trim().toLowerCase(), empresa: inputs.empresa.value.trim(), cnpj: inputs.cnpj.value, cnpjRaw: inputs.cnpj.value.replace(/\D/g, ""),
+                origem: "site_b2b", status: "novo", createdAt: serverTimestamp(), userAgent: navigator.userAgent,
+              });
+              const firstName = inputs.nome.value.trim().split(" ")[0];
+              const empresa = inputs.empresa.value.trim();
+              formCard.innerHTML = `<div class="nn-success"><div class="nn-success-icon">✓</div><h2 class="nn-b2b-title" style="margin-bottom:8px;">Recebido, <em>${firstName}!</em></h2><p class="nn-b2b-sub" style="margin-bottom:0;">Nosso time entra em contato com a <strong>${empresa}</strong> em até 1 dia útil.</p></div>`;
+            } catch (err) {
+              console.error("Erro ao salvar lead:", err);
+              btn.disabled = false;
+              btn.textContent = "Enviar Solicitação";
+              if (errBox) { errBox.textContent = "Não foi possível enviar agora. Tente novamente em instantes."; errBox.style.display = "block"; }
+            }
+          });
+        }
       });
 
       window.addEventListener("load", () => {
