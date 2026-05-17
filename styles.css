@@ -44307,3 +44307,52 @@ body.portal .request-toolbar {
     max-width: 300px;
   }
 }
+
+/* ===== NailNow B2B Form ===== */
+.nn-b2b-wrap {
+  background: #FFE3F1;
+  padding: 80px 28px;
+  margin-top: clamp(1.5rem, 4vw, 2.5rem);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Inter', sans-serif;
+}
+.nn-b2b-card {
+  background: #fff;
+  border: 1px solid #E5A8C7;
+  border-radius: 24px;
+  padding: 48px 44px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 20px 60px -20px rgba(129, 77, 104, 0.15);
+  box-sizing: border-box;
+}
+.nn-b2b-eyebrow { display:inline-flex;align-items:center;gap:6px;background:#FFE3F1;color:#814D68;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px; }
+.nn-b2b-eyebrow .dot { width:6px;height:6px;border-radius:50%;background:#F45CA2; }
+.nn-b2b-title { font-family:'Playfair Display', Georgia, serif;font-size:36px;line-height:1.05;color:#814D68;margin:0 0 12px;font-weight:400;letter-spacing:-1px; }
+.nn-b2b-title em { color:#F45CA2;font-style:italic; }
+.nn-b2b-sub { font-size:15px;line-height:1.55;color:#814D68;margin:0 0 32px;opacity:.85; }
+.nn-field { margin-bottom:16px; }
+.nn-label { display:block;font-size:12px;font-weight:500;color:#814D68;margin-bottom:6px;letter-spacing:.3px; }
+.nn-input { width:100%;box-sizing:border-box;background:#fff;border:1px solid #E5A8C7;border-radius:12px;padding:14px 16px;font-family:'Inter', sans-serif;font-size:14px;color:#814D68;outline:none;transition:border-color .15s, box-shadow .15s; }
+.nn-input::placeholder { color:#C9A3B3; }
+.nn-input:focus { border-color:#F45CA2; box-shadow:0 0 0 3px rgba(244, 92, 162, .12); }
+.nn-input.is-error { border-color:#E04A92; box-shadow:0 0 0 3px rgba(224, 74, 146, .12); }
+.nn-row { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.nn-cta-pill { width:100%;background:#F45CA2;color:#fff;border:none;padding:16px 36px;border-radius:999px;font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:background .2s, transform .05s, box-shadow .2s, opacity .2s;box-shadow:0 4px 12px -2px rgba(244, 92, 162, .35);margin-top:12px; }
+.nn-cta-pill:hover:not(:disabled) { background:#E04A92; box-shadow:0 6px 16px -2px rgba(244, 92, 162, .5); }
+.nn-cta-pill:active:not(:disabled) { transform:translateY(1px); box-shadow:0 2px 8px -2px rgba(244, 92, 162, .35); }
+.nn-cta-pill:disabled { opacity:.65; cursor:not-allowed; }
+.nn-spinner { display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:nn-spin .7s linear infinite;vertical-align:middle;margin-right:8px; }
+@keyframes nn-spin { to { transform: rotate(360deg); } }
+.nn-disclaimer { font-size:12px;color:#814D68;opacity:.7;text-align:center;margin:16px 0 0;line-height:1.5; }
+.nn-error-msg { background:#FFE3F1;color:#814D68;border:1px solid #E5A8C7;border-radius:10px;padding:10px 14px;font-size:13px;margin-top:12px;text-align:center; }
+.nn-success { text-align:center;padding:20px 0; }
+.nn-success-icon { width:56px;height:56px;border-radius:50%;background:#FFE3F1;color:#F45CA2;display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:16px; }
+@media (max-width: 540px) {
+  .nn-b2b-wrap { padding: 40px 16px; }
+  .nn-b2b-card { padding: 32px 24px; }
+  .nn-b2b-title { font-size: 28px; }
+  .nn-row { grid-template-columns: 1fr; }
+}
