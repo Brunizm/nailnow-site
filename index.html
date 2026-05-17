@@ -3161,7 +3161,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="nn-spinner"></span> Enviando...';
             try {
-              await addDoc(collection(db, "leads_b2b"), {
+              await addDoc(collection(db, "b2b"), {
                 nome: inputs.nome.value.trim(), celular: inputs.celular.value, celularRaw: inputs.celular.value.replace(/\D/g, ""),
                 email: inputs.email.value.trim().toLowerCase(), empresa: inputs.empresa.value.trim(), cnpj: inputs.cnpj.value, cnpjRaw: inputs.cnpj.value.replace(/\D/g, ""),
                 origem: "site_b2b", status: "novo", createdAt: serverTimestamp(), userAgent: navigator.userAgent,
