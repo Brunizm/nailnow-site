@@ -44223,15 +44223,16 @@ body.portal .request-toolbar {
 }
 
 .nn-hero__trust {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
-  gap: 22px;
+  gap: 14px;
+  width: 100%;
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 227, 241, 0.26);
   font-size: 14px;
   color: #fff;
-  flex-wrap: wrap;
-  width: 100%;
-  margin-top: -0.35rem;
 }
 
 .nn-hero__trust-item {
@@ -44239,7 +44240,7 @@ body.portal .request-toolbar {
   align-items: center;
   gap: 8px;
   justify-content: center;
-  min-width: 190px;
+  text-align: center;
 }
 
 .nn-hero__image-wrap {
@@ -44288,9 +44289,10 @@ body.portal .request-toolbar {
   }
 
   .nn-hero__trust {
-    gap: 16px;
-    flex-direction: column;
-    justify-content: center;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 1rem;
+    padding-top: 0.85rem;
   }
 
   .nn-hero__layout {
