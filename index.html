@@ -2320,14 +2320,6 @@
 
         professionalsReadyPromise = (async () => {
           professionalsLoadError = null;
-          try {
-            await ensureAnonymousAccess();
-          } catch (error) {
-            professionalCatalog = [];
-            populateServiceSelect();
-            professionalsLoadError = error;
-            throw error;
-          }
           const sources = [{ path: "profissionais", label: "profissionais" }];
 
           let mergedCatalog = [];
