@@ -9,5 +9,12 @@ service cloud.firestore {
       allow read: if true;
       allow update, delete: if false;
     }
+
+    match /b2b/{document} {
+      // Permite receber leads do formulário "Beleza como benefício corporativo".
+      allow create: if true;
+      // Bloqueia leitura/escrita adicional direto do cliente.
+      allow read, update, delete: if false;
+    }
   }
 }
